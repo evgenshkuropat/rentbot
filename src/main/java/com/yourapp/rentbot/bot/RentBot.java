@@ -1,0 +1,244 @@
+package com.yourapp.rentbot.bot;
+
+import com.yourapp.rentbot.domain.Region;
+import com.yourapp.rentbot.domain.RegionGroup;
+import com.yourapp.rentbot.domain.UserFilter;
+import com.yourapp.rentbot.flow.FlowService;
+import com.yourapp.rentbot.flow.FlowStep;
+import com.yourapp.rentbot.repo.RegionGroupRepo;
+import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.ui.Keyboards;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
+import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
+import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
+
+import java.util.List;
+
+@Component
+public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+
+    private final TelegramClient telegramClient;
+    private final FlowService flowService;
+    private final RegionRepo regionRepo;
+    private final RegionGroupRepo regionGroupRepo;
+
+    private final String token;
+
+    public RentBot(
+            @Value("${telegram.bot.token}") String token,
+            FlowService flowService,
+            RegionRepo regionRepo,
+            RegionGroupRepo regionGroupRepo
+    ) {
+        this.token = token;
+        this.flowService = flowService;
+        this.regionRepo = regionRepo;
+        this.regionGroupRepo = regionGroupRepo;
+        this.telegramClient = new OkHttpTelegramClient(token);
+    }
+
+    @Override
+    public String getBotToken() {
+        return token;
+    }
+
+    @Override
+    public LongPollingUpdateConsumer getUpdatesConsumer() {
+        return this;
+    }
+
+    @Override
+    public void consume(Update update) {
+        try {
+            System.out.println("UPDATE: " + update);
+
+            if (update.hasMessage() && update.getMessage().hasText()) {
+                onText(update);
+            } else if (update.hasCallbackQuery()) {
+                onCallback(update);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void onText(Update update) throws TelegramApiException {
+        long chatId = update.getMessage().getChatId();
+        long userId = update.getMessage().getFrom().getId();
+        String text = update.getMessage().getText().trim();
+
+        if (text.equalsIgnoreCase("/start")) {
+            flowService.reset(userId);
+
+            List<Region> regions = regionRepo.findAll();
+            send(chatId,
+                    "Привіт! Знайдемо квартиру в Чехії 🇨🇿\nОбери місто:",
+                    Keyboards.regionsKeyboard(regions)
+            );
+            return;
+        }
+
+        send(chatId, "Користуйся кнопками 🙂\nНатисни /start щоб почати.", null);
+    }
+
+    private void onCallback(Update update) throws TelegramApiException {
+        long chatId = update.getCallbackQuery().getMessage().getChatId();
+        long userId = update.getCallbackQuery().getFrom().getId();
+        String data = update.getCallbackQuery().getData();
+        String callbackId = update.getCallbackQuery().getId();
+
+        // ✅ чтобы Telegram не крутил "loading"
+        answerCallback(callbackId);
+
+        // ✅ UX: выключаем кнопки у сообщения, по которому кликнули
+        disableInlineKeyboard(update);
+
+        UserFilter f = flowService.getOrCreate(userId);
+
+        // ✅ защита от старых кнопок
+        if (!isCallbackAllowedForStep(data, f.getStep())) {
+            send(chatId, "⚠️ Ця кнопка вже неактуальна.\nНатисни /start", null);
+            return;
+        }
+
+        // 1) REGION
+        if (data.startsWith("REGION:")) {
+            String code = data.substring("REGION:".length());
+
+            Region region = regionRepo.findByCode(code)
+                    .orElseThrow(() -> new IllegalArgumentException("Region not found by code=" + code));
+
+            f.setRegion(region);
+            f.setRegionGroup(null);
+            f.setLayout(null);
+            f.setMaxPrice(null);
+            f.setActive(false);
+            f.setStep(FlowStep.DISTRICT_GROUP);
+            flowService.save(f);
+
+            List<RegionGroup> groups = regionGroupRepo.findByRegionId(region.getId());
+            send(chatId, "Обери район:", Keyboards.regionGroupsKeyboard(groups));
+            return;
+        }
+
+        // 2) GROUP
+        if (data.startsWith("GROUP:")) {
+            String groupCode = data.substring("GROUP:".length());
+
+            RegionGroup group = regionGroupRepo.findByCode(groupCode)
+                    .orElseThrow(() -> new IllegalArgumentException("RegionGroup not found by code=" + groupCode));
+
+            f.setRegionGroup(group);
+            f.setLayout(null);
+            f.setMaxPrice(null);
+            f.setStep(FlowStep.LAYOUT);
+            flowService.save(f);
+
+            send(chatId, "Обери тип квартири:", Keyboards.layoutKeyboard());
+            return;
+        }
+
+        // 3) LAYOUT
+        if (data.startsWith("LAYOUT:")) {
+            String layout = data.substring("LAYOUT:".length());
+
+            f.setLayout(layout);
+            f.setMaxPrice(null);
+            f.setStep(FlowStep.MAX_PRICE);
+            flowService.save(f);
+
+            send(chatId, "Обери максимальну ціну:", Keyboards.priceKeyboard());
+            return;
+        }
+
+        // 4) PRICE
+        if (data.startsWith("PRICE:")) {
+            int price = Integer.parseInt(data.substring("PRICE:".length()));
+
+            f.setMaxPrice(price);
+            f.setStep(FlowStep.CONFIRM);
+            flowService.save(f);
+
+            send(chatId, "Готово ✅\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
+            return;
+        }
+
+        // 5) CONFIRM
+        if (data.startsWith("CONFIRM:")) {
+            String action = data.substring("CONFIRM:".length());
+
+            switch (action) {
+                case "SUBSCRIBE" -> {
+                    f.setActive(true);
+                    flowService.save(f);
+                    send(chatId, "🔔 Сповіщення увімкнено!\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
+                }
+                case "STOP" -> {
+                    f.setActive(false);
+                    flowService.save(f);
+                    send(chatId, "⛔ Сповіщення вимкнено.\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
+                }
+                case "RESET" -> {
+                    flowService.reset(userId);
+                    List<Region> regions = regionRepo.findAll();
+                    send(chatId, "Ок, давай заново. Обери місто:", Keyboards.regionsKeyboard(regions));
+                }
+                case "SHOW" -> send(chatId, flowService.pretty(f), Keyboards.confirmKeyboard());
+                default -> send(chatId, "Невідома дія 😅", Keyboards.confirmKeyboard());
+            }
+            return;
+        }
+
+        send(chatId, "Невідомий callback: " + data, null);
+    }
+
+    private boolean isCallbackAllowedForStep(String data, FlowStep step) {
+        if (data.startsWith("REGION:")) return step == FlowStep.CITY;
+        if (data.startsWith("GROUP:")) return step == FlowStep.DISTRICT_GROUP;
+        if (data.startsWith("LAYOUT:")) return step == FlowStep.LAYOUT;
+        if (data.startsWith("PRICE:")) return step == FlowStep.MAX_PRICE;
+        if (data.startsWith("CONFIRM:")) return step == FlowStep.CONFIRM;
+        return true;
+    }
+
+    private void disableInlineKeyboard(Update update) {
+        try {
+            var msg = update.getCallbackQuery().getMessage();
+            telegramClient.execute(EditMessageReplyMarkup.builder()
+                    .chatId(msg.getChatId())
+                    .messageId(msg.getMessageId())
+                    .replyMarkup(null)
+                    .build());
+        } catch (Exception ignored) {
+            // не критично
+        }
+    }
+
+    private void answerCallback(String callbackQueryId) throws TelegramApiException {
+        telegramClient.execute(AnswerCallbackQuery.builder()
+                .callbackQueryId(callbackQueryId)
+                .build());
+    }
+
+    private void send(long chatId, String text, ReplyKeyboard keyboardOrNull) throws TelegramApiException {
+        SendMessage.SendMessageBuilder b = SendMessage.builder()
+                .chatId(chatId)
+                .text(text);
+
+        if (keyboardOrNull != null) {
+            b.replyMarkup(keyboardOrNull);
+        }
+
+        telegramClient.execute(b.build());
+    }
+}

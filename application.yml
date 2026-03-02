@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rentbot
+    username: rentbot
+    password: rentbot
+  jpa:
+    hibernate:
+      ddl-auto: validate   # или none
+
+telegram:
+  bot:
+    token: 8770690461:AAFF1aukz9cpGs16u8JoRmhGPHokWkd1iPE
+    username: zhytloCZ_bot
