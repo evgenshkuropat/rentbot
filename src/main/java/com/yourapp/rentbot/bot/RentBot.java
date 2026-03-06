@@ -7,6 +7,8 @@ import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.service.ParserService;
+import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -31,6 +33,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final FlowService flowService;
     private final RegionRepo regionRepo;
     private final RegionGroupRepo regionGroupRepo;
+    private final ParserService parserService;
 
     private final String token;
 
@@ -38,12 +41,14 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             @Value("${telegram.bot.token}") String token,
             FlowService flowService,
             RegionRepo regionRepo,
-            RegionGroupRepo regionGroupRepo
+            RegionGroupRepo regionGroupRepo,
+            ParserService parserService
     ) {
         this.token = token;
         this.flowService = flowService;
         this.regionRepo = regionRepo;
         this.regionGroupRepo = regionGroupRepo;
+        this.parserService = parserService;
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -88,7 +93,33 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        send(chatId, "Користуйся кнопками 🙂\nНатисни /start щоб почати.", null);
+        if (text.equalsIgnoreCase("/test")) {
+            try {
+                List<ListingDto> listings = parserService.findNewListings(userId);
+
+                if (listings.isEmpty()) {
+                    send(chatId, "Нічого не знайшов 😕", null);
+                    return;
+                }
+
+                send(chatId, "Знайшов " + listings.size() + " оголошень:", null);
+
+                for (ListingDto l : listings) {
+                    send(chatId,
+                            "🏠 " + l.title() + "\n" +
+                                    "💰 " + l.priceCzk() + " Kč\n" +
+                                    "🔗 " + l.link(),
+                            null
+                    );
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                send(chatId, "Помилка тесту: " + e.getMessage(), null);
+            }
+            return;
+        }
+
+        send(chatId, "Користуйся кнопками 🙂\nНатисни /start щоб почати.\nДля тесту: /test", null);
     }
 
     private void onCallback(Update update) throws TelegramApiException {
@@ -97,21 +128,16 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         String data = update.getCallbackQuery().getData();
         String callbackId = update.getCallbackQuery().getId();
 
-        // ✅ чтобы Telegram не крутил "loading"
         answerCallback(callbackId);
-
-        // ✅ UX: выключаем кнопки у сообщения, по которому кликнули
         disableInlineKeyboard(update);
 
         UserFilter f = flowService.getOrCreate(userId);
 
-        // ✅ защита от старых кнопок
         if (!isCallbackAllowedForStep(data, f.getStep())) {
             send(chatId, "⚠️ Ця кнопка вже неактуальна.\nНатисни /start", null);
             return;
         }
 
-        // 1) REGION
         if (data.startsWith("REGION:")) {
             String code = data.substring("REGION:".length());
 
@@ -131,7 +157,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        // 2) GROUP
         if (data.startsWith("GROUP:")) {
             String groupCode = data.substring("GROUP:".length());
 
@@ -148,7 +173,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        // 3) LAYOUT
         if (data.startsWith("LAYOUT:")) {
             String layout = data.substring("LAYOUT:".length());
 
@@ -161,7 +185,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        // 4) PRICE
         if (data.startsWith("PRICE:")) {
             int price = Integer.parseInt(data.substring("PRICE:".length()));
 
@@ -173,7 +196,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        // 5) CONFIRM
         if (data.startsWith("CONFIRM:")) {
             String action = data.substring("CONFIRM:".length());
 
@@ -220,7 +242,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .replyMarkup(null)
                     .build());
         } catch (Exception ignored) {
-            // не критично
         }
     }
 

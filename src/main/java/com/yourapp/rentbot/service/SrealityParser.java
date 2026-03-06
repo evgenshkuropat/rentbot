@@ -1,0 +1,144 @@
+package com.yourapp.rentbot.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yourapp.rentbot.service.dto.ListingDto;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Service
+public class SrealityParser {
+
+    private static final String API_URL =
+            "https://www.sreality.cz/api/cs/v2/estates" +
+                    "?category_main_cb=1" +      // byty
+                    "&category_type_cb=2" +      // pronajem
+                    "&locality_region_id=10" +   // Praha
+                    "&per_page=20";
+
+    private static final Pattern LAYOUT_PATTERN =
+            Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
+
+    private final HttpClient http = HttpClient.newHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    public List<ListingDto> fetchListings() throws IOException {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+            String json = resp.body();
+
+            JsonNode root = mapper.readTree(json);
+            JsonNode estates = root.path("_embedded").path("estates");
+
+            List<ListingDto> result = new ArrayList<>();
+
+            for (JsonNode estate : estates) {
+                String title = estate.path("name").asText("");
+                int priceCzk = estate.path("price_czk").path("value_raw").asInt();
+                String link = buildLink(estate);
+                String layout = extractLayout(title);
+                String photoUrl = extractPhotoUrl(estate);
+                String locality = estate.path("locality").asText("");
+
+                result.add(new ListingDto(
+                        title,
+                        priceCzk,
+                        link,
+                        layout,
+                        photoUrl,
+                        locality
+                ));
+            }
+
+            return result;
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while fetching sreality", e);
+        }
+    }
+
+    private String buildLink(JsonNode estate) {
+        String hash = estate.path("hash_id").asText();
+        String locality = estate.path("seo").path("locality").asText();
+
+        String title = estate.path("name").asText("");
+        String layout = extractLayout(title);
+
+        if (hash == null || hash.isBlank()) {
+            return "https://www.sreality.cz";
+        }
+
+        if (locality == null || locality.isBlank()) {
+            return "https://www.sreality.cz/detail/pronajem/byt/" + hash;
+        }
+
+        if (layout == null || layout.isBlank()) {
+            return "https://www.sreality.cz/detail/pronajem/byt/" + locality + "/" + hash;
+        }
+
+        return "https://www.sreality.cz/detail/pronajem/byt/"
+                + layout + "/"
+                + locality + "/"
+                + hash;
+    }
+
+    private String extractLayout(String title) {
+        if (title == null) {
+            return null;
+        }
+
+        Matcher m = LAYOUT_PATTERN.matcher(title);
+        if (!m.find()) {
+            return null;
+        }
+
+        return m.group(1).toLowerCase().replaceAll("\\s+", "");
+    }
+
+    private String extractPhotoUrl(JsonNode estate) {
+        JsonNode links = estate.path("_links");
+
+        if (links.isObject()) {
+            JsonNode images = links.path("images");
+
+            if (images.isArray() && !images.isEmpty()) {
+                JsonNode first = images.get(0);
+                String href = first.path("href").asText();
+                if (href != null && !href.isBlank()) {
+                    return href;
+                }
+            }
+        }
+
+        JsonNode embedded = estate.path("_embedded");
+        if (embedded.isObject()) {
+            JsonNode images = embedded.path("images");
+
+            if (images.isArray() && !images.isEmpty()) {
+                JsonNode first = images.get(0);
+                String href = first.path("href").asText();
+                if (href != null && !href.isBlank()) {
+                    return href;
+                }
+            }
+        }
+
+        return null;
+    }
+}

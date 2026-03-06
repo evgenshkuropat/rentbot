@@ -3,11 +3,10 @@ package com.yourapp.rentbot.service;
 import com.yourapp.rentbot.domain.SentLog;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.SentLogRepo;
+import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
-
-import java.time.Instant;
 
 @Service
 public class NotificationService {
@@ -21,33 +20,44 @@ public class NotificationService {
     }
 
     public void sendIfNotSent(UserFilter user, ListingDto listing) {
-        Long chatId = user.getTelegramUserId(); // в личке chatId == userId
+        Long chatId = user.getTelegramUserId();
 
-        if (sentLogRepo.existsByTelegramUserIdAndListingKey(user.getTelegramUserId(), listing.key())) {
+        String key = listing.link();
+        if (key == null || key.isBlank()) {
+            return;
+        }
+
+        if (sentLogRepo.existsByTelegramUserIdAndListingKey(user.getTelegramUserId(), key)) {
             return;
         }
 
         String text = """
                 🏠 %s
-                📍 %s
-                💰 %d Kč
+                💰 %s
                 🔗 %s
-                """.formatted(listing.title(), listing.location(), listing.price(), listing.url());
+                """.formatted(
+                nvl(listing.title()),
+                listing.priceCzk() > 0 ? (listing.priceCzk() + " Kč") : "—",
+                nvl(listing.link())
+        );
 
         try {
             telegramClient.execute(SendMessage.builder()
-                    .chatId(chatId.toString())
+                    .chatId(chatId)
                     .text(text)
                     .build());
-
-            SentLog log = new SentLog();
-            log.setTelegramUserId(user.getTelegramUserId());
-            log.setListingKey(listing.key());
-            log.setSentAt(Instant.now());
-            sentLogRepo.save(log);
-
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
+
+        SentLog log = new SentLog();
+        log.setTelegramUserId(user.getTelegramUserId());
+        log.setListingKey(key);
+        sentLogRepo.save(log);
+    }
+
+    private String nvl(String s) {
+        return (s == null || s.isBlank()) ? "—" : s;
     }
 }

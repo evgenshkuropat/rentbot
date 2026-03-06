@@ -3,9 +3,9 @@ package com.yourapp.rentbot.flow;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.RegionRepo;
-import com.yourapp.rentbot.repo.UserFilterRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.yourapp.rentbot.repo.UserFilterRepo;
 
 import java.time.Instant;
 
@@ -91,18 +91,27 @@ public class FlowService {
         String regionTitle = (f.getRegion() == null) ? "—" : nvl(f.getRegion().getTitle());
         String groupTitle = (f.getRegionGroup() == null) ? "—" : nvl(f.getRegionGroup().getTitle());
 
+        String priceText;
+        if (f.getMaxPrice() == null) {
+            priceText = "—";
+        } else if (f.getMaxPrice() == 0) {
+            priceText = "Без ліміту";
+        } else {
+            priceText = f.getMaxPrice() + " Kč";
+        }
+
         return """
-                🧾 Ваші налаштування:
-                🏙 Місто: %s
-                📍 Райони: %s
-                🏠 Тип: %s
-                💰 Ціна до: %s Kč
-                🔔 Сповіщення: %s
-                """.formatted(
+            🧾 Ваші налаштування:
+            🏙 Місто: %s
+            📍 Райони: %s
+            🏠 Тип: %s
+            💰 Ціна до: %s
+            🔔 Сповіщення: %s
+            """.formatted(
                 regionTitle,
                 groupTitle,
                 nvl(f.getLayout()),
-                f.getMaxPrice() == null ? "—" : f.getMaxPrice(),
+                priceText,
                 f.isActive() ? "увімкнено" : "вимкнено"
         );
     }

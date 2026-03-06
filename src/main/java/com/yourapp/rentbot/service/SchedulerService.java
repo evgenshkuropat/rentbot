@@ -2,9 +2,11 @@ package com.yourapp.rentbot.service;
 
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
+import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -22,18 +24,21 @@ public class SchedulerService {
         this.notificationService = notificationService;
     }
 
-    // каждые 60 секунд (для теста). Потом сделаем 300_000 (5 минут).
     @Scheduled(fixedDelay = 60_000)
     public void tick() {
         List<UserFilter> users = userFilterRepo.findAllByActiveTrue();
 
         for (UserFilter user : users) {
-            List<ListingDto> listings = parserService.findNewListings(user);
+            try {
+                List<ListingDto> listings =
+                        parserService.findNewListings(user.getTelegramUserId());
 
-            for (ListingDto listing : listings) {
-                // тут позже будет нормальный matching по фильтрам
-                // (районы, dispo, цена)
-                notificationService.sendIfNotSent(user, listing);
+                for (ListingDto listing : listings) {
+                    notificationService.sendIfNotSent(user, listing);
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
     }
