@@ -3,25 +3,58 @@ package com.yourapp.rentbot.domain;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "regions")
+@Table(name = "regions", uniqueConstraints = @UniqueConstraint(name = "uk_region_code", columnNames = "code"))
 public class Region {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 64)
-    private String code; // PRAHA, BRNO, OSTRAVA
+    @Column(nullable = false, unique = true)
+    private String code;
 
-    @Column(nullable = false, length = 255)
-    private String title; // Praha, Brno, Ostrava
+    @Column(nullable = false)
+    private String title;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    @Column(name = "has_districts", nullable = false)
+    private boolean hasDistricts = false;
 
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
+    @Column(name = "sreality_region_id")
+    private Integer srealityRegionId;
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public boolean isHasDistricts() {
+        return hasDistricts;
+    }
+
+    public void setHasDistricts(boolean hasDistricts) {
+        this.hasDistricts = hasDistricts;
+    }
+
+    public Integer getSrealityRegionId() {
+        return srealityRegionId;
+    }
+
+    public void setSrealityRegionId(Integer srealityRegionId) {
+        this.srealityRegionId = srealityRegionId;
+    }
 }

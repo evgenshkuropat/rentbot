@@ -1,23 +1,32 @@
 package com.yourapp.rentbot.service;
 
+import com.yourapp.rentbot.domain.Region;
+import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
+import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.yourapp.rentbot.repo.UserFilterRepo;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ParserService {
 
     private final SrealityParser srealityParser;
+    private final IdnesParser idnesParser;
     private final UserFilterRepo userFilterRepo;
 
-    public ParserService(SrealityParser srealityParser, UserFilterRepo userFilterRepo) {
+    public ParserService(SrealityParser srealityParser,
+                         IdnesParser idnesParser,
+                         UserFilterRepo userFilterRepo) {
         this.srealityParser = srealityParser;
+        this.idnesParser = idnesParser;
         this.userFilterRepo = userFilterRepo;
     }
 
@@ -26,25 +35,56 @@ public class ParserService {
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
+        Region region = filter.getRegion();
+        RegionGroup regionGroup = filter.getRegionGroup();
+
         String needLayout = normalizeLayout(filter.getLayout());
         Integer maxPrice = filter.getMaxPrice();
-        String groupCode = filter.getRegionGroup() == null ? null : filter.getRegionGroup().getCode();
+        String groupCode = regionGroup == null ? null : regionGroup.getCode();
+        Integer srealityRegionId = region == null ? 10 : region.getSrealityRegionId();
 
-        List<ListingDto> all = srealityParser.fetchListings();
+        List<ListingDto> all = new ArrayList<>();
 
-        System.out.println("ALL LISTINGS FROM PARSER = " + all.size());
+        try {
+            all.addAll(srealityParser.fetchListings(srealityRegionId));
+        } catch (Exception e) {
+            System.out.println("Sreality parser failed: " + e.getMessage());
+        }
+
+        try {
+            all.addAll(idnesParser.fetchListings(region, regionGroup));
+        } catch (Exception e) {
+            System.out.println("Idnes parser failed: " + e.getMessage());
+        }
+
+        all = dedupeByLink(all);
+
+        System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
 
         List<ListingDto> filtered = all.stream()
                 .filter(x -> needLayout == null || needLayout.equals(normalizeLayout(x.layout())))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
-                .sorted(Comparator.comparingInt(ListingDto::priceCzk))
-                .limit(10)
+                .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
+                .limit(20)
                 .toList();
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
         return filtered;
+    }
+
+    private List<ListingDto> dedupeByLink(List<ListingDto> input) {
+        Map<String, ListingDto> map = new LinkedHashMap<>();
+
+        for (ListingDto dto : input) {
+            if (dto == null || dto.link() == null || dto.link().isBlank()) {
+                continue;
+            }
+            map.putIfAbsent(dto.link(), dto);
+        }
+
+        return new ArrayList<>(map.values());
     }
 
     private boolean matchesRegionGroup(String locality, String groupCode) {
@@ -71,7 +111,7 @@ public class ParserService {
     }
 
     private int extractPrahaDistrict(String locality) {
-        if (locality == null) {
+        if (locality == null || locality.isBlank()) {
             return -1;
         }
 
@@ -87,7 +127,7 @@ public class ParserService {
     }
 
     private String normalizeLayout(String s) {
-        if (s == null) {
+        if (s == null || s.isBlank()) {
             return null;
         }
         return s.toLowerCase().replaceAll("\\s+", "");

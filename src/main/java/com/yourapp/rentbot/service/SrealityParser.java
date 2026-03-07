@@ -31,41 +31,66 @@ public class SrealityParser {
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public List<ListingDto> fetchListings() throws IOException {
+    public List<ListingDto> fetchListings(Integer srealityRegionId) throws IOException {
         try {
-            HttpRequest req = HttpRequest.newBuilder()
-                    .uri(URI.create(API_URL))
-                    .header("User-Agent", "Mozilla/5.0")
-                    .GET()
-                    .build();
-
-            HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-            String json = resp.body();
-
-            JsonNode root = mapper.readTree(json);
-            JsonNode estates = root.path("_embedded").path("estates");
+            int regionId = (srealityRegionId == null) ? 10 : srealityRegionId;
 
             List<ListingDto> result = new ArrayList<>();
 
-            for (JsonNode estate : estates) {
-                String title = estate.path("name").asText("");
-                int priceCzk = estate.path("price_czk").path("value_raw").asInt();
-                String link = buildLink(estate);
-                String layout = extractLayout(title);
-                String photoUrl = extractPhotoUrl(estate);
-                String locality = estate.path("locality").asText("");
+            for (int page = 1; page <= 10; page++) {
+                String apiUrl =
+                        "https://www.sreality.cz/api/cs/v2/estates" +
+                                "?category_main_cb=1" +
+                                "&category_type_cb=2" +
+                                "&locality_region_id=" + regionId +
+                                "&per_page=20" +
+                                "&page=" + page;
 
-                result.add(new ListingDto(
-                        title,
-                        priceCzk,
-                        link,
-                        layout,
-                        photoUrl,
-                        locality
-                ));
+                HttpRequest req = HttpRequest.newBuilder()
+                        .uri(URI.create(apiUrl))
+                        .header("User-Agent", "Mozilla/5.0")
+                        .GET()
+                        .build();
+
+                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+                String json = resp.body();
+
+                JsonNode root = mapper.readTree(json);
+                JsonNode estates = root.path("_embedded").path("estates");
+
+                if (!estates.isArray() || estates.isEmpty()) {
+                    break;
+                }
+
+                for (JsonNode estate : estates) {
+                    String title = estate.path("name").asText("");
+                    int priceCzk = estate.path("price_czk").path("value_raw").asInt();
+                    String link = buildLink(estate);
+                    String layout = extractLayout(title);
+                    String photoUrl = extractPhotoUrl(estate);
+                    String locality = estate.path("locality").asText("");
+
+                    result.add(new ListingDto(
+                            title,
+                            priceCzk,
+                            link,
+                            layout,
+                            photoUrl,
+                            locality
+                    ));
+                }
             }
 
-            return result;
+            return result.stream()
+                    .filter(x -> x.link() != null && !x.link().isBlank())
+                    .collect(java.util.stream.Collectors.toMap(
+                            ListingDto::link,
+                            x -> x,
+                            (a, b) -> a
+                    ))
+                    .values()
+                    .stream()
+                    .toList();
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

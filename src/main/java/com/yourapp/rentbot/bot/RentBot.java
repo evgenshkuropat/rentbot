@@ -18,7 +18,9 @@ import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -105,13 +107,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 send(chatId, "Знайшов " + listings.size() + " оголошень:", null);
 
                 for (ListingDto l : listings) {
-                    send(chatId,
-                            "🏠 " + l.title() + "\n" +
-                                    "💰 " + l.priceCzk() + " Kč\n" +
-                                    "🔗 " + l.link(),
-                            null
-                    );
+                    sendListing(chatId, l);
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
                 send(chatId, "Помилка тесту: " + e.getMessage(), null);
@@ -149,11 +147,19 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             f.setLayout(null);
             f.setMaxPrice(null);
             f.setActive(false);
-            f.setStep(FlowStep.DISTRICT_GROUP);
-            flowService.save(f);
 
-            List<RegionGroup> groups = regionGroupRepo.findByRegionId(region.getId());
-            send(chatId, "Обери район:", Keyboards.regionGroupsKeyboard(groups));
+            if (region.isHasDistricts()) {
+                f.setStep(FlowStep.DISTRICT_GROUP);
+                flowService.save(f);
+
+                List<RegionGroup> groups = regionGroupRepo.findByRegionId(region.getId());
+                send(chatId, "Обери район:", Keyboards.regionGroupsKeyboard(groups));
+            } else {
+                f.setStep(FlowStep.LAYOUT);
+                flowService.save(f);
+
+                send(chatId, "Обери тип квартири:", Keyboards.layoutKeyboard());
+            }
             return;
         }
 
@@ -261,5 +267,26 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         telegramClient.execute(b.build());
+    }
+
+    private void sendListing(long chatId, ListingDto l) throws TelegramApiException {
+        String caption =
+                "🏠 " + nvl(l.title()) + "\n" +
+                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
+                        "🔗 " + nvl(l.link());
+
+        if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
+            telegramClient.execute(SendPhoto.builder()
+                    .chatId(chatId)
+                    .photo(new InputFile(l.photoUrl()))
+                    .caption(caption)
+                    .build());
+        } else {
+            send(chatId, caption, null);
+        }
+    }
+
+    private String nvl(String s) {
+        return (s == null || s.isBlank()) ? "—" : s;
     }
 }

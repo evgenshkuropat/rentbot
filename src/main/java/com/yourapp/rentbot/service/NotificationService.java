@@ -6,6 +6,8 @@ import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Service
@@ -31,7 +33,7 @@ public class NotificationService {
             return;
         }
 
-        String text = """
+        String caption = """
                 🏠 %s
                 💰 %s
                 🔗 %s
@@ -42,11 +44,20 @@ public class NotificationService {
         );
 
         try {
-            telegramClient.execute(SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text)
-                    .build());
+            if (listing.photoUrl() != null && !listing.photoUrl().isBlank()) {
+                telegramClient.execute(SendPhoto.builder()
+                        .chatId(chatId)
+                        .photo(new InputFile(listing.photoUrl()))
+                        .caption(caption)
+                        .build());
+            } else {
+                telegramClient.execute(SendMessage.builder()
+                        .chatId(chatId)
+                        .text(caption)
+                        .build());
+            }
         } catch (Exception e) {
+            System.out.println("Telegram send failed for user " + user.getTelegramUserId());
             e.printStackTrace();
             return;
         }
