@@ -212,7 +212,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     send(chatId,
                             "🔔 Сповіщення увімкнено!\n\n" +
                                     flowService.pretty(f) +
-                                    "\n\n📤 \uD83D\uDCE4 Поширити бота друзям",
+                                    "\n\n📤 Поширити бота друзям",
                             Keyboards.shareBotKeyboard()
                     );
                 }
