@@ -209,7 +209,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 case "SUBSCRIBE" -> {
                     f.setActive(true);
                     flowService.save(f);
-                    send(chatId, "🔔 Сповіщення увімкнено!\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
+                    send(chatId,
+                            "🔔 Сповіщення увімкнено!\n\n" +
+                                    flowService.pretty(f) +
+                                    "\n\n📤 \uD83D\uDCE4 Поширити бота друзям",
+                            Keyboards.shareBotKeyboard()
+                    );
                 }
                 case "STOP" -> {
                     f.setActive(false);

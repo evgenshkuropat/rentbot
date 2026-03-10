@@ -143,4 +143,16 @@ public class Keyboards {
                 .callbackData(data)
                 .build();
     }
+
+    public static InlineKeyboardMarkup shareBotKeyboard() {
+
+        InlineKeyboardButton share = InlineKeyboardButton.builder()
+                .text("📤 Поширити бота")
+                .switchInlineQuery("Знайди житло в Чехії 🇨🇿")
+                .build();
+
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(List.of(share))
+                .build();
+    }
 }
