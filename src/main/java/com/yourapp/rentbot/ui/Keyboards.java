@@ -144,21 +144,8 @@ public class Keyboards {
                 .build();
     }
 
-    public static InlineKeyboardMarkup shareBotKeyboard() {
-        InlineKeyboardButton share = InlineKeyboardButton.builder()
-                .text("📤 Поширити бота друзям")
-                .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
-                .build();
-
-        InlineKeyboardRow row = new InlineKeyboardRow();
-        row.add(share);
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row))
-                .build();
-    }
-
     public static InlineKeyboardMarkup mainMenuKeyboard() {
+
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
                 .text("🔍 Нові квартири")
@@ -173,12 +160,18 @@ public class Keyboards {
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
         row3.add(InlineKeyboardButton.builder()
+                .text("📤 Поширити бота")
+                .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
+                .build());
+
+        InlineKeyboardRow row4 = new InlineKeyboardRow();
+        row4.add(InlineKeyboardButton.builder()
                 .text("☕ Підтримати автора")
-                .url("https://revolut.me/evzen13")
+                .url("https://revolut.me/evzen13")   // твоя ссылка
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3))
+                .keyboard(List.of(row1, row2, row3, row4))
                 .build();
     }
 }
