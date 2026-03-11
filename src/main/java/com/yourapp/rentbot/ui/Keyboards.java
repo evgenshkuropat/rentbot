@@ -157,4 +157,28 @@ public class Keyboards {
                 .keyboard(List.of(row))
                 .build();
     }
+
+    public static InlineKeyboardMarkup mainMenuKeyboard() {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(InlineKeyboardButton.builder()
+                .text("🔍 Нові квартири")
+                .callbackData("MENU:NEW")
+                .build());
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(InlineKeyboardButton.builder()
+                .text("⚙️ Мої налаштування")
+                .callbackData("MENU:SETTINGS")
+                .build());
+
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(InlineKeyboardButton.builder()
+                .text("☕ Підтримати автора")
+                .url("https://revolut.me/evzen13")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2, row3))
+                .build();
+    }
 }

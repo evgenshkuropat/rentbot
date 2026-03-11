@@ -84,6 +84,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
+        if (text.equalsIgnoreCase("/menu")) {
+            send(chatId, "Головне меню:", Keyboards.mainMenuKeyboard());
+            return;
+        }
+
         if (text.equalsIgnoreCase("/start")) {
             flowService.reset(userId);
 
@@ -211,7 +216,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     flowService.save(f);
                     send(chatId,
                             "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(f),
-                            Keyboards.shareBotKeyboard()
+                            Keyboards.mainMenuKeyboard()
                     );
                 }
                 case "STOP" -> {
@@ -226,6 +231,37 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 }
                 case "SHOW" -> send(chatId, flowService.pretty(f), Keyboards.confirmKeyboard());
                 default -> send(chatId, "Невідома дія 😅", Keyboards.confirmKeyboard());
+            }
+            return;
+        }
+
+        if (data.startsWith("MENU:")) {
+            String action = data.substring("MENU:".length());
+
+            switch (action) {
+                case "NEW" -> {
+                    try {
+                        List<ListingDto> listings = parserService.findNewListings(userId);
+
+                        if (listings.isEmpty()) {
+                            send(chatId, "Нічого нового не знайшов 😕", Keyboards.mainMenuKeyboard());
+                            return;
+                        }
+
+                        send(chatId, "Ось що знайшов 🔍", Keyboards.mainMenuKeyboard());
+
+                        for (ListingDto l : listings) {
+                            sendListing(chatId, l);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        send(chatId, "Помилка при пошуку квартир 😕", Keyboards.mainMenuKeyboard());
+                    }
+                }
+
+                case "SETTINGS" -> send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
+
+                default -> send(chatId, "Невідома дія меню 😅", Keyboards.mainMenuKeyboard());
             }
             return;
         }
