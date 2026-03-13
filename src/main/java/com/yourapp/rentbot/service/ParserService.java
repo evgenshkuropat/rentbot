@@ -20,13 +20,16 @@ public class ParserService {
 
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
+    private final BezrealitkyParser bezrealitkyParser;
     private final UserFilterRepo userFilterRepo;
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
+                         BezrealitkyParser bezrealitkyParser,
                          UserFilterRepo userFilterRepo) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
+        this.bezrealitkyParser = bezrealitkyParser;
         this.userFilterRepo = userFilterRepo;
     }
 
@@ -55,6 +58,12 @@ public class ParserService {
             all.addAll(idnesParser.fetchListings(region, regionGroup));
         } catch (Exception e) {
             System.out.println("Idnes parser failed: " + e.getMessage());
+        }
+
+        try {
+            all.addAll(bezrealitkyParser.fetchListings());
+        } catch (Exception e) {
+            System.out.println("Bezrealitky parser failed: " + e.getMessage());
         }
 
         all = dedupeByLink(all);
