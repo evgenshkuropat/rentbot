@@ -61,7 +61,7 @@ public class ParserService {
         }
 
         try {
-            all.addAll(bezrealitkyParser.fetchListings());
+            all.addAll(bezrealitkyParser.fetchListings(region));
         } catch (Exception e) {
             System.out.println("Bezrealitky parser failed: " + e.getMessage());
         }
