@@ -7,6 +7,7 @@ import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
@@ -36,6 +37,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final RegionRepo regionRepo;
     private final RegionGroupRepo regionGroupRepo;
     private final ParserService parserService;
+    private final NotificationService notificationService;
 
     private final String token;
 
@@ -44,13 +46,15 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             FlowService flowService,
             RegionRepo regionRepo,
             RegionGroupRepo regionGroupRepo,
-            ParserService parserService
+            ParserService parserService,
+            NotificationService notificationService
     ) {
         this.token = token;
         this.flowService = flowService;
         this.regionRepo = regionRepo;
         this.regionGroupRepo = regionGroupRepo;
         this.parserService = parserService;
+        this.notificationService = notificationService;
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -237,7 +241,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             int count = 0;
                             for (ListingDto l : listings) {
                                 if (count >= 5) break;
-                                sendListing(chatId, l);
+                                notificationService.sendIfNotSent(f, l);
                                 count++;
                             }
                         }
