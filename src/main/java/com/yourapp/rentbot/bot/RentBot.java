@@ -214,10 +214,40 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 case "SUBSCRIBE" -> {
                     f.setActive(true);
                     flowService.save(f);
+
                     send(chatId,
                             "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(f),
                             Keyboards.mainMenuKeyboard()
                     );
+
+                    try {
+                        List<ListingDto> listings = parserService.findNewListings(userId);
+
+                        if (listings.isEmpty()) {
+                            send(chatId,
+                                    "Поки немає оголошень під твій фільтр 😕\n" +
+                                            "Спробуй:\n" +
+                                            "• збільшити ліміт ціни\n" +
+                                            "• змінити район\n" +
+                                            "• вибрати «Всі райони»",
+                                    null);
+                        } else {
+                            send(chatId, "Ось що знайшов прямо зараз 👇", null);
+
+                            int count = 0;
+                            for (ListingDto l : listings) {
+                                if (count >= 5) break;
+                                sendListing(chatId, l);
+                                count++;
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        send(chatId,
+                                "⚠️ Не вдалося зараз отримати оголошення, але підписка вже увімкнена.",
+                                null);
+                    }
                 }
                 case "STOP" -> {
                     f.setActive(false);
@@ -312,6 +342,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
+                        "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());
 
         if (l.photoUrl() != null && !l.photoUrl().isBlank()) {

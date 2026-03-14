@@ -35,6 +35,7 @@ public class ParserService {
 
     @Transactional(readOnly = true)
     public List<ListingDto> findNewListings(Long telegramUserId) throws IOException {
+
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
@@ -80,16 +81,20 @@ public class ParserService {
                 .toList();
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
+
         return filtered;
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
+
         Map<String, ListingDto> map = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
+
             if (dto == null || dto.link() == null || dto.link().isBlank()) {
                 continue;
             }
+
             map.putIfAbsent(dto.link(), dto);
         }
 
@@ -97,6 +102,7 @@ public class ParserService {
     }
 
     private boolean matchesRegionGroup(String locality, String groupCode) {
+
         if (groupCode == null || groupCode.isBlank()) {
             return true;
         }
@@ -106,15 +112,21 @@ public class ParserService {
         }
 
         int district = extractPrahaDistrict(locality);
+
         if (district == -1) {
             return false;
         }
 
         return switch (groupCode) {
+
             case "PRAHA_1_3" -> district >= 1 && district <= 3;
+
             case "PRAHA_4_6" -> district >= 4 && district <= 6;
+
             case "PRAHA_7_10" -> district >= 7 && district <= 10;
+
             case "PRAHA_11_15" -> district >= 11 && district <= 15;
+
             default -> true;
         };
     }
@@ -126,19 +138,88 @@ public class ParserService {
 
         String lower = locality.toLowerCase();
 
+        // 1) Сначала пробуем найти прямой номер района
         for (int i = 1; i <= 22; i++) {
             if (lower.contains("praha " + i) || lower.contains("praha-" + i)) {
                 return i;
             }
         }
 
+        // 2) Потом пробуем по микрорайонам / частям Праги
+        if (lower.contains("staré město")) return 1;
+        if (lower.contains("nové město")) return 1;
+        if (lower.contains("malá strana")) return 1;
+
+        if (lower.contains("vinohrady")) return 2;
+        if (lower.contains("vyšehrad")) return 2;
+
+        if (lower.contains("žižkov")) return 3;
+        if (lower.contains("jarov")) return 3;
+
+        if (lower.contains("modřany")) return 4;
+        if (lower.contains("kamýk")) return 4;
+        if (lower.contains("braník")) return 4;
+        if (lower.contains("krč")) return 4;
+        if (lower.contains("michle")) return 4;
+        if (lower.contains("nusle")) return 4;
+        if (lower.contains("záběhlice")) return 4;
+
+        if (lower.contains("smíchov")) return 5;
+        if (lower.contains("stodůlky")) return 5;
+        if (lower.contains("jinonice")) return 5;
+        if (lower.contains("hlubočepy")) return 5;
+
+        if (lower.contains("dejvice")) return 6;
+        if (lower.contains("bubeneč")) return 6;
+        if (lower.contains("ruzyně")) return 6;
+        if (lower.contains("střešovice")) return 6;
+        if (lower.contains("vokovice")) return 6;
+        if (lower.contains("suchdol")) return 6;
+        if (lower.contains("břevnov")) return 6;
+
+        if (lower.contains("holešovice")) return 7;
+        if (lower.contains("troja")) return 7;
+
+        if (lower.contains("libeň")) return 8;
+        if (lower.contains("karlín")) return 8;
+        if (lower.contains("bohnice")) return 8;
+        if (lower.contains("čimice")) return 8;
+        if (lower.contains("kobylisy")) return 8;
+
+        if (lower.contains("vysočany")) return 9;
+        if (lower.contains("letňany")) return 9;
+        if (lower.contains("prosek")) return 9;
+        if (lower.contains("hloubětín")) return 9;
+        if (lower.contains("hrdlořezy")) return 9;
+
+        if (lower.contains("vršovice")) return 10;
+        if (lower.contains("strašnice")) return 10;
+        if (lower.contains("pitkovice")) return 10;
+
+        if (lower.contains("chodov")) return 11;
+        if (lower.contains("háje")) return 11;
+
+        if (lower.contains("modřany")) return 12;
+        if (lower.contains("kamýk")) return 12;
+
+        if (lower.contains("stodůlky")) return 13;
+
+        if (lower.contains("černý most")) return 14;
+        if (lower.contains("hostavice")) return 14;
+
+        if (lower.contains("hostivař")) return 15;
+        if (lower.contains("horní měcholupy")) return 15;
+        if (lower.contains("dolní měcholupy")) return 15;
+
         return -1;
     }
 
     private String normalizeLayout(String s) {
+
         if (s == null || s.isBlank()) {
             return null;
         }
+
         return s.toLowerCase().replaceAll("\\s+", "");
     }
 }
