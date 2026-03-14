@@ -61,13 +61,31 @@ public class Keyboards {
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder().text("1+kk").callbackData("LAYOUT:1+kk").build()
+                InlineKeyboardButton.builder()
+                        .text("1 кімната")
+                        .callbackData("LAYOUT:1")
+                        .build()
         ));
+
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder().text("2+kk").callbackData("LAYOUT:2+kk").build()
+                InlineKeyboardButton.builder()
+                        .text("2 кімнати")
+                        .callbackData("LAYOUT:2")
+                        .build()
         ));
+
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder().text("3+kk").callbackData("LAYOUT:3+kk").build()
+                InlineKeyboardButton.builder()
+                        .text("3 кімнати")
+                        .callbackData("LAYOUT:3")
+                        .build()
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                InlineKeyboardButton.builder()
+                        .text("4+")
+                        .callbackData("LAYOUT:4+")
+                        .build()
         ));
 
         return InlineKeyboardMarkup.builder()

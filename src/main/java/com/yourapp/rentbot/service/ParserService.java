@@ -21,18 +21,15 @@ public class ParserService {
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
     private final BezrealitkyParser bezrealitkyParser;
-    private final BazosParser bazosParser;
     private final UserFilterRepo userFilterRepo;
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
                          BezrealitkyParser bezrealitkyParser,
-                         BazosParser bazosParser,
                          UserFilterRepo userFilterRepo) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
         this.bezrealitkyParser = bezrealitkyParser;
-        this.bazosParser = bazosParser;
         this.userFilterRepo = userFilterRepo;
     }
 
@@ -70,19 +67,13 @@ public class ParserService {
             System.out.println("Bezrealitky parser failed: " + e.getMessage());
         }
 
-        try {
-            all.addAll(bazosParser.fetchListings(region));
-        } catch (Exception e) {
-            System.out.println("Bazos parser failed: " + e.getMessage());
-        }
-
         all = dedupeByLink(all);
 
         System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
 
         List<ListingDto> filtered = all.stream()
-                .filter(x -> needLayout == null || needLayout.equals(normalizeLayout(x.layout())))
+                .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
@@ -95,15 +86,12 @@ public class ParserService {
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
-
         Map<String, ListingDto> map = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
-
             if (dto == null || dto.link() == null || dto.link().isBlank()) {
                 continue;
             }
-
             map.putIfAbsent(dto.link(), dto);
         }
 
@@ -111,7 +99,6 @@ public class ParserService {
     }
 
     private boolean matchesRegionGroup(String locality, String groupCode) {
-
         if (groupCode == null || groupCode.isBlank()) {
             return true;
         }
@@ -121,21 +108,15 @@ public class ParserService {
         }
 
         int district = extractPrahaDistrict(locality);
-
         if (district == -1) {
             return false;
         }
 
         return switch (groupCode) {
-
             case "PRAHA_1_3" -> district >= 1 && district <= 3;
-
             case "PRAHA_4_6" -> district >= 4 && district <= 6;
-
             case "PRAHA_7_10" -> district >= 7 && district <= 10;
-
             case "PRAHA_11_15" -> district >= 11 && district <= 15;
-
             default -> true;
         };
     }
@@ -147,14 +128,12 @@ public class ParserService {
 
         String lower = locality.toLowerCase();
 
-        // 1) Сначала пробуем найти прямой номер района
         for (int i = 1; i <= 22; i++) {
             if (lower.contains("praha " + i) || lower.contains("praha-" + i)) {
                 return i;
             }
         }
 
-        // 2) Потом пробуем по микрорайонам / частям Праги
         if (lower.contains("staré město")) return 1;
         if (lower.contains("nové město")) return 1;
         if (lower.contains("malá strana")) return 1;
@@ -166,15 +145,14 @@ public class ParserService {
         if (lower.contains("jarov")) return 3;
 
         if (lower.contains("modřany")) return 4;
-        if (lower.contains("kamýk")) return 4;
+        if (lower.contains("kamýk")) return 12;
         if (lower.contains("braník")) return 4;
         if (lower.contains("krč")) return 4;
         if (lower.contains("michle")) return 4;
         if (lower.contains("nusle")) return 4;
-        if (lower.contains("záběhlice")) return 4;
+        if (lower.contains("záběhlice")) return 10;
 
         if (lower.contains("smíchov")) return 5;
-        if (lower.contains("stodůlky")) return 5;
         if (lower.contains("jinonice")) return 5;
         if (lower.contains("hlubočepy")) return 5;
 
@@ -208,9 +186,6 @@ public class ParserService {
         if (lower.contains("chodov")) return 11;
         if (lower.contains("háje")) return 11;
 
-        if (lower.contains("modřany")) return 12;
-        if (lower.contains("kamýk")) return 12;
-
         if (lower.contains("stodůlky")) return 13;
 
         if (lower.contains("černý most")) return 14;
@@ -223,12 +198,43 @@ public class ParserService {
         return -1;
     }
 
-    private String normalizeLayout(String s) {
+    private boolean layoutMatches(String needLayout, String listingLayout) {
+        if (needLayout == null) {
+            return true;
+        }
 
+        String normalized = normalizeLayout(listingLayout);
+        if (normalized == null) {
+            return false;
+        }
+
+        if ("1".equals(needLayout)) {
+            return normalized.equals("1+kk") || normalized.equals("1+1");
+        }
+
+        if ("2".equals(needLayout)) {
+            return normalized.equals("2+kk") || normalized.equals("2+1");
+        }
+
+        if ("3".equals(needLayout)) {
+            return normalized.equals("3+kk") || normalized.equals("3+1");
+        }
+
+        if ("4+".equals(needLayout)) {
+            return normalized.startsWith("4+")
+                    || normalized.startsWith("5+")
+                    || normalized.startsWith("6+")
+                    || normalized.startsWith("7+")
+                    || normalized.startsWith("8+");
+        }
+
+        return false;
+    }
+
+    private String normalizeLayout(String s) {
         if (s == null || s.isBlank()) {
             return null;
         }
-
         return s.toLowerCase().replaceAll("\\s+", "");
     }
 }
