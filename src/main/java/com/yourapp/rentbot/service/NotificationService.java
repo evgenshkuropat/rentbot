@@ -3,9 +3,11 @@ package com.yourapp.rentbot.service;
 import com.yourapp.rentbot.domain.SentLog;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.SentLogRepo;
+import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Service
@@ -13,10 +15,14 @@ public class NotificationService {
 
     private final TelegramClient telegramClient;
     private final SentLogRepo sentLogRepo;
+    private final UserFilterRepo userFilterRepo;
 
-    public NotificationService(TelegramClient telegramClient, SentLogRepo sentLogRepo) {
+    public NotificationService(TelegramClient telegramClient,
+                               SentLogRepo sentLogRepo,
+                               UserFilterRepo userFilterRepo) {
         this.telegramClient = telegramClient;
         this.sentLogRepo = sentLogRepo;
+        this.userFilterRepo = userFilterRepo;
     }
 
     public void sendIfNotSent(UserFilter user, ListingDto listing) {
@@ -27,7 +33,7 @@ public class NotificationService {
             return;
         }
 
-        if (sentLogRepo.existsByTelegramUserIdAndListingKey(user.getTelegramUserId(), key)) {
+        if (sentLogRepo.existsByTelegramUserIdAndListingKey(chatId, key)) {
             return;
         }
 
@@ -46,7 +52,16 @@ public class NotificationService {
                     .chatId(chatId)
                     .text(text)
                     .build());
-        } catch (Exception e) {
+        } catch (TelegramApiException e) {
+            String msg = e.getMessage();
+
+            if (msg != null && msg.contains("bot was blocked by the user")) {
+                user.setActive(false);
+                userFilterRepo.save(user);
+                System.out.println("User blocked bot, subscription disabled: " + chatId);
+                return;
+            }
+
             e.printStackTrace();
             return;
         }
