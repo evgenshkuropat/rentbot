@@ -302,3 +302,4 @@ private String extractKnownPlaceFragment(String text, String[] knownPlaces) {
 
     return "";
 }
+}
