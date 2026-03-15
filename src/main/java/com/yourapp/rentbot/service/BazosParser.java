@@ -10,7 +10,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,8 +20,12 @@ import java.util.regex.Pattern;
 public class BazosParser {
 
     private static final String BASE_URL = "https://reality.bazos.cz";
+
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern PRICE_PATTERN =
+            Pattern.compile("(\\d[\\d\\s]{2,})\\s*Kč", Pattern.CASE_INSENSITIVE);
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
         String url = buildUrl(region);
@@ -31,22 +37,22 @@ public class BazosParser {
 
         List<ListingDto> result = new ArrayList<>();
 
-        // Bazoš сейчас показывает заголовки объявлений как h2-секции в списке. :contentReference[oaicite:1]{index=1}
-        Elements headings = doc.select("h2");
+        Elements links = doc.select("a[href*='/inzerat/']");
 
-        for (Element h2 : headings) {
-            String title = h2.text().trim();
+        for (Element linkEl : links) {
+            String title = linkEl.text().trim();
             if (title.isBlank()) {
                 continue;
             }
 
-            Element container = findReasonableContainer(h2);
-            String blockText = container != null ? container.text() : title;
+            Element container = findReasonableContainer(linkEl);
+            String containerText = container != null ? container.text() : "";
+            String fullText = title + "\n" + containerText;
 
-            String link = extractLink(h2, container);
-            int price = extractPrice(blockText);
-            String locality = extractLocality(blockText);
-            String layout = extractLayout(title);
+            String link = extractLink(linkEl);
+            String layout = extractLayout(fullText);
+            int price = extractPrice(fullText);
+            String locality = extractLocality(fullText);
             String photoUrl = extractPhoto(container);
 
             if (link.isBlank()) {
@@ -79,26 +85,27 @@ public class BazosParser {
             case "BRNO" -> BASE_URL + "/pronajmu/byt/?hlokalita=60200&humkreis=20";
             case "OSTRAVA" -> BASE_URL + "/pronajmu/byt/?hlokalita=70030&humkreis=20";
             case "PLZEN" -> BASE_URL + "/pronajmu/byt/?hlokalita=30100&humkreis=20";
+            case "PARDUBICE" -> BASE_URL + "/pronajmu/byt/?hlokalita=53002&humkreis=20";
+            case "OLOMOUC" -> BASE_URL + "/pronajmu/byt/?hlokalita=77900&humkreis=20";
+            case "LIBEREC" -> BASE_URL + "/pronajmu/byt/?hlokalita=46001&humkreis=20";
+            case "KOLIN" -> BASE_URL + "/pronajmu/byt/?hlokalita=28002&humkreis=20";
+            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/byt/?hlokalita=28401&humkreis=20";
             default -> BASE_URL + "/pronajmu/byt/";
         };
     }
 
-    private Element findReasonableContainer(Element h2) {
-        Element current = h2;
-        for (int i = 0; i < 4 && current != null; i++) {
-            current = current.parent();
-            if (current != null && current.text().length() > 80) {
+    private Element findReasonableContainer(Element linkEl) {
+        Element current = linkEl;
+        for (int i = 0; i < 6 && current != null; i++) {
+            if (current.text() != null && current.text().length() > 60) {
                 return current;
             }
+            current = current.parent();
         }
-        return h2.parent();
+        return linkEl.parent();
     }
 
-    private String extractLink(Element h2, Element container) {
-        Element linkEl = h2.selectFirst("a[href]");
-        if (linkEl == null && container != null) {
-            linkEl = container.selectFirst("a[href]");
-        }
+    private String extractLink(Element linkEl) {
         if (linkEl == null) {
             return "";
         }
@@ -107,6 +114,7 @@ public class BazosParser {
         if (href == null || href.isBlank()) {
             return "";
         }
+
         if (href.startsWith("http")) {
             return href;
         }
@@ -121,8 +129,7 @@ public class BazosParser {
             return 0;
         }
 
-        // ищем строку вида "19 990 Kč"
-        Matcher m = Pattern.compile("(\\d[\\d\\s]{2,})\\s*Kč").matcher(text);
+        Matcher m = PRICE_PATTERN.matcher(text);
         if (m.find()) {
             String raw = m.group(1).replaceAll("\\s+", "");
             try {
@@ -139,40 +146,44 @@ public class BazosParser {
             return "";
         }
 
-        // Часто у Bazoš локалита идёт отдельной строкой, как "Praha 5", "Bruntál", "Ostrava". :contentReference[oaicite:2]{index=2}
+        String lower = text.toLowerCase();
+
+        String[] knownPlaces = {
+                "praha", "brno", "ostrava", "plzen", "plzeň", "pardubice", "olomouc",
+                "liberec", "zlin", "zlín", "most", "kladno", "kolin", "kolín",
+                "kutna hora", "kutná hora"
+        };
+
         String[] lines = text.split("\\R");
         for (String line : lines) {
             String s = line.trim();
             if (s.isBlank()) continue;
+            if (s.length() > 80) continue;
             if (s.matches(".*\\d+\\s*Kč.*")) continue;
-            if (s.matches("\\d{3}\\s?\\d{2}")) continue; // PSČ
-            if (s.length() > 1 && s.length() < 40 && !s.equalsIgnoreCase("TOP")) {
-                if (s.toLowerCase().contains("praha")
-                        || s.toLowerCase().contains("brno")
-                        || s.toLowerCase().contains("ostrava")
-                        || s.toLowerCase().contains("plze")
-                        || s.toLowerCase().contains("pardubice")
-                        || s.toLowerCase().contains("olomouc")
-                        || s.toLowerCase().contains("liberec")
-                        || s.toLowerCase().contains("zlín")
-                        || s.toLowerCase().contains("most")
-                        || s.toLowerCase().contains("kladno")
-                        || s.toLowerCase().contains("kolín")
-                        || s.toLowerCase().contains("kutná hora")) {
+
+            String normalized = s.toLowerCase();
+            for (String place : knownPlaces) {
+                if (normalized.contains(place)) {
                     return s;
                 }
+            }
+        }
+
+        for (String place : knownPlaces) {
+            if (lower.contains(place)) {
+                return place;
             }
         }
 
         return "";
     }
 
-    private String extractLayout(String title) {
-        if (title == null || title.isBlank()) {
+    private String extractLayout(String text) {
+        if (text == null || text.isBlank()) {
             return null;
         }
 
-        Matcher m = LAYOUT_PATTERN.matcher(title);
+        Matcher m = LAYOUT_PATTERN.matcher(text);
         if (!m.find()) {
             return null;
         }
@@ -205,20 +216,15 @@ public class BazosParser {
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
-        List<ListingDto> result = new ArrayList<>();
-        List<String> seen = new ArrayList<>();
+        Map<String, ListingDto> map = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
-            if (dto.link() == null || dto.link().isBlank()) {
+            if (dto == null || dto.link() == null || dto.link().isBlank()) {
                 continue;
             }
-            if (seen.contains(dto.link())) {
-                continue;
-            }
-            seen.add(dto.link());
-            result.add(dto);
+            map.putIfAbsent(dto.link(), dto);
         }
 
-        return result;
+        return new ArrayList<>(map.values());
     }
 }
