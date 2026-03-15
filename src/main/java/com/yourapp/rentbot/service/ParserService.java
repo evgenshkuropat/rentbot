@@ -103,6 +103,13 @@ public class ParserService {
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
 
+        for (ListingDto x : filtered) {
+            System.out.println("FILTERED -> source=" + x.source()
+                    + ", price=" + x.priceCzk()
+                    + ", layout=" + x.layout()
+                    + ", locality=" + x.locality());
+        }
+
         return filtered;
     }
 
