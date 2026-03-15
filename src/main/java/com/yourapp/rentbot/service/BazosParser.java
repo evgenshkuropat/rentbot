@@ -149,32 +149,56 @@ public class BazosParser {
             return "";
         }
 
-        String lower = text.toLowerCase();
+        String normalized = text.replace('\u00A0', ' ').trim();
 
         String[] knownPlaces = {
-                "praha", "brno", "ostrava", "plzen", "plzeň", "pardubice", "olomouc",
-                "liberec", "zlin", "zlín", "most", "kladno", "kolin", "kolín",
-                "kutna hora", "kutná hora"
+                "Praha", "Brno", "Ostrava", "Plzeň", "Plzen", "Pardubice", "Olomouc",
+                "Liberec", "Zlín", "Zlin", "Most", "Kladno", "Kolín", "Kolin",
+                "Kutná Hora", "Kutna Hora", "Ústí nad Labem", "Usti nad Labem",
+                "Hradec Králové", "Hradec Kralove", "Jihlava", "Karlovy Vary",
+                "Mladá Boleslav", "Mlada Boleslav", "České Budějovice", "Ceske Budejovice"
         };
 
-        String[] lines = text.split("\\R");
+        String[] lines = normalized.split("\\R");
+
         for (String line : lines) {
             String s = line.trim();
             if (s.isBlank()) continue;
-            if (s.length() > 80) continue;
-            if (s.matches(".*\\d+\\s*Kč.*")) continue;
 
-            String normalized = s.toLowerCase();
+            // 1) если строка уже похожа на locality
             for (String place : knownPlaces) {
-                if (normalized.contains(place)) {
-                    return s;
+                if (containsIgnoreCase(s, place)) {
+                    return cleanupLocality(s);
+                }
+            }
+
+            // 2) если locality стоит после тире
+            int dashIdx = Math.max(s.lastIndexOf(" - "), s.lastIndexOf(" – "));
+            if (dashIdx >= 0 && dashIdx + 3 < s.length()) {
+                String tail = s.substring(dashIdx + 3).trim();
+                for (String place : knownPlaces) {
+                    if (containsIgnoreCase(tail, place)) {
+                        return cleanupLocality(tail);
+                    }
                 }
             }
         }
 
+        // 3) поиск по всему тексту
         for (String place : knownPlaces) {
-            if (lower.contains(place)) {
-                return place;
+            if (containsIgnoreCase(normalized, place)) {
+                int idx = indexOfIgnoreCase(normalized, place);
+                if (idx >= 0) {
+                    int end = Math.min(normalized.length(), idx + place.length() + 40);
+                    String candidate = normalized.substring(idx, end);
+
+                    int stop = findFirstStop(candidate);
+                    if (stop > 0) {
+                        candidate = candidate.substring(0, stop);
+                    }
+
+                    return cleanupLocality(candidate);
+                }
             }
         }
 
@@ -229,5 +253,43 @@ public class BazosParser {
         }
 
         return new ArrayList<>(map.values());
+    }
+
+    private boolean containsIgnoreCase(String text, String part) {
+        return text != null && part != null &&
+                text.toLowerCase().contains(part.toLowerCase());
+    }
+
+    private int indexOfIgnoreCase(String text, String part) {
+        if (text == null || part == null) {
+            return -1;
+        }
+        return text.toLowerCase().indexOf(part.toLowerCase());
+    }
+
+    private int findFirstStop(String s) {
+        int comma = s.indexOf(',');
+        int pipe = s.indexOf('|');
+        int semicolon = s.indexOf(';');
+
+        int stop = -1;
+
+        if (comma >= 0) stop = comma;
+        if (pipe >= 0 && (stop == -1 || pipe < stop)) stop = pipe;
+        if (semicolon >= 0 && (stop == -1 || semicolon < stop)) stop = semicolon;
+
+        return stop;
+    }
+
+    private String cleanupLocality(String s) {
+        if (s == null) {
+            return "";
+        }
+
+        return s.replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .replaceAll("^[\\-–,\\s]+", "")
+                .replaceAll("[\\-–,\\s]+$", "")
+                .trim();
     }
 }
