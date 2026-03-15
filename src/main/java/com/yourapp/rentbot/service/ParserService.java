@@ -97,6 +97,7 @@ public class ParserService {
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
+                .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
                 .toList();
 

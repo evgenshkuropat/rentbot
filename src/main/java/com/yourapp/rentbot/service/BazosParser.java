@@ -134,8 +134,6 @@ public class BazosParser {
             String raw = m.group(1).replaceAll("\\s+", "");
             try {
                 int value = Integer.parseInt(raw);
-
-                // отсекаем мусорные значения
                 if (value >= 3000 && value <= 200000) {
                     return value;
                 }
