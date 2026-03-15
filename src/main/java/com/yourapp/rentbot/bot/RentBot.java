@@ -207,7 +207,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             f.setStep(FlowStep.CONFIRM);
             flowService.save(f);
 
-            send(chatId, "Готово ✅\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
+            UserFilter fullFilter = flowService.getOrCreate(userId);
+
+            send(chatId, "Готово ✅\n" + flowService.pretty(fullFilter), Keyboards.confirmKeyboard());
             return;
         }
 

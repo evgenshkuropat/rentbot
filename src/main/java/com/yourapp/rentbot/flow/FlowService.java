@@ -20,7 +20,7 @@ public class FlowService {
     }
 
     public UserFilter getOrCreate(long userId) {
-        return repo.findById(userId).orElseGet(() -> {
+        return repo.findFullById(userId).orElseGet(() -> {
             UserFilter f = new UserFilter();
             f.setTelegramUserId(userId);
             f.setRegion(defaultRegion());
