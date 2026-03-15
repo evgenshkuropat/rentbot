@@ -149,16 +149,24 @@ public class BazosParser {
                 .replace(",-", " Kč")
                 .replace("/měsíc", " Kč")
                 .replace("/mesic", " Kč")
-                .replace("/mes.", " Kč");
+                .replace("/mes.", " Kč")
+                .replace("za měsíc", " Kč")
+                .replace("mesicne", " Kč")
+                .replace("měsíčně", " Kč");
 
-        Pattern p = Pattern.compile("(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)?",
-                Pattern.CASE_INSENSITIVE);
+        Pattern p = Pattern.compile(
+                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)?",
+                Pattern.CASE_INSENSITIVE
+        );
+
         Matcher m = p.matcher(normalized);
 
         while (m.find()) {
             String raw = m.group(1).replaceAll("\\s+", "");
             try {
                 int value = Integer.parseInt(raw);
+
+                // отсеиваем мусорные числа
                 if (value >= 3000 && value <= 200000) {
                     return value;
                 }
