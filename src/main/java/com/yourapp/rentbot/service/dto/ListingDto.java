@@ -5,7 +5,8 @@ public record ListingDto(
         int priceCzk,
         String link,
         String layout,
+        String locality,
         String photoUrl,
-        String locality
+        String source
 ) {
 }

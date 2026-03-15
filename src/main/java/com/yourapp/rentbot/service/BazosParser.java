@@ -59,7 +59,8 @@ public class BazosParser {
                     link,
                     layout,
                     locality,
-                    photoUrl
+                    photoUrl,
+                    "Bazoš"
             ));
         }
 

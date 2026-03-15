@@ -18,7 +18,6 @@ public class BezrealitkyParser {
     public List<ListingDto> fetchListings(Region region) throws IOException {
         String citySlug = mapRegionToCitySlug(region);
 
-        // Если Bezrealitky не поддерживает этот город — просто возвращаем пусто
         if (citySlug == null) {
             return List.of();
         }
@@ -34,7 +33,6 @@ public class BezrealitkyParser {
 
         Elements listings = doc.select("article");
 
-        // Если страница загрузилась, но объявлений в HTML нет — просто возвращаем пусто
         if (listings.isEmpty()) {
             return List.of();
         }
@@ -67,7 +65,8 @@ public class BezrealitkyParser {
                     link,
                     layout,
                     locality,
-                    photo
+                    photo,
+                    "Bezrealitky"
             ));
         }
 

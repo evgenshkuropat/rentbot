@@ -18,13 +18,6 @@ import java.util.regex.Pattern;
 @Service
 public class SrealityParser {
 
-    private static final String API_URL =
-            "https://www.sreality.cz/api/cs/v2/estates" +
-                    "?category_main_cb=1" +      // byty
-                    "&category_type_cb=2" +      // pronajem
-                    "&locality_region_id=10" +   // Praha
-                    "&per_page=20";
-
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
@@ -75,8 +68,9 @@ public class SrealityParser {
                             priceCzk,
                             link,
                             layout,
+                            locality,
                             photoUrl,
-                            locality
+                            "Sreality"
                     ));
                 }
             }

@@ -347,6 +347,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private void sendListing(long chatId, ListingDto l) throws TelegramApiException {
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
+                        "🏷 Джерело: " + nvl(l.source()) + "\n" +
                         "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
                         "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());

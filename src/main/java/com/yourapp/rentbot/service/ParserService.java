@@ -21,15 +21,18 @@ public class ParserService {
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
     private final BezrealitkyParser bezrealitkyParser;
+    private final BazosParser bazosParser;
     private final UserFilterRepo userFilterRepo;
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
                          BezrealitkyParser bezrealitkyParser,
+                         BazosParser bazosParser,
                          UserFilterRepo userFilterRepo) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
         this.bezrealitkyParser = bezrealitkyParser;
+        this.bazosParser = bazosParser;
         this.userFilterRepo = userFilterRepo;
     }
 
@@ -50,21 +53,35 @@ public class ParserService {
         List<ListingDto> all = new ArrayList<>();
 
         try {
-            all.addAll(srealityParser.fetchListings(srealityRegionId));
+            List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
+            System.out.println("SREALITY LISTINGS = " + sreality.size());
+            all.addAll(sreality);
         } catch (Exception e) {
             System.out.println("Sreality parser failed: " + e.getMessage());
         }
 
         try {
-            all.addAll(idnesParser.fetchListings(region, regionGroup));
+            List<ListingDto> idnes = idnesParser.fetchListings(region, regionGroup);
+            System.out.println("IDNES LISTINGS = " + idnes.size());
+            all.addAll(idnes);
         } catch (Exception e) {
             System.out.println("Idnes parser failed: " + e.getMessage());
         }
 
         try {
-            all.addAll(bezrealitkyParser.fetchListings(region));
+            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(region);
+            System.out.println("BEZREALITKY LISTINGS = " + bezrealitky.size());
+            all.addAll(bezrealitky);
         } catch (Exception e) {
             System.out.println("Bezrealitky parser failed: " + e.getMessage());
+        }
+
+        try {
+            List<ListingDto> bazos = bazosParser.fetchListings(region);
+            System.out.println("BAZOS LISTINGS = " + bazos.size());
+            all.addAll(bazos);
+        } catch (Exception e) {
+            System.out.println("Bazos parser failed: " + e.getMessage());
         }
 
         all = dedupeByLink(all);

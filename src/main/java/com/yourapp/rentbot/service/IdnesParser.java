@@ -35,12 +35,6 @@ public class IdnesParser {
 
         List<ListingDto> result = new ArrayList<>();
 
-        /*
-         * iDNES HTML может со временем меняться, поэтому селекторы сделаны
-         * "шире", чем на боевом production-парсере.
-         *
-         * Ищем ссылки на detail-страницы.
-         */
         Elements links = doc.select("a[href*='/detail/'], a[href*='/s/detail/'], a[href*='/s/pronajem/']");
 
         for (Element linkEl : links) {
@@ -51,7 +45,6 @@ public class IdnesParser {
 
             String absoluteLink = href.startsWith("http") ? href : BASE_URL + href;
 
-            // Берём ближайший карточечный контейнер
             Element card = findCardContainer(linkEl);
             if (card == null) {
                 continue;
@@ -62,22 +55,12 @@ public class IdnesParser {
                 continue;
             }
 
-            // title
             String title = extractTitle(card, wholeText);
-
-            // price
             int priceCzk = extractPrice(wholeText);
-
-            // locality
             String locality = extractLocality(wholeText);
-
-            // layout
             String layout = extractLayout(title);
-
-            // photo
             String photoUrl = extractPhoto(card);
 
-            // отсекаем явный мусор
             if (title == null || title.isBlank()) {
                 continue;
             }
@@ -90,8 +73,9 @@ public class IdnesParser {
                     priceCzk,
                     absoluteLink,
                     layout,
+                    locality,
                     photoUrl,
-                    locality
+                    "iDNES"
             ));
         }
 
