@@ -85,6 +85,10 @@ public class ParserService {
         }
 
         all = dedupeByLink(all);
+        System.out.println("AFTER DEDUPE BY LINK = " + all.size());
+
+        all = dedupeBySignature(all);
+        System.out.println("AFTER DEDUPE BY SIGNATURE = " + all.size());
 
         System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
@@ -110,6 +114,31 @@ public class ParserService {
                 continue;
             }
             map.putIfAbsent(dto.link(), dto);
+        }
+
+        return new ArrayList<>(map.values());
+    }
+
+    private List<ListingDto> dedupeBySignature(List<ListingDto> input) {
+        Map<String, ListingDto> map = new LinkedHashMap<>();
+
+        for (ListingDto dto : input) {
+            if (dto == null) {
+                continue;
+            }
+
+            String layout = normalizeLayout(dto.layout());
+            String locality = normalizeLocality(dto.locality());
+            int price = dto.priceCzk();
+
+            if (layout == null || locality == null || price <= 0) {
+                String fallbackKey = "LINK:" + (dto.link() == null ? "" : dto.link());
+                map.putIfAbsent(fallbackKey, dto);
+                continue;
+            }
+
+            String key = layout + "|" + locality + "|" + price;
+            map.putIfAbsent(key, dto);
         }
 
         return new ArrayList<>(map.values());
@@ -257,5 +286,28 @@ public class ParserService {
             return null;
         }
         return s.toLowerCase().replaceAll("\\s+", "");
+    }
+
+    private String normalizeLocality(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+
+        return s.toLowerCase()
+                .replace('ě', 'e')
+                .replace('š', 's')
+                .replace('č', 'c')
+                .replace('ř', 'r')
+                .replace('ž', 'z')
+                .replace('ý', 'y')
+                .replace('á', 'a')
+                .replace('í', 'i')
+                .replace('é', 'e')
+                .replace('ů', 'u')
+                .replace('ú', 'u')
+                .replace('ň', 'n')
+                .replaceAll("[^a-z0-9\\s-]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }
