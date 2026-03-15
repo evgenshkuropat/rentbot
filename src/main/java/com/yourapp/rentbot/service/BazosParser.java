@@ -145,7 +145,16 @@ public class BazosParser {
             return 0;
         }
 
-        Matcher m = PRICE_PATTERN.matcher(text);
+        String normalized = text.replace('\u00A0', ' ')
+                .replace(",-", " Kč")
+                .replace("/měsíc", " Kč")
+                .replace("/mesic", " Kč")
+                .replace("/mes.", " Kč");
+
+        Pattern p = Pattern.compile("(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)?",
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(normalized);
+
         while (m.find()) {
             String raw = m.group(1).replaceAll("\\s+", "");
             try {
