@@ -165,44 +165,23 @@ public class BazosParser {
             String s = line.trim();
             if (s.isBlank()) continue;
 
-            // 1) если строка уже похожа на locality
-            for (String place : knownPlaces) {
-                if (containsIgnoreCase(s, place)) {
-                    return cleanupLocality(s);
-                }
+            String extracted = extractKnownPlaceFragment(s, knownPlaces);
+            if (!extracted.isBlank()) {
+                return extracted;
             }
 
-            // 2) если locality стоит после тире
             int dashIdx = Math.max(s.lastIndexOf(" - "), s.lastIndexOf(" – "));
             if (dashIdx >= 0 && dashIdx + 3 < s.length()) {
                 String tail = s.substring(dashIdx + 3).trim();
-                for (String place : knownPlaces) {
-                    if (containsIgnoreCase(tail, place)) {
-                        return cleanupLocality(tail);
-                    }
+                extracted = extractKnownPlaceFragment(tail, knownPlaces);
+                if (!extracted.isBlank()) {
+                    return extracted;
                 }
             }
         }
 
-        // 3) поиск по всему тексту
-        for (String place : knownPlaces) {
-            if (containsIgnoreCase(normalized, place)) {
-                int idx = indexOfIgnoreCase(normalized, place);
-                if (idx >= 0) {
-                    int end = Math.min(normalized.length(), idx + place.length() + 40);
-                    String candidate = normalized.substring(idx, end);
-
-                    int stop = findFirstStop(candidate);
-                    if (stop > 0) {
-                        candidate = candidate.substring(0, stop);
-                    }
-
-                    return cleanupLocality(candidate);
-                }
-            }
-        }
-
-        return "";
+        String extracted = extractKnownPlaceFragment(normalized, knownPlaces);
+        return extracted == null ? "" : extracted;
     }
 
     private String extractLayout(String text) {
@@ -267,19 +246,27 @@ public class BazosParser {
         return text.toLowerCase().indexOf(part.toLowerCase());
     }
 
-    private int findFirstStop(String s) {
-        int comma = s.indexOf(',');
-        int pipe = s.indexOf('|');
-        int semicolon = s.indexOf(';');
+private int findFirstStop(String s) {
+    String lower = s.toLowerCase();
 
-        int stop = -1;
+    int comma = s.indexOf(',');
+    int pipe = s.indexOf('|');
+    int semicolon = s.indexOf(';');
+    int kc = lower.indexOf("kč");
+    int m2 = lower.indexOf("m²");
+    int m2alt = lower.indexOf("m2");
 
-        if (comma >= 0) stop = comma;
-        if (pipe >= 0 && (stop == -1 || pipe < stop)) stop = pipe;
-        if (semicolon >= 0 && (stop == -1 || semicolon < stop)) stop = semicolon;
+    int stop = -1;
 
-        return stop;
-    }
+    if (comma >= 0) stop = comma;
+    if (pipe >= 0 && (stop == -1 || pipe < stop)) stop = pipe;
+    if (semicolon >= 0 && (stop == -1 || semicolon < stop)) stop = semicolon;
+    if (kc >= 0 && (stop == -1 || kc < stop)) stop = kc;
+    if (m2 >= 0 && (stop == -1 || m2 < stop)) stop = m2;
+    if (m2alt >= 0 && (stop == -1 || m2alt < stop)) stop = m2alt;
+
+    return stop;
+}
 
     private String cleanupLocality(String s) {
         if (s == null) {
@@ -292,4 +279,26 @@ public class BazosParser {
                 .replaceAll("[\\-–,\\s]+$", "")
                 .trim();
     }
+
+private String extractKnownPlaceFragment(String text, String[] knownPlaces) {
+    if (text == null || text.isBlank()) {
+        return "";
+    }
+
+    for (String place : knownPlaces) {
+        int idx = indexOfIgnoreCase(text, place);
+        if (idx >= 0) {
+            int end = Math.min(text.length(), idx + place.length() + 30);
+            String candidate = text.substring(idx, end);
+
+            int stop = findFirstStop(candidate);
+            if (stop > 0) {
+                candidate = candidate.substring(0, stop);
+            }
+
+            return cleanupLocality(candidate);
+        }
+    }
+
+    return "";
 }
