@@ -220,29 +220,33 @@ public class ParserService {
             return true;
         }
 
-        String normalized = normalizeLayout(listingLayout);
-        if (normalized == null) {
+        String normalizedNeed = normalizeLayout(needLayout);
+        String normalizedListing = normalizeLayout(listingLayout);
+
+        if (normalizedListing == null) {
             return false;
         }
 
-        if ("1".equals(needLayout)) {
-            return normalized.equals("1+kk") || normalized.equals("1+1");
+        if ("1".equals(normalizedNeed) || "1+kk".equals(normalizedNeed) || "1+1".equals(normalizedNeed)) {
+            return normalizedListing.equals("1+kk") || normalizedListing.equals("1+1");
         }
 
-        if ("2".equals(needLayout)) {
-            return normalized.equals("2+kk") || normalized.equals("2+1");
+        if ("2".equals(normalizedNeed) || "2+kk".equals(normalizedNeed) || "2+1".equals(normalizedNeed)) {
+            return normalizedListing.equals("2+kk") || normalizedListing.equals("2+1");
         }
 
-        if ("3".equals(needLayout)) {
-            return normalized.equals("3+kk") || normalized.equals("3+1");
+        if ("3".equals(normalizedNeed) || "3+kk".equals(normalizedNeed) || "3+1".equals(normalizedNeed)) {
+            return normalizedListing.equals("3+kk") || normalizedListing.equals("3+1");
         }
 
-        if ("4+".equals(needLayout)) {
-            return normalized.startsWith("4+")
-                    || normalized.startsWith("5+")
-                    || normalized.startsWith("6+")
-                    || normalized.startsWith("7+")
-                    || normalized.startsWith("8+");
+        if ("4+".equals(normalizedNeed)
+                || "4+kk".equals(normalizedNeed)
+                || "4+1".equals(normalizedNeed)) {
+            return normalizedListing.startsWith("4+")
+                    || normalizedListing.startsWith("5+")
+                    || normalizedListing.startsWith("6+")
+                    || normalizedListing.startsWith("7+")
+                    || normalizedListing.startsWith("8+");
         }
 
         return false;
