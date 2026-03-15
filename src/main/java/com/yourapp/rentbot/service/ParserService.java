@@ -93,13 +93,14 @@ public class ParserService {
         System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
 
-        List<ListingDto> filtered = all.stream()
+        List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
-                .limit(20)
                 .toList();
+
+        List<ListingDto> filtered = diversifyBySource(filteredBase, 5, 20);
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
 
@@ -316,5 +317,49 @@ public class ParserService {
                 .replaceAll("[^a-z0-9\\s-]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private List<ListingDto> diversifyBySource(List<ListingDto> input, int maxPerSource, int totalLimit) {
+        Map<String, Integer> sourceCounts = new LinkedHashMap<>();
+        List<ListingDto> result = new ArrayList<>();
+
+        for (ListingDto dto : input) {
+            if (dto == null) {
+                continue;
+            }
+
+            String source = dto.source();
+            if (source == null || source.isBlank()) {
+                source = "UNKNOWN";
+            }
+
+            int used = sourceCounts.getOrDefault(source, 0);
+            if (used >= maxPerSource) {
+                continue;
+            }
+
+            result.add(dto);
+            sourceCounts.put(source, used + 1);
+
+            if (result.size() >= totalLimit) {
+                break;
+            }
+        }
+
+        if (result.size() < totalLimit) {
+            for (ListingDto dto : input) {
+                if (dto == null || result.contains(dto)) {
+                    continue;
+                }
+
+                result.add(dto);
+
+                if (result.size() >= totalLimit) {
+                    break;
+                }
+            }
+        }
+
+        return result;
     }
 }
