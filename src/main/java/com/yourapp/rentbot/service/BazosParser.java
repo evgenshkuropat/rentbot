@@ -130,10 +130,15 @@ public class BazosParser {
         }
 
         Matcher m = PRICE_PATTERN.matcher(text);
-        if (m.find()) {
+        while (m.find()) {
             String raw = m.group(1).replaceAll("\\s+", "");
             try {
-                return Integer.parseInt(raw);
+                int value = Integer.parseInt(raw);
+
+                // отсекаем мусорные значения
+                if (value >= 3000 && value <= 200000) {
+                    return value;
+                }
             } catch (NumberFormatException ignored) {
             }
         }

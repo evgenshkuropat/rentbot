@@ -100,7 +100,7 @@ public class ParserService {
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
                 .toList();
 
-        List<ListingDto> filtered = diversifyBySource(filteredBase, 5, 20);
+        List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
 
