@@ -184,7 +184,7 @@ public class Keyboards {
 
         InlineKeyboardRow row4 = new InlineKeyboardRow();
         row4.add(InlineKeyboardButton.builder()
-                .text("☕ Підтримати автора")
+                .text("\uD83D\uDC99 Підтримати розвиток проєкту")
                 .url("https://revolut.me/evzen13")   // твоя ссылка
                 .build());
 

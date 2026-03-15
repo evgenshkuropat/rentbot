@@ -28,6 +28,7 @@ public class BazosParser {
             Pattern.compile("(\\d[\\d\\s]{2,})\\s*Kč", Pattern.CASE_INSENSITIVE);
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
+
         String url = buildUrl(region);
 
         Document doc = Jsoup.connect(url)
@@ -35,29 +36,44 @@ public class BazosParser {
                 .timeout(15000)
                 .get();
 
+        doc.outputSettings().charset("UTF-8");
+
         List<ListingDto> result = new ArrayList<>();
 
         Elements links = doc.select("a[href*='/inzerat/']");
 
         for (Element linkEl : links) {
+
             String title = linkEl.text().trim();
+
             if (title.isBlank()) {
                 continue;
             }
 
             Element container = findReasonableContainer(linkEl);
+
             String containerText = container != null ? container.text() : "";
+
             String fullText = title + "\n" + containerText;
 
             String link = extractLink(linkEl);
-            String layout = extractLayout(fullText);
-            int price = extractPrice(fullText);
-            String locality = extractLocality(fullText);
-            String photoUrl = extractPhoto(container);
 
             if (link.isBlank()) {
                 continue;
             }
+
+            String layout = extractLayout(fullText);
+
+            int price = extractPrice(fullText);
+
+            String locality = extractLocality(fullText);
+
+            // ⭐ fallback если город не нашли
+            if (locality.isBlank() && region != null && region.getTitle() != null) {
+                locality = region.getTitle();
+            }
+
+            String photoUrl = extractPhoto(container);
 
             result.add(new ListingDto(
                     title,
