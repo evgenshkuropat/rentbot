@@ -3,8 +3,10 @@ package com.yourapp.rentbot.ui;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -155,6 +157,21 @@ public class Keyboards {
                 .build();
     }
 
+    public static ReplyKeyboardMarkup persistentNavKeyboard() {
+        KeyboardRow row = new KeyboardRow();
+        row.add("🏠 Меню");
+        row.add("🔍 Пошук");
+
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        keyboard.add(row);
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(keyboard)
+                .resizeKeyboard(true)
+                .isPersistent(true)
+                .build();
+    }
+
     private static InlineKeyboardButton button(String text, String data) {
         return InlineKeyboardButton.builder()
                 .text(text)
@@ -185,7 +202,7 @@ public class Keyboards {
         InlineKeyboardRow row4 = new InlineKeyboardRow();
         row4.add(InlineKeyboardButton.builder()
                 .text("\uD83D\uDC99 Підтримати розвиток проєкту")
-                .url("https://revolut.me/evzen13")   // твоя ссылка
+                .url("https://revolut.me/evzen13")
                 .build());
 
         return InlineKeyboardMarkup.builder()

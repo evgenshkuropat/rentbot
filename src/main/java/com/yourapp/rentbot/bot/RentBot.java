@@ -88,6 +88,22 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
+        if ("🏠 Меню".equals(text)) {
+            send(chatId, "Головне меню:", Keyboards.mainMenuKeyboard());
+            return;
+        }
+
+        if ("🔍 Пошук".equals(text)) {
+            flowService.reset(userId);
+
+            List<Region> regions = regionRepo.findAll();
+            send(chatId,
+                    "Привіт! Знайдемо квартиру в Чехії 🇨🇿\nОбери місто:",
+                    Keyboards.regionsKeyboard(regions)
+            );
+            return;
+        }
+
         if (text.equalsIgnoreCase("/menu")) {
             send(chatId, "Головне меню:", Keyboards.mainMenuKeyboard());
             return;
@@ -95,6 +111,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         if (text.equalsIgnoreCase("/start")) {
             flowService.reset(userId);
+
+            send(chatId, "Навігація внизу 👇", Keyboards.persistentNavKeyboard());
 
             List<Region> regions = regionRepo.findAll();
             send(chatId,
