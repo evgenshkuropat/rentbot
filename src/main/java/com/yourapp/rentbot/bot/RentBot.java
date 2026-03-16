@@ -447,14 +447,19 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         "🔗 " + nvl(l.link());
 
         if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
-            telegramClient.execute(SendPhoto.builder()
-                    .chatId(chatId)
-                    .photo(new InputFile(l.photoUrl()))
-                    .caption(caption)
-                    .build());
-        } else {
-            send(chatId, caption, null);
+            try {
+                telegramClient.execute(SendPhoto.builder()
+                        .chatId(chatId)
+                        .photo(new InputFile(l.photoUrl()))
+                        .caption(caption)
+                        .build());
+                return;
+            } catch (Exception e) {
+                System.out.println("SEND PHOTO FAILED -> " + l.photoUrl() + " | " + e.getMessage());
+            }
         }
+
+        send(chatId, caption, null);
     }
 
     private String nvl(String s) {
