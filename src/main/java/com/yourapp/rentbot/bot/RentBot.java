@@ -27,9 +27,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -42,9 +40,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final NotificationService notificationService;
 
     private final String token;
-
-    // offset для кнопки "Ще 10"
-    private final Map<Long, Integer> resultsOffsets = new HashMap<>();
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
@@ -76,8 +71,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     @Override
     public void consume(Update update) {
         try {
-            System.out.println("UPDATE: " + update);
-
             if (update.hasMessage() && update.getMessage().hasText()) {
                 onText(update);
             } else if (update.hasCallbackQuery()) {
@@ -93,69 +86,47 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
-        if ("🏠 Меню".equals(text)) {
-            send(chatId, "Головне меню:", Keyboards.mainMenuKeyboard());
-            return;
-        }
-
-        if ("🔄 Новий пошук".equals(text)) {
-            startNewSearch(chatId, userId);
-            return;
-        }
-
         if (text.equalsIgnoreCase("/menu")) {
             send(chatId, "Головне меню:", Keyboards.mainMenuKeyboard());
             return;
         }
 
-        if (text.equalsIgnoreCase("/reset")) {
-            startNewSearch(chatId, userId);
-            return;
-        }
-
         if (text.equalsIgnoreCase("/start")) {
             flowService.reset(userId);
-            resultsOffsets.put(userId, 0);
-
-            send(chatId, "Навігація внизу 👇", Keyboards.persistentNavKeyboard());
 
             List<Region> regions = regionRepo.findAll();
+
             send(chatId,
                     "Привіт! Знайдемо квартиру в Чехії 🇨🇿\nОбери місто:",
-                    Keyboards.regionsKeyboard(regions)
-            );
+                    Keyboards.regionsKeyboard(regions));
+
             return;
         }
 
         if (text.equalsIgnoreCase("/test")) {
             try {
-                UserFilter f = flowService.getOrCreate(userId);
-                resultsOffsets.put(userId, 0);
-
                 List<ListingDto> listings = parserService.findNewListings(userId);
 
                 if (listings.isEmpty()) {
-                    send(chatId, "Нічого не знайшов 😕", Keyboards.mainMenuKeyboard());
+                    send(chatId, "Нічого не знайшов 😕", null);
                     return;
                 }
 
-                send(chatId,
-                        "🔎 Твій фільтр:\n\n" + flowService.pretty(f) + "\n\n" +
-                                "Знайшов " + listings.size() + " оголошень 👇",
-                        Keyboards.mainMenuKeyboard());
+                send(chatId, "Знайшов " + listings.size() + " оголошень:", null);
 
-                sendListingsBatch(chatId, userId, listings, 10);
+                for (ListingDto l : listings) {
+                    sendListing(chatId, l);
+                }
 
             } catch (Exception e) {
                 e.printStackTrace();
-                send(chatId, "Помилка тесту: " + e.getMessage(), Keyboards.mainMenuKeyboard());
+                send(chatId, "Помилка тесту: " + e.getMessage(), null);
             }
+
             return;
         }
 
-        send(chatId,
-                "Користуйся кнопками 🙂\nНатисни /start щоб почати.\nДля тесту: /test",
-                Keyboards.persistentNavKeyboard());
+        send(chatId, "Користуйся кнопками 🙂\nНатисни /start щоб почати.", null);
     }
 
     private void onCallback(Update update) throws TelegramApiException {
@@ -169,8 +140,52 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         UserFilter f = flowService.getOrCreate(userId);
 
-        if (!isCallbackAllowedForStep(data, f.getStep())) {
-            send(chatId, "⚠️ Ця кнопка вже неактуальна.\nНатисни /start", null);
+        if (data.startsWith("MENU:")) {
+            String action = data.substring("MENU:".length());
+
+            switch (action) {
+                case "NEW" -> {
+                    try {
+                        List<ListingDto> listings = parserService.findNewListings(userId);
+
+                        if (listings.isEmpty()) {
+                            send(chatId, "Нічого нового не знайшов 😕", Keyboards.mainMenuKeyboard());
+                            return;
+                        }
+
+                        send(chatId, "Ось що знайшов 🔍", Keyboards.mainMenuKeyboard());
+
+                        for (ListingDto l : listings) {
+                            sendListing(chatId, l);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        send(chatId, "Помилка при пошуку квартир 😕", Keyboards.mainMenuKeyboard());
+                    }
+                }
+
+                case "FILTER" ->
+                        send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
+
+                case "STOP" -> {
+                    if (!f.isActive()) {
+                        send(chatId, "Пошук вже зупинено 🙂", Keyboards.mainMenuKeyboard());
+                        return;
+                    }
+
+                    f.setActive(false);
+                    flowService.save(f);
+
+                    send(chatId,
+                            "⛔ Пошук зупинено\n\n" + flowService.pretty(f),
+                            Keyboards.mainMenuKeyboard());
+                }
+
+                default ->
+                        send(chatId, "Невідома дія меню 😅", Keyboards.mainMenuKeyboard());
+            }
+
             return;
         }
 
@@ -178,20 +193,20 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             String code = data.substring("REGION:".length());
 
             Region region = regionRepo.findByCode(code)
-                    .orElseThrow(() -> new IllegalArgumentException("Region not found by code=" + code));
+                    .orElseThrow();
 
             f.setRegion(region);
             f.setRegionGroup(null);
             f.setLayout(null);
             f.setMaxPrice(null);
             f.setActive(false);
-            resultsOffsets.put(userId, 0);
 
             if (region.isHasDistricts()) {
                 f.setStep(FlowStep.DISTRICT_GROUP);
                 flowService.save(f);
 
                 List<RegionGroup> groups = regionGroupRepo.findByRegionId(region.getId());
+
                 send(chatId, "Обери район:", Keyboards.regionGroupsKeyboard(groups));
             } else {
                 f.setStep(FlowStep.LAYOUT);
@@ -199,6 +214,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
                 send(chatId, "Обери тип квартири:", Keyboards.layoutKeyboard());
             }
+
             return;
         }
 
@@ -206,14 +222,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             String groupCode = data.substring("GROUP:".length());
 
             RegionGroup group = regionGroupRepo.findByCode(groupCode)
-                    .orElseThrow(() -> new IllegalArgumentException("RegionGroup not found by code=" + groupCode));
+                    .orElseThrow();
 
             f.setRegionGroup(group);
-            f.setLayout(null);
-            f.setMaxPrice(null);
             f.setStep(FlowStep.LAYOUT);
             flowService.save(f);
-            resultsOffsets.put(userId, 0);
 
             send(chatId, "Обери тип квартири:", Keyboards.layoutKeyboard());
             return;
@@ -223,10 +236,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             String layout = data.substring("LAYOUT:".length());
 
             f.setLayout(layout);
-            f.setMaxPrice(null);
             f.setStep(FlowStep.MAX_PRICE);
             flowService.save(f);
-            resultsOffsets.put(userId, 0);
 
             send(chatId, "Обери максимальну ціну:", Keyboards.priceKeyboard());
             return;
@@ -238,201 +249,81 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             f.setMaxPrice(price);
             f.setStep(FlowStep.CONFIRM);
             flowService.save(f);
-            resultsOffsets.put(userId, 0);
 
-            UserFilter fullFilter = flowService.getOrCreate(userId);
-
-            send(chatId, "Готово ✅\n" + flowService.pretty(fullFilter), Keyboards.confirmKeyboard());
-            return;
-        }
-
-        if (data.startsWith("CONFIRM:")) {
-            String action = data.substring("CONFIRM:".length());
-
-            switch (action) {
-                case "SUBSCRIBE" -> {
-                    f.setActive(true);
-                    flowService.save(f);
-                    resultsOffsets.put(userId, 0);
-
-                    send(chatId,
-                            "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(f),
-                            Keyboards.mainMenuKeyboard()
-                    );
-
-                    try {
-                        List<ListingDto> listings = parserService.findNewListings(userId);
-
-                        if (listings.isEmpty()) {
-                            send(chatId,
-                                    "Поки немає оголошень під твій фільтр 😕\n" +
-                                            "Спробуй:\n" +
-                                            "• збільшити ліміт ціни\n" +
-                                            "• змінити район\n" +
-                                            "• вибрати «Всі райони»",
-                                    Keyboards.mainMenuKeyboard());
-                        } else {
-                            send(chatId,
-                                    "🔎 Твій фільтр:\n\n" + flowService.pretty(f) + "\n\n" +
-                                            "Ось що знайшов прямо зараз 👇",
-                                    Keyboards.mainMenuKeyboard());
-
-                            int count = 0;
-                            for (ListingDto l : listings) {
-                                if (count >= 5) break;
-                                notificationService.sendIfNotSent(f, l);
-                                count++;
-                            }
-
-                            send(chatId, "Що далі?", Keyboards.mainMenuKeyboard());
-                        }
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        send(chatId,
-                                "⚠️ Не вдалося зараз отримати оголошення, але підписка вже увімкнена.",
-                                Keyboards.mainMenuKeyboard());
-                    }
-                }
-                case "STOP" -> {
-                    f.setActive(false);
-                    flowService.save(f);
-                    send(chatId, "⛔ Сповіщення вимкнено.\n" + flowService.pretty(f), Keyboards.confirmKeyboard());
-                }
-                case "RESET" -> startNewSearch(chatId, userId);
-                case "SHOW" -> send(chatId, flowService.pretty(f), Keyboards.confirmKeyboard());
-                default -> send(chatId, "Невідома дія 😅", Keyboards.confirmKeyboard());
-            }
-            return;
-        }
-
-        if (data.startsWith("MENU:")) {
-            String action = data.substring("MENU:".length());
-
-            switch (action) {
-                case "NEW" -> {
-                    try {
-                        resultsOffsets.put(userId, 0);
-
-                        List<ListingDto> listings = parserService.findNewListings(userId);
-
-                        if (listings.isEmpty()) {
-                            send(chatId, "Нічого нового не знайшов 😕", Keyboards.mainMenuKeyboard());
-                            return;
-                        }
-
-                        send(chatId,
-                                "🔎 Твій фільтр:\n\n" + flowService.pretty(f) + "\n\n" +
-                                        "Ось що знайшов 👇",
-                                Keyboards.mainMenuKeyboard());
-
-                        sendListingsBatch(chatId, userId, listings, 10);
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        send(chatId, "Помилка при пошуку квартир 😕", Keyboards.mainMenuKeyboard());
-                    }
-                }
-
-                case "MORE" -> {
-                    try {
-                        List<ListingDto> listings = parserService.findNewListings(userId);
-
-                        if (listings.isEmpty()) {
-                            send(chatId, "Нічого більше не знайшов 😕", Keyboards.mainMenuKeyboard());
-                            return;
-                        }
-
-                        sendListingsBatch(chatId, userId, listings, 10);
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        send(chatId, "Помилка при завантаженні ще оголошень 😕", Keyboards.mainMenuKeyboard());
-                    }
-                }
-
-                case "SETTINGS", "FILTER" -> send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
-
-                default -> send(chatId, "Невідома дія меню 😅", Keyboards.mainMenuKeyboard());
-            }
-            return;
-        }
-
-        send(chatId, "Невідомий callback: " + data, null);
-    }
-
-    private void startNewSearch(long chatId, long userId) throws TelegramApiException {
-        flowService.reset(userId);
-        resultsOffsets.put(userId, 0);
-
-        List<Region> regions = regionRepo.findAll();
-        send(chatId,
-                "Починаємо новий пошук 👇\nОбери місто:",
-                Keyboards.regionsKeyboard(regions)
-        );
-    }
-
-    private void sendListingsBatch(long chatId, long userId, List<ListingDto> listings, int batchSize)
-            throws TelegramApiException {
-
-        int offset = resultsOffsets.getOrDefault(userId, 0);
-
-        if (offset >= listings.size()) {
-            send(chatId, "Більше оголошень немає 🙂", Keyboards.mainMenuKeyboard());
-            return;
-        }
-
-        int end = Math.min(offset + batchSize, listings.size());
-
-        for (int i = offset; i < end; i++) {
-            sendListing(chatId, listings.get(i));
-        }
-
-        resultsOffsets.put(userId, end);
-
-        if (end < listings.size()) {
             send(chatId,
-                    "Показано " + end + " із " + listings.size() + ".",
-                    Keyboards.moreResultsKeyboard());
-        } else {
-            send(chatId, "Це всі знайдені оголошення ✅", Keyboards.mainMenuKeyboard());
-        }
-    }
+                    "Готово ✅\n" + flowService.pretty(f),
+                    Keyboards.confirmKeyboard());
 
-    private boolean isCallbackAllowedForStep(String data, FlowStep step) {
-        if (data.startsWith("REGION:")) return step == FlowStep.CITY;
-        if (data.startsWith("GROUP:")) return step == FlowStep.DISTRICT_GROUP;
-        if (data.startsWith("LAYOUT:")) return step == FlowStep.LAYOUT;
-        if (data.startsWith("PRICE:")) return step == FlowStep.MAX_PRICE;
-        if (data.startsWith("CONFIRM:")) return step == FlowStep.CONFIRM;
-        return true;
+            return;
+        }
+
+        if (data.startsWith("CONFIRM:SUBSCRIBE")) {
+            f.setActive(true);
+            flowService.save(f);
+
+            send(chatId,
+                    "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(f),
+                    Keyboards.mainMenuKeyboard());
+
+            try {
+                List<ListingDto> listings = parserService.findNewListings(userId);
+
+                for (ListingDto l : listings) {
+                    notificationService.sendIfNotSent(f, l);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                send(chatId,
+                        "⚠️ Не вдалося зараз отримати оголошення, але підписка вже увімкнена.",
+                        Keyboards.mainMenuKeyboard());
+            }
+
+            return;
+        }
+
+        if (data.startsWith("CONFIRM:STOP")) {
+            f.setActive(false);
+            flowService.save(f);
+
+            send(chatId,
+                    "⛔ Сповіщення вимкнено",
+                    Keyboards.mainMenuKeyboard());
+
+            return;
+        }
     }
 
     private void disableInlineKeyboard(Update update) {
         try {
             var msg = update.getCallbackQuery().getMessage();
-            telegramClient.execute(EditMessageReplyMarkup.builder()
-                    .chatId(msg.getChatId())
-                    .messageId(msg.getMessageId())
-                    .replyMarkup(null)
-                    .build());
+
+            telegramClient.execute(
+                    EditMessageReplyMarkup.builder()
+                            .chatId(msg.getChatId())
+                            .messageId(msg.getMessageId())
+                            .replyMarkup(null)
+                            .build()
+            );
+
         } catch (Exception ignored) {
         }
     }
 
     private void answerCallback(String callbackQueryId) throws TelegramApiException {
-        telegramClient.execute(AnswerCallbackQuery.builder()
-                .callbackQueryId(callbackQueryId)
-                .build());
+        telegramClient.execute(
+                AnswerCallbackQuery.builder()
+                        .callbackQueryId(callbackQueryId)
+                        .build());
     }
 
-    private void send(long chatId, String text, ReplyKeyboard keyboardOrNull) throws TelegramApiException {
+    private void send(long chatId, String text, ReplyKeyboard keyboard) throws TelegramApiException {
         SendMessage.SendMessageBuilder b = SendMessage.builder()
                 .chatId(chatId)
                 .text(text);
 
-        if (keyboardOrNull != null) {
-            b.replyMarkup(keyboardOrNull);
+        if (keyboard != null) {
+            b.replyMarkup(keyboard);
         }
 
         telegramClient.execute(b.build());
@@ -442,21 +333,23 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 Джерело: " + nvl(l.source()) + "\n" +
-                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "Ціну не вказано") + "\n" +
+                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
                         "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());
 
-        if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
-            try {
-                telegramClient.execute(SendPhoto.builder()
-                        .chatId(chatId)
-                        .photo(new InputFile(l.photoUrl()))
-                        .caption(caption)
-                        .build());
+        try {
+            if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(l.photoUrl()))
+                                .caption(caption)
+                                .build());
+
                 return;
-            } catch (Exception e) {
-                System.out.println("SEND PHOTO FAILED -> " + l.photoUrl() + " | " + e.getMessage());
             }
+
+        } catch (Exception ignored) {
         }
 
         send(chatId, caption, null);

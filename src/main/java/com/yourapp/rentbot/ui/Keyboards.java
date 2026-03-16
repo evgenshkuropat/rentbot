@@ -189,30 +189,30 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(InlineKeyboardButton.builder()
-                .text("⚙️ Мої налаштування")
-                .callbackData("MENU:SETTINGS")
-                .build());
-
-        InlineKeyboardRow row3 = new InlineKeyboardRow();
-        row3.add(InlineKeyboardButton.builder()
-                .text("📤 Поширити бота")
-                .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
-                .build());
-
-        InlineKeyboardRow row4 = new InlineKeyboardRow();
-        row4.add(InlineKeyboardButton.builder()
-                .text("\uD83D\uDC99 Підтримати розвиток проєкту")
-                .url("https://revolut.me/evzen13")
-                .build());
-
-        InlineKeyboardRow row5 = new InlineKeyboardRow();
-        row5.add(InlineKeyboardButton.builder()
                 .text("📋 Мій фільтр")
                 .callbackData("MENU:FILTER")
                 .build());
 
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(InlineKeyboardButton.builder()
+                .text("⛔ Зупинити пошук")
+                .callbackData("MENU:STOP")
+                .build());
+
+        InlineKeyboardRow row4 = new InlineKeyboardRow();
+        row4.add(InlineKeyboardButton.builder()
+                .text("📤 Поширити бота")
+                .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
+                .build());
+
+        InlineKeyboardRow row5 = new InlineKeyboardRow();
+        row5.add(InlineKeyboardButton.builder()
+                .text("\uD83D\uDC99 Підтримати розвиток проєкту")
+                .url("https://revolut.me/evzen13")
+                .build());
+
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row5, row3, row4))
+                .keyboard(List.of(row1, row2, row3, row4, row5))
                 .build();
     }
 
