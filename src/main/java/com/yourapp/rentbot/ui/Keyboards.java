@@ -160,7 +160,7 @@ public class Keyboards {
     public static ReplyKeyboardMarkup persistentNavKeyboard() {
         KeyboardRow row = new KeyboardRow();
         row.add("🏠 Меню");
-        row.add("🔍 Пошук");
+        row.add("🔄 Новий пошук");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row);
@@ -205,8 +205,28 @@ public class Keyboards {
                 .url("https://revolut.me/evzen13")
                 .build());
 
+        InlineKeyboardRow row5 = new InlineKeyboardRow();
+        row5.add(InlineKeyboardButton.builder()
+                .text("📋 Мій фільтр")
+                .callbackData("MENU:FILTER")
+                .build());
+
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3, row4))
+                .keyboard(List.of(row1, row2, row5, row3, row4))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup moreResultsKeyboard() {
+
+        InlineKeyboardRow row = new InlineKeyboardRow();
+
+        row.add(InlineKeyboardButton.builder()
+                .text("⬇️ Ще 10")
+                .callbackData("MENU:MORE")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
                 .build();
     }
 }
