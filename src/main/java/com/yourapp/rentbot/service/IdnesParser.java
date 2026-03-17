@@ -58,12 +58,18 @@ public class IdnesParser {
             String title = extractTitle(card, wholeText);
             int priceCzk = extractPrice(wholeText);
             String locality = extractLocality(wholeText);
+
+            if (locality.isBlank()) {
+                locality = title;
+            }
+
             String layout = extractLayout(title);
             String photoUrl = extractPhoto(card);
 
             if (title == null || title.isBlank()) {
                 continue;
             }
+
             if (!title.toLowerCase(Locale.ROOT).contains("byt")) {
                 continue;
             }
@@ -173,26 +179,72 @@ public class IdnesParser {
     }
 
     private String extractLocality(String text) {
-        String[] lines = text.split("\\n");
-        for (String line : lines) {
-            String trimmed = line.trim();
-            String lower = trimmed.toLowerCase(Locale.ROOT);
+        if (text == null || text.isBlank()) {
+            return "";
+        }
 
-            if (lower.contains("praha")
-                    || lower.contains("brno")
-                    || lower.contains("ostrava")
-                    || lower.contains("plze")
-                    || lower.contains("liberec")
-                    || lower.contains("olomouc")
-                    || lower.contains("pardubice")
-                    || lower.contains("kolín")
-                    || lower.contains("kolin")
-                    || lower.contains("kutná hora")
-                    || lower.contains("kutna hora")) {
-                return trimmed;
+        String normalized = text.replace('\u00A0', ' ').trim();
+        String[] lines = normalized.split("\\R");
+
+        for (String line : lines) {
+            String candidate = cleanupLocality(line);
+            if (candidate.isBlank()) {
+                continue;
+            }
+
+            if (looksLikeLocality(candidate)) {
+                return candidate;
             }
         }
+
+        String whole = cleanupLocality(normalized);
+        if (looksLikeLocality(whole)) {
+            return whole;
+        }
+
         return "";
+    }
+
+    private boolean looksLikeLocality(String s) {
+        if (s == null || s.isBlank()) {
+            return false;
+        }
+
+        String lower = s.toLowerCase(Locale.ROOT);
+
+        return lower.contains("praha")
+                || lower.contains("brno")
+                || lower.contains("ostrava")
+                || lower.contains("plze")
+                || lower.contains("liberec")
+                || lower.contains("olomouc")
+                || lower.contains("pardubice")
+                || lower.contains("kolín")
+                || lower.contains("kolin")
+                || lower.contains("kutná hora")
+                || lower.contains("kutna hora")
+                || lower.contains("ústí nad labem")
+                || lower.contains("usti nad labem")
+                || lower.contains("hradec králové")
+                || lower.contains("hradec kralove")
+                || lower.contains("jihlava")
+                || lower.contains("karlovy vary")
+                || lower.contains("české budějovice")
+                || lower.contains("ceske budejovice")
+                || lower.contains("zlín")
+                || lower.contains("zlin")
+                || lower.contains("mladá boleslav")
+                || lower.contains("mlada boleslav");
+    }
+
+    private String cleanupLocality(String s) {
+        if (s == null) {
+            return "";
+        }
+
+        return s.replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private String extractLayout(String title) {
