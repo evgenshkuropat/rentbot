@@ -158,12 +158,21 @@ public class Keyboards {
     }
 
     public static ReplyKeyboardMarkup persistentNavKeyboard() {
-        KeyboardRow row = new KeyboardRow();
-        row.add("🏠 Меню");
-        row.add("🔄 Новий пошук");
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add("🔍 Нові квартири");
+        row1.add("📋 Мій фільтр");
+
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add("⛔ Зупинити пошук");
+
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add("📤 Поширити бота");
+        row3.add("💙 Підтримати проєкт");
 
         List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(row);
+        keyboard.add(row1);
+        keyboard.add(row2);
+        keyboard.add(row3);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
