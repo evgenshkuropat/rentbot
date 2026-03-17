@@ -5,6 +5,7 @@ import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
+import com.yourapp.rentbot.ui.Keyboards;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -16,13 +17,16 @@ public class NotificationService {
     private final TelegramClient telegramClient;
     private final SentLogRepo sentLogRepo;
     private final UserFilterRepo userFilterRepo;
+    private final ListingCacheService listingCacheService;
 
     public NotificationService(TelegramClient telegramClient,
                                SentLogRepo sentLogRepo,
-                               UserFilterRepo userFilterRepo) {
+                               UserFilterRepo userFilterRepo,
+                               ListingCacheService listingCacheService) {
         this.telegramClient = telegramClient;
         this.sentLogRepo = sentLogRepo;
         this.userFilterRepo = userFilterRepo;
+        this.listingCacheService = listingCacheService;
     }
 
     public void sendIfNotSent(UserFilter user, ListingDto listing) {
@@ -39,19 +43,27 @@ public class NotificationService {
 
         String text = """
                 🏠 %s
+                🏷 Джерело: %s
                 💰 %s
+                📍 %s
                 🔗 %s
                 """.formatted(
                 nvl(listing.title()),
+                nvl(listing.source()),
                 listing.priceCzk() > 0 ? (listing.priceCzk() + " Kč") : "—",
+                nvl(listing.locality()),
                 nvl(listing.link())
         );
 
         try {
+            String token = listingCacheService.put(listing);
+
             telegramClient.execute(SendMessage.builder()
                     .chatId(chatId)
                     .text(text)
+                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
                     .build());
+
         } catch (TelegramApiException e) {
             String msg = e.getMessage();
 

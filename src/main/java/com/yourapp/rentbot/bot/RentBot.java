@@ -9,6 +9,7 @@ import com.yourapp.rentbot.flow.FlowStep;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
 import com.yourapp.rentbot.service.FavoriteService;
+import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -32,7 +33,6 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -44,10 +44,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final ParserService parserService;
     private final NotificationService notificationService;
     private final FavoriteService favoriteService;
+    private final ListingCacheService listingCacheService;
 
     private final String token;
 
-    private final Map<String, ListingDto> listingCache = new HashMap<>();
+    // для удаления из избранного по callback
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
 
     public RentBot(
@@ -57,7 +58,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             RegionGroupRepo regionGroupRepo,
             ParserService parserService,
             NotificationService notificationService,
-            FavoriteService favoriteService
+            FavoriteService favoriteService,
+            ListingCacheService listingCacheService
     ) {
         this.token = token;
         this.flowService = flowService;
@@ -66,6 +68,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.parserService = parserService;
         this.notificationService = notificationService;
         this.favoriteService = favoriteService;
+        this.listingCacheService = listingCacheService;
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -208,7 +211,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         if (data.startsWith("FAV:ADD:")) {
             String token = data.substring("FAV:ADD:".length());
-            ListingDto dto = listingCache.get(token);
+            ListingDto dto = listingCacheService.get(token);
 
             if (dto == null) {
                 send(chatId, "Не вдалося додати в обране 😕", Keyboards.mainMenuKeyboard());
@@ -475,8 +478,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());
 
-        String token = UUID.randomUUID().toString().substring(0, 8);
-        listingCache.put(token, l);
+        String token = listingCacheService.put(l);
 
         try {
             if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
