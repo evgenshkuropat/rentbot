@@ -147,7 +147,7 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 InlineKeyboardButton.builder()
-                        .text("📋 Мої налаштування")
+                        .text("📋 Мій фільтр")
                         .callbackData("CONFIRM:SHOW")
                         .build()
         ));
@@ -159,10 +159,11 @@ public class Keyboards {
 
     public static ReplyKeyboardMarkup persistentNavKeyboard() {
         KeyboardRow row1 = new KeyboardRow();
-        row1.add("🔍 Нові квартири");
+        row1.add("🔄 Новий пошук");
         row1.add("📋 Мій фільтр");
 
         KeyboardRow row2 = new KeyboardRow();
+        row2.add("⭐ Обране");
         row2.add("⛔ Зупинити пошук");
 
         KeyboardRow row3 = new KeyboardRow();
@@ -181,25 +182,21 @@ public class Keyboards {
                 .build();
     }
 
-    private static InlineKeyboardButton button(String text, String data) {
-        return InlineKeyboardButton.builder()
-                .text(text)
-                .callbackData(data)
-                .build();
-    }
-
     public static InlineKeyboardMarkup mainMenuKeyboard() {
-
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
                 .text("🔍 Нові квартири")
                 .callbackData("MENU:NEW")
                 .build());
+        row1.add(InlineKeyboardButton.builder()
+                .text("📋 Мій фільтр")
+                .callbackData("MENU:FILTER")
+                .build());
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(InlineKeyboardButton.builder()
-                .text("📋 Мій фільтр")
-                .callbackData("MENU:FILTER")
+                .text("⭐ Обране")
+                .callbackData("MENU:FAVORITES")
                 .build());
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
@@ -213,29 +210,44 @@ public class Keyboards {
                 .text("📤 Поширити бота")
                 .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
                 .build());
-
-        InlineKeyboardRow row5 = new InlineKeyboardRow();
-        row5.add(InlineKeyboardButton.builder()
-                .text("\uD83D\uDC99 Підтримати розвиток проєкту")
+        row4.add(InlineKeyboardButton.builder()
+                .text("💙 Підтримати проєкт")
                 .url("https://revolut.me/evzen13")
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3, row4, row5))
+                .keyboard(List.of(row1, row2, row3, row4))
                 .build();
     }
 
-    public static InlineKeyboardMarkup moreResultsKeyboard() {
-
+    public static InlineKeyboardMarkup addToFavoritesKeyboard(String token) {
         InlineKeyboardRow row = new InlineKeyboardRow();
-
         row.add(InlineKeyboardButton.builder()
-                .text("⬇️ Ще 10")
-                .callbackData("MENU:MORE")
+                .text("⭐ В обране")
+                .callbackData("FAV:ADD:" + token)
                 .build());
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup removeFromFavoritesKeyboard(String link) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(InlineKeyboardButton.builder()
+                .text("❌ Прибрати з обраного")
+                .callbackData("FAV:REMOVE:" + link.hashCode())
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
+    private static InlineKeyboardButton button(String text, String data) {
+        return InlineKeyboardButton.builder()
+                .text(text)
+                .callbackData(data)
                 .build();
     }
 }

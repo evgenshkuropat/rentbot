@@ -1,5 +1,6 @@
 package com.yourapp.rentbot.bot;
 
+import com.yourapp.rentbot.domain.FavoriteListing;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
@@ -7,6 +8,7 @@ import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -27,7 +29,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -38,8 +43,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final RegionGroupRepo regionGroupRepo;
     private final ParserService parserService;
     private final NotificationService notificationService;
+    private final FavoriteService favoriteService;
 
     private final String token;
+
+    private final Map<String, ListingDto> listingCache = new HashMap<>();
+    private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
@@ -47,7 +56,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             RegionRepo regionRepo,
             RegionGroupRepo regionGroupRepo,
             ParserService parserService,
-            NotificationService notificationService
+            NotificationService notificationService,
+            FavoriteService favoriteService
     ) {
         this.token = token;
         this.flowService = flowService;
@@ -55,6 +65,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.regionGroupRepo = regionGroupRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
+        this.favoriteService = favoriteService;
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -86,31 +97,24 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
-        if (text.equals("🔍 Нові квартири")) {
-            try {
-                List<ListingDto> listings = parserService.findNewListings(userId);
+        if (text.equals("🔄 Новий пошук")) {
+            flowService.reset(userId);
 
-                if (listings.isEmpty()) {
-                    send(chatId, "Нічого нового не знайшов 😕", Keyboards.persistentNavKeyboard());
-                    return;
-                }
-
-                send(chatId, "Ось що знайшов 🔍", Keyboards.persistentNavKeyboard());
-
-                for (ListingDto l : listings) {
-                    sendListing(chatId, l);
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                send(chatId, "Помилка при пошуку квартир 😕", Keyboards.persistentNavKeyboard());
-            }
+            List<Region> regions = regionRepo.findAll();
+            send(chatId,
+                    "Починаємо новий пошук 🔍\nОбери місто:",
+                    Keyboards.regionsKeyboard(regions));
             return;
         }
 
         if (text.equals("📋 Мій фільтр")) {
             UserFilter f = flowService.getOrCreate(userId);
             send(chatId, flowService.pretty(f), Keyboards.persistentNavKeyboard());
+            return;
+        }
+
+        if (text.equals("⭐ Обране")) {
+            showFavorites(chatId, userId);
             return;
         }
 
@@ -202,6 +206,52 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         UserFilter f = flowService.getOrCreate(userId);
 
+        if (data.startsWith("FAV:ADD:")) {
+            String token = data.substring("FAV:ADD:".length());
+            ListingDto dto = listingCache.get(token);
+
+            if (dto == null) {
+                send(chatId, "Не вдалося додати в обране 😕", Keyboards.mainMenuKeyboard());
+                return;
+            }
+
+            boolean added = favoriteService.addFavorite(userId, dto);
+
+            if (added) {
+                send(chatId, "⭐ Додано в обране", Keyboards.mainMenuKeyboard());
+            } else {
+                send(chatId, "Це оголошення вже є в обраному 🙂", Keyboards.mainMenuKeyboard());
+            }
+            return;
+        }
+
+        if (data.startsWith("FAV:REMOVE:")) {
+            String raw = data.substring("FAV:REMOVE:".length());
+
+            try {
+                int key = Integer.parseInt(raw);
+                String link = favoriteLinkCache.get(key);
+
+                if (link == null) {
+                    send(chatId, "Не вдалося знайти оголошення для видалення 😕", Keyboards.mainMenuKeyboard());
+                    return;
+                }
+
+                boolean removed = favoriteService.removeFavorite(userId, link);
+
+                if (removed) {
+                    send(chatId, "❌ Видалено з обраного", Keyboards.mainMenuKeyboard());
+                } else {
+                    send(chatId, "Оголошення вже відсутнє в обраному 🙂", Keyboards.mainMenuKeyboard());
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                send(chatId, "Помилка при видаленні з обраного 😕", Keyboards.mainMenuKeyboard());
+            }
+            return;
+        }
+
         if (data.startsWith("MENU:")) {
             String action = data.substring("MENU:".length());
 
@@ -229,6 +279,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
                 case "FILTER" ->
                         send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
+
+                case "FAVORITES" -> showFavorites(chatId, userId);
 
                 case "STOP" -> {
                     if (!f.isActive()) {
@@ -365,6 +417,21 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         send(chatId, "Невідомий callback: " + data, null);
     }
 
+    private void showFavorites(long chatId, long userId) throws TelegramApiException {
+        List<FavoriteListing> favorites = favoriteService.getFavorites(userId);
+
+        if (favorites.isEmpty()) {
+            send(chatId, "У тебе ще немає збережених оголошень ⭐", Keyboards.mainMenuKeyboard());
+            return;
+        }
+
+        send(chatId, "⭐ Твоє обране:", Keyboards.mainMenuKeyboard());
+
+        for (FavoriteListing fav : favorites) {
+            sendFavorite(chatId, fav);
+        }
+    }
+
     private void disableInlineKeyboard(Update update) {
         try {
             var msg = update.getCallbackQuery().getMessage();
@@ -408,6 +475,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());
 
+        String token = UUID.randomUUID().toString().substring(0, 8);
+        listingCache.put(token, l);
+
         try {
             if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
                 telegramClient.execute(
@@ -415,6 +485,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                                 .chatId(chatId)
                                 .photo(new InputFile(l.photoUrl()))
                                 .caption(caption)
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
                                 .build());
                 return;
             }
@@ -422,7 +493,46 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         } catch (Exception ignored) {
         }
 
-        send(chatId, caption, null);
+        SendMessage.SendMessageBuilder b = SendMessage.builder()
+                .chatId(chatId)
+                .text(caption)
+                .replyMarkup(Keyboards.addToFavoritesKeyboard(token));
+
+        telegramClient.execute(b.build());
+    }
+
+    private void sendFavorite(long chatId, FavoriteListing fav) throws TelegramApiException {
+        String caption =
+                "🏠 " + nvl(fav.getTitle()) + "\n" +
+                        "🏷 Джерело: " + nvl(fav.getSource()) + "\n" +
+                        "💰 " + (fav.getPriceCzk() != null && fav.getPriceCzk() > 0 ? fav.getPriceCzk() + " Kč" : "—") + "\n" +
+                        "📍 " + nvl(fav.getLocality()) + "\n" +
+                        "🔗 " + nvl(fav.getLink());
+
+        int key = fav.getLink().hashCode();
+        favoriteLinkCache.put(key, fav.getLink());
+
+        try {
+            if (fav.getPhotoUrl() != null && !fav.getPhotoUrl().isBlank()) {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(fav.getPhotoUrl()))
+                                .caption(caption)
+                                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()))
+                                .build());
+                return;
+            }
+
+        } catch (Exception ignored) {
+        }
+
+        SendMessage.SendMessageBuilder b = SendMessage.builder()
+                .chatId(chatId)
+                .text(caption)
+                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()));
+
+        telegramClient.execute(b.build());
     }
 
     private String nvl(String s) {
