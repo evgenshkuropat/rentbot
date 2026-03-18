@@ -14,6 +14,18 @@ import java.util.List;
 
 public class Keyboards {
 
+    public static InlineKeyboardMarkup onboardingKeyboard() {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(InlineKeyboardButton.builder()
+                .text("🔍 Почати пошук")
+                .callbackData("ONBOARDING:START")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
     public static InlineKeyboardMarkup regionsKeyboard(List<Region> regions) {
         List<Region> sorted = new ArrayList<>(regions);
         sorted.sort(Comparator.comparing(Region::getTitle));

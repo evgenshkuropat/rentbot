@@ -8,6 +8,7 @@ import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
@@ -41,6 +42,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final FlowService flowService;
     private final RegionRepo regionRepo;
     private final RegionGroupRepo regionGroupRepo;
+    private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
     private final NotificationService notificationService;
     private final FavoriteService favoriteService;
@@ -48,7 +50,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
     private final String token;
 
-    // для удаления из избранного по callback
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
 
     public RentBot(
@@ -56,6 +57,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             FlowService flowService,
             RegionRepo regionRepo,
             RegionGroupRepo regionGroupRepo,
+            UserFilterRepo userFilterRepo,
             ParserService parserService,
             NotificationService notificationService,
             FavoriteService favoriteService,
@@ -65,6 +67,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.flowService = flowService;
         this.regionRepo = regionRepo;
         this.regionGroupRepo = regionGroupRepo;
+        this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
         this.favoriteService = favoriteService;
@@ -160,13 +163,36 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (text.equalsIgnoreCase("/start")) {
-            flowService.reset(userId);
+            boolean firstUse = userFilterRepo.findById(userId).isEmpty();
 
             send(chatId, "Меню закріплено внизу 👇", Keyboards.persistentNavKeyboard());
 
+            if (firstUse) {
+                String welcome = """
+🏠 Вітаю у боті пошуку житла в Чехії 🇨🇿
+
+Я допомагаю знаходити нові оголошення про оренду квартир швидше за інших.
+
+🔎 Джерела:
+• Sreality
+• Bezrealitky
+• iDNES
+• Bazoš
+
+📢 Нові варіанти приходять одразу після появи — ти перший їх бачиш.
+
+💡 Є як пропозиції від власників, так і від агентств.
+""";
+
+                send(chatId, welcome, Keyboards.onboardingKeyboard());
+                return;
+            }
+
+            flowService.reset(userId);
+
             List<Region> regions = regionRepo.findAll();
             send(chatId,
-                    "Привіт! Знайдемо квартиру в Чехії 🇨🇿\nОбери місто:",
+                    "Обери місто 👇",
                     Keyboards.regionsKeyboard(regions));
             return;
         }
@@ -208,6 +234,16 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         disableInlineKeyboard(update);
 
         UserFilter f = flowService.getOrCreate(userId);
+
+        if (data.equals("ONBOARDING:START")) {
+            flowService.reset(userId);
+
+            List<Region> regions = regionRepo.findAll();
+            send(chatId,
+                    "Супер, почнемо 🔍\nОбери місто:",
+                    Keyboards.regionsKeyboard(regions));
+            return;
+        }
 
         if (data.startsWith("FAV:ADD:")) {
             String token = data.substring("FAV:ADD:".length());
