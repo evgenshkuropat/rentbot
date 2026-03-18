@@ -2,39 +2,42 @@ package com.yourapp.rentbot.domain;
 
 import com.yourapp.rentbot.flow.FlowStep;
 import jakarta.persistence.*;
-
 import java.time.Instant;
 
 @Entity
-@Table(name = "user_filters")
+@Table(name = "user_filter")
 public class UserFilter {
 
     @Id
     @Column(name = "telegram_user_id")
     private Long telegramUserId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "region_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "region_id")
     private Region region;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "region_group_id")
     private RegionGroup regionGroup;
 
+    @Column(name = "layout_value")
     private String layout;
 
     @Column(name = "max_price")
     private Integer maxPrice;
 
-    @Column(nullable = false)
-    private boolean active = false;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private FlowStep step = FlowStep.CITY;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt = Instant.now();
+    @Column(nullable = false)
+    private boolean active = false;
+
+    @Column(nullable = false)
+    private boolean onboarded = false;
+
+    @Column(name = "updated_at")
+    private Instant updatedAt;
 
     public Long getTelegramUserId() {
         return telegramUserId;
@@ -76,6 +79,14 @@ public class UserFilter {
         this.maxPrice = maxPrice;
     }
 
+    public FlowStep getStep() {
+        return step;
+    }
+
+    public void setStep(FlowStep step) {
+        this.step = step;
+    }
+
     public boolean isActive() {
         return active;
     }
@@ -84,12 +95,12 @@ public class UserFilter {
         this.active = active;
     }
 
-    public FlowStep getStep() {
-        return step;
+    public boolean isOnboarded() {
+        return onboarded;
     }
 
-    public void setStep(FlowStep step) {
-        this.step = step;
+    public void setOnboarded(boolean onboarded) {
+        this.onboarded = onboarded;
     }
 
     public Instant getUpdatedAt() {

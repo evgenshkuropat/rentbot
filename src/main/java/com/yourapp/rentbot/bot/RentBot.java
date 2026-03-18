@@ -163,11 +163,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (text.equalsIgnoreCase("/start")) {
-            boolean firstUse = userFilterRepo.findById(userId).isEmpty();
+            UserFilter f = flowService.getOrCreate(userId);
 
             send(chatId, "Меню закріплено внизу 👇", Keyboards.persistentNavKeyboard());
 
-            if (firstUse) {
+            if (!f.isOnboarded()) {
                 String welcome = """
 🏠 Вітаю у боті пошуку житла в Чехії 🇨🇿
 
@@ -236,6 +236,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         UserFilter f = flowService.getOrCreate(userId);
 
         if (data.equals("ONBOARDING:START")) {
+            f.setOnboarded(true);
+            flowService.save(f);
+
             flowService.reset(userId);
 
             List<Region> regions = regionRepo.findAll();
@@ -246,8 +249,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (data.startsWith("FAV:ADD:")) {
-            String token = data.substring("FAV:ADD:".length());
-            ListingDto dto = listingCacheService.get(token);
+            String tokenValue = data.substring("FAV:ADD:".length());
+            ListingDto dto = listingCacheService.get(tokenValue);
 
             if (dto == null) {
                 send(chatId, "Не вдалося додати в обране 😕", Keyboards.mainMenuKeyboard());
@@ -514,7 +517,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         "📍 " + nvl(l.locality()) + "\n" +
                         "🔗 " + nvl(l.link());
 
-        String token = listingCacheService.put(l);
+        String tokenValue = listingCacheService.put(l);
 
         try {
             if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
@@ -523,7 +526,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                                 .chatId(chatId)
                                 .photo(new InputFile(l.photoUrl()))
                                 .caption(caption)
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue))
                                 .build());
                 return;
             }
@@ -534,7 +537,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         SendMessage.SendMessageBuilder b = SendMessage.builder()
                 .chatId(chatId)
                 .text(caption)
-                .replyMarkup(Keyboards.addToFavoritesKeyboard(token));
+                .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue));
 
         telegramClient.execute(b.build());
     }
@@ -574,6 +577,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     }
 
     private String nvl(String s) {
-        return (s == null || s.isBlank()) ? "—" : s;
+        return (s == null || s.isBlank()) ? "—": s;
     }
 }
