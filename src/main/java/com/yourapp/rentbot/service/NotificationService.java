@@ -8,6 +8,8 @@ import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -41,28 +43,34 @@ public class NotificationService {
             return;
         }
 
-        String text = """
-                🏠 %s
-                🏷 Джерело: %s
-                💰 %s
-                📍 %s
-                🔗 %s
-                """.formatted(
-                nvl(listing.title()),
-                nvl(listing.source()),
-                listing.priceCzk() > 0 ? (listing.priceCzk() + " Kč") : "—",
-                nvl(listing.locality()),
-                nvl(listing.link())
-        );
+        String caption =
+                "🏠 " + nvl(listing.title()) + "\n" +
+                        "🏷 Джерело: " + nvl(listing.source()) + "\n" +
+                        "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
+                        "📍 " + nvl(listing.locality()) + "\n" +
+                        "🔗 " + nvl(listing.link());
 
         try {
             String token = listingCacheService.put(listing);
 
-            telegramClient.execute(SendMessage.builder()
-                    .chatId(chatId)
-                    .text(text)
-                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
-                    .build());
+            if (listing.photoUrl() != null && !listing.photoUrl().isBlank()) {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(listing.photoUrl()))
+                                .caption(caption)
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                .build()
+                );
+            } else {
+                telegramClient.execute(
+                        SendMessage.builder()
+                                .chatId(chatId)
+                                .text(caption)
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                .build()
+                );
+            }
 
         } catch (TelegramApiException e) {
             String msg = e.getMessage();
@@ -74,8 +82,25 @@ public class NotificationService {
                 return;
             }
 
-            e.printStackTrace();
-            return;
+            if (msg != null && msg.contains("failed to get HTTP URL content")) {
+                try {
+                    String token = listingCacheService.put(listing);
+
+                    telegramClient.execute(
+                            SendMessage.builder()
+                                    .chatId(chatId)
+                                    .text(caption)
+                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                    .build()
+                    );
+                } catch (TelegramApiException ex) {
+                    ex.printStackTrace();
+                    return;
+                }
+            } else {
+                e.printStackTrace();
+                return;
+            }
         }
 
         saveSent(chatId, key);
