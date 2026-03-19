@@ -111,6 +111,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         // === ADMIN ===
         if (text.equalsIgnoreCase("/admin")) {
+
             if (chatId != ADMIN_ID) {
                 send(chatId, "⛔ У тебе немає доступу", Keyboards.persistentNavKeyboard());
                 return;
@@ -118,18 +119,107 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             long users = userFilterRepo.count();
             long active = userFilterRepo.countByActiveTrue();
+            long inactive = users - active;
+
+            long onboarded = userFilterRepo.countByOnboardedTrue();
+            long notOnboarded = userFilterRepo.countByOnboardedFalse();
+
+            long layoutChosen = userFilterRepo.countByLayoutIsNotNull();
+            long priceChosen = userFilterRepo.countByMaxPriceIsNotNull();
+
+            long layout1 = userFilterRepo.countByLayout("1+kk");
+            long layout2 = userFilterRepo.countByLayout("2+kk");
+            long layout3 = userFilterRepo.countByLayout("3+kk");
+            long layout4 = userFilterRepo.countByLayout("4+kk");
+
+            Double avgMaxPriceValue = userFilterRepo.findAverageMaxPrice();
+            long avgMaxPrice = avgMaxPriceValue != null ? Math.round(avgMaxPriceValue) : 0;
+
+            long cityStep = userFilterRepo.countByStep(FlowStep.CITY);
+            long districtStep = userFilterRepo.countByStep(FlowStep.DISTRICT_GROUP);
+            long layoutStep = userFilterRepo.countByStep(FlowStep.LAYOUT);
+            long priceStep = userFilterRepo.countByStep(FlowStep.MAX_PRICE);
+            long confirmStep = userFilterRepo.countByStep(FlowStep.CONFIRM);
+
             long favorites = favoriteService.countAll();
             long sent = notificationService.countSent();
+
+            int cachedSearchUsers = searchCache.size();
+            int cachedSearchResults = searchCache.values()
+                    .stream()
+                    .mapToInt(List::size)
+                    .sum();
+
+            int pagingUsers = searchOffset.size();
+            int favoriteCacheSize = favoriteLinkCache.size();
+
+            java.time.Instant now = java.time.Instant.now();
+            long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
+            long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
 
             String stats = """
 📊 Статистика бота
 
-👤 Користувачів: %d
+👤 Усього користувачів: %d
 ✅ Активних підписок: %d
-⭐ В обраному: %d
+⛔ Неактивних: %d
+
+🚀 Пройшли онбординг: %d
+😴 Не пройшли онбординг: %d
+
+🛏 Обрали тип квартири: %d
+💰 Обрали max price: %d
+💵 Середній max price: %d Kč
+
+🏠 1+kk: %d
+🏠 2+kk: %d
+🏠 3+kk: %d
+🏠 4+kk: %d
+
+🧭 STEP CITY: %d
+🧭 STEP DISTRICT_GROUP: %d
+🧭 STEP LAYOUT: %d
+🧭 STEP MAX_PRICE: %d
+🧭 STEP CONFIRM: %d
+
+⭐ Усього в обраному: %d
 📩 Надіслано повідомлень: %d
+
+🕒 Оновлювались за 24 год: %d
+📆 Оновлювались за 7 днів: %d
+
+🗂 Користувачів у searchCache: %d
+📦 Оголошень у searchCache: %d
+📄 Користувачів у paging: %d
+🧷 favoriteLinkCache: %d
 """
-                    .formatted(users, active, favorites, sent);
+                    .formatted(
+                            users,
+                            active,
+                            inactive,
+                            onboarded,
+                            notOnboarded,
+                            layoutChosen,
+                            priceChosen,
+                            avgMaxPrice,
+                            layout1,
+                            layout2,
+                            layout3,
+                            layout4,
+                            cityStep,
+                            districtStep,
+                            layoutStep,
+                            priceStep,
+                            confirmStep,
+                            favorites,
+                            sent,
+                            updated24h,
+                            updated7d,
+                            cachedSearchUsers,
+                            cachedSearchResults,
+                            pagingUsers,
+                            favoriteCacheSize
+                    );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard());
             return;
