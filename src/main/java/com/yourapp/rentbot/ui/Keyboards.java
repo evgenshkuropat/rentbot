@@ -256,6 +256,18 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup moreKeyboard() {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(InlineKeyboardButton.builder()
+                .text("⬇️ Показати ще")
+                .callbackData("MENU:MORE")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
     private static InlineKeyboardButton button(String text, String data) {
         return InlineKeyboardButton.builder()
                 .text(text)

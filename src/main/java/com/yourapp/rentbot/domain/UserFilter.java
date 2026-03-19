@@ -2,6 +2,7 @@ package com.yourapp.rentbot.domain;
 
 import com.yourapp.rentbot.flow.FlowStep;
 import jakarta.persistence.*;
+
 import java.time.Instant;
 
 @Entity

@@ -25,6 +25,8 @@ public class FlowService {
             f.setTelegramUserId(userId);
             f.setRegion(defaultRegion());
             f.setStep(FlowStep.CITY);
+            f.setActive(false);
+            f.setOnboarded(false);
             f.setUpdatedAt(Instant.now());
             return repo.save(f);
         });
@@ -44,8 +46,9 @@ public class FlowService {
         f.setLayout(null);
         f.setMaxPrice(null);
         f.setStep(FlowStep.CITY);
+        f.setUpdatedAt(Instant.now());
 
-        return save(f);
+        return repo.save(f);
     }
 
     private Region defaultRegion() {
@@ -56,20 +59,25 @@ public class FlowService {
     public String pretty(UserFilter f) {
         String regionTitle = f.getRegion() == null ? "—" : f.getRegion().getTitle();
         String groupTitle = f.getRegionGroup() == null ? "—" : f.getRegionGroup().getTitle();
+        String layoutTitle = prettyLayout(f.getLayout());
+        String priceTitle = f.getMaxPrice() == null
+                ? "—"
+                : (f.getMaxPrice() == 0 ? "Без ліміту" : f.getMaxPrice() + " Kč");
+        String activeTitle = f.isActive() ? "увімкнено" : "вимкнено";
 
         return """
-        🧾 Ваші налаштування:
-        🏙 Місто: %s
-        📍 Райони: %s
-        🏠 Тип: %s
-        💰 Ціна до: %s Kč
-        🔔 Сповіщення: %s
-        """.formatted(
+🧾 Ваші налаштування:
+🏙 Місто: %s
+📍 Райони: %s
+🏠 Тип: %s
+💰 Ціна до: %s
+🔔 Сповіщення: %s
+""".formatted(
                 regionTitle,
                 groupTitle,
-                prettyLayout(f.getLayout()),
-                f.getMaxPrice() == null ? "—" : f.getMaxPrice(),
-                f.isActive() ? "увімкнено" : "вимкнено"
+                layoutTitle,
+                priceTitle,
+                activeTitle
         );
     }
 

@@ -51,6 +51,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final String token;
 
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
+    private final Map<Long, List<ListingDto>> searchCache = new HashMap<>();
+    private final Map<Long, Integer> searchOffset = new HashMap<>();
+    private static final int PAGE_SIZE = 10;
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
@@ -206,11 +209,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     return;
                 }
 
-                send(chatId, "Знайшов " + listings.size() + " оголошень:", Keyboards.persistentNavKeyboard());
+                send(chatId,
+                        "Знайшов " + listings.size() + " оголошень. Показую перші "
+                                + Math.min(PAGE_SIZE, listings.size()) + " 👇",
+                        Keyboards.persistentNavKeyboard());
 
-                for (ListingDto l : listings) {
-                    sendListing(chatId, l);
-                }
+                startPagedSearch(chatId, userId, listings);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -307,17 +311,20 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             return;
                         }
 
-                        send(chatId, "Ось що знайшов 🔍", Keyboards.mainMenuKeyboard());
+                        send(chatId,
+                                "Знайшов " + listings.size() + " оголошень. Показую перші "
+                                        + Math.min(PAGE_SIZE, listings.size()) + " 👇",
+                                Keyboards.mainMenuKeyboard());
 
-                        for (ListingDto l : listings) {
-                            sendListing(chatId, l);
-                        }
+                        startPagedSearch(chatId, userId, listings);
 
                     } catch (Exception e) {
                         e.printStackTrace();
                         send(chatId, "Помилка при пошуку квартир 😕", Keyboards.mainMenuKeyboard());
                     }
                 }
+
+                case "MORE" -> sendNextPage(chatId, userId);
 
                 case "FILTER" ->
                         send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
@@ -459,6 +466,48 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         send(chatId, "Невідомий callback: " + data, null);
     }
 
+    private void startPagedSearch(long chatId, long userId, List<ListingDto> listings) throws TelegramApiException {
+        searchCache.put(userId, listings);
+        searchOffset.put(userId, 0);
+        sendNextPage(chatId, userId);
+    }
+
+    private void sendNextPage(long chatId, long userId) throws TelegramApiException {
+        List<ListingDto> listings = searchCache.get(userId);
+
+        if (listings == null || listings.isEmpty()) {
+            send(chatId, "Немає збережених результатів пошуку 😕", Keyboards.mainMenuKeyboard());
+            return;
+        }
+
+        int offset = searchOffset.getOrDefault(userId, 0);
+
+        if (offset >= listings.size()) {
+            send(chatId, "Це всі оголошення ✅", Keyboards.mainMenuKeyboard());
+            return;
+        }
+
+        int toIndex = Math.min(offset + PAGE_SIZE, listings.size());
+
+        for (int i = offset; i < toIndex; i++) {
+            sendListing(chatId, listings.get(i));
+        }
+
+        searchOffset.put(userId, toIndex);
+
+        if (toIndex < listings.size()) {
+            telegramClient.execute(
+                    SendMessage.builder()
+                            .chatId(chatId)
+                            .text("Показати ще?")
+                            .replyMarkup(Keyboards.moreKeyboard())
+                            .build()
+            );
+        } else {
+            send(chatId, "Це всі оголошення ✅", Keyboards.mainMenuKeyboard());
+        }
+    }
+
     private void showFavorites(long chatId, long userId) throws TelegramApiException {
         List<FavoriteListing> favorites = favoriteService.getFavorites(userId);
 
@@ -493,8 +542,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private void answerCallback(String callbackQueryId) throws TelegramApiException {
         telegramClient.execute(
                 AnswerCallbackQuery.builder()
-                        .callbackQueryId(callbackQueryId)
+                        .callbackQueryId(callbackIdSanitize(callbackQueryId))
                         .build());
+    }
+
+    private String callbackIdSanitize(String callbackQueryId) {
+        return callbackQueryId;
     }
 
     private void send(long chatId, String text, ReplyKeyboard keyboard) throws TelegramApiException {
@@ -534,12 +587,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         } catch (Exception ignored) {
         }
 
-        SendMessage.SendMessageBuilder b = SendMessage.builder()
-                .chatId(chatId)
-                .text(caption)
-                .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue));
-
-        telegramClient.execute(b.build());
+        telegramClient.execute(
+                SendMessage.builder()
+                        .chatId(chatId)
+                        .text(caption)
+                        .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue))
+                        .build()
+        );
     }
 
     private void sendFavorite(long chatId, FavoriteListing fav) throws TelegramApiException {
@@ -568,15 +622,16 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         } catch (Exception ignored) {
         }
 
-        SendMessage.SendMessageBuilder b = SendMessage.builder()
-                .chatId(chatId)
-                .text(caption)
-                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()));
-
-        telegramClient.execute(b.build());
+        telegramClient.execute(
+                SendMessage.builder()
+                        .chatId(chatId)
+                        .text(caption)
+                        .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()))
+                        .build()
+        );
     }
 
     private String nvl(String s) {
-        return (s == null || s.isBlank()) ? "—": s;
+        return (s == null || s.isBlank()) ? "—" : s;
     }
 }
