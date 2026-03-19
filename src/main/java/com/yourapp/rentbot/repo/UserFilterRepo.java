@@ -21,4 +21,8 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
         where uf.telegramUserId = :id
     """)
     Optional<UserFilter> findFullById(@Param("id") Long id);
+
+    long countBy();
+
+    long countByActiveTrue();
 }

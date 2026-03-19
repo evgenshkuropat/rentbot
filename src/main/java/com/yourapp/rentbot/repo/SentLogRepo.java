@@ -11,4 +11,5 @@ public interface SentLogRepo extends JpaRepository<SentLog, Long> {
 
     @Transactional
     long deleteBySentAtBefore(Instant cutoff);
+    long countBy();
 }

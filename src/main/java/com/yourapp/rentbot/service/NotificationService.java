@@ -116,4 +116,8 @@ public class NotificationService {
     private String nvl(String s) {
         return (s == null || s.isBlank()) ? "—" : s;
     }
+
+    public long countSent() {
+        return sentLogRepo.count();
+    }
 }

@@ -15,4 +15,7 @@ public interface FavoriteListingRepo extends JpaRepository<FavoriteListing, Long
     Optional<FavoriteListing> findByTelegramUserIdAndLink(Long telegramUserId, String link);
 
     void deleteByTelegramUserIdAndLink(Long telegramUserId, String link);
+
+    long countBy();
+
 }

@@ -106,6 +106,27 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
+        // === ADMIN ===
+        if (text.equalsIgnoreCase("/admin")) {
+            long users = userFilterRepo.count();
+            long active = userFilterRepo.countByActiveTrue();
+            long favorites = favoriteService.countAll();
+            long sent = notificationService.countSent();
+
+            String stats = """
+📊 Статистика бота
+
+👤 Користувачів: %d
+✅ Активних підписок: %d
+⭐ В обраному: %d
+📩 Надіслано повідомлень: %d
+"""
+                    .formatted(users, active, favorites, sent);
+
+            send(chatId, stats, Keyboards.persistentNavKeyboard());
+            return;
+        }
+
         if (text.equals("🔄 Новий пошук")) {
             flowService.reset(userId);
 
@@ -357,8 +378,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             Keyboards.mainMenuKeyboard());
                 }
 
-                default ->
-                        send(chatId, "Невідома дія меню 😅", Keyboards.mainMenuKeyboard());
+                default -> send(chatId, "Невідома дія меню 😅", Keyboards.mainMenuKeyboard());
             }
 
             return;
@@ -560,7 +580,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         telegramClient.execute(
                 AnswerCallbackQuery.builder()
                         .callbackQueryId(callbackQueryId)
-                        .build());
+                        .build()
+        );
     }
 
     private void send(long chatId, String text, ReplyKeyboard keyboard) throws TelegramApiException {
@@ -593,7 +614,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                                 .photo(new InputFile(l.photoUrl()))
                                 .caption(caption)
                                 .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue))
-                                .build());
+                                .build()
+                );
                 return;
             }
 
@@ -627,8 +649,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                                 .chatId(chatId)
                                 .photo(new InputFile(fav.getPhotoUrl()))
                                 .caption(caption)
-                                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()))
-                                .build());
+                                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key)))
+                                .build()
+                );
                 return;
             }
 
@@ -639,7 +662,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 SendMessage.builder()
                         .chatId(chatId)
                         .text(caption)
-                        .replyMarkup(Keyboards.removeFromFavoritesKeyboard(fav.getLink()))
+                        .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key)))
                         .build()
         );
     }

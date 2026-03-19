@@ -57,4 +57,8 @@ public class FavoriteService {
         favoriteListingRepo.deleteByTelegramUserIdAndLink(userId, link);
         return true;
     }
+
+    public long countAll() {
+        return favoriteListingRepo.count();
+    }
 }
