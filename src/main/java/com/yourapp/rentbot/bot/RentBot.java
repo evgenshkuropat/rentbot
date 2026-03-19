@@ -117,7 +117,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (text.equals("📋 Мій фільтр")) {
-            UserFilter f = flowService.getOrCreate(userId);
+            UserFilter f = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> flowService.getOrCreate(userId));
             send(chatId, flowService.pretty(f), Keyboards.persistentNavKeyboard());
             return;
         }
@@ -128,7 +129,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (text.equals("⛔ Зупинити пошук")) {
-            UserFilter f = flowService.getOrCreate(userId);
+            UserFilter f = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> flowService.getOrCreate(userId));
 
             if (!f.isActive()) {
                 send(chatId, "Пошук вже зупинено 🙂", Keyboards.persistentNavKeyboard());
@@ -138,8 +140,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             f.setActive(false);
             flowService.save(f);
 
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+
             send(chatId,
-                    "⛔ Пошук зупинено\n\n" + flowService.pretty(f),
+                    "⛔ Пошук зупинено\n\n" + flowService.pretty(fullFilter),
                     Keyboards.persistentNavKeyboard());
             return;
         }
@@ -237,7 +242,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         answerCallback(callbackId);
         disableInlineKeyboard(update);
 
-        UserFilter f = flowService.getOrCreate(userId);
+        UserFilter f = userFilterRepo.findFullById(userId)
+                .orElseGet(() -> flowService.getOrCreate(userId));
 
         if (data.equals("ONBOARDING:START")) {
             f.setOnboarded(true);
@@ -326,8 +332,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
                 case "MORE" -> sendNextPage(chatId, userId);
 
-                case "FILTER" ->
-                        send(chatId, flowService.pretty(f), Keyboards.mainMenuKeyboard());
+                case "FILTER" -> {
+                    UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                            .orElseGet(() -> f);
+                    send(chatId, flowService.pretty(fullFilter), Keyboards.mainMenuKeyboard());
+                }
 
                 case "FAVORITES" -> showFavorites(chatId, userId);
 
@@ -340,8 +349,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     f.setActive(false);
                     flowService.save(f);
 
+                    UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                            .orElseGet(() -> f);
+
                     send(chatId,
-                            "⛔ Пошук зупинено\n\n" + flowService.pretty(f),
+                            "⛔ Пошук зупинено\n\n" + flowService.pretty(fullFilter),
                             Keyboards.mainMenuKeyboard());
                 }
 
@@ -422,8 +434,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             f.setActive(true);
             flowService.save(f);
 
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+
             send(chatId,
-                    "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(f),
+                    "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(fullFilter),
                     Keyboards.mainMenuKeyboard());
 
             try {
@@ -459,7 +474,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         if (data.startsWith("CONFIRM:SHOW")) {
-            send(chatId, flowService.pretty(f), Keyboards.confirmKeyboard());
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+            send(chatId, flowService.pretty(fullFilter), Keyboards.confirmKeyboard());
             return;
         }
 
@@ -542,12 +559,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private void answerCallback(String callbackQueryId) throws TelegramApiException {
         telegramClient.execute(
                 AnswerCallbackQuery.builder()
-                        .callbackQueryId(callbackIdSanitize(callbackQueryId))
+                        .callbackQueryId(callbackQueryId)
                         .build());
-    }
-
-    private String callbackIdSanitize(String callbackQueryId) {
-        return callbackQueryId;
     }
 
     private void send(long chatId, String text, ReplyKeyboard keyboard) throws TelegramApiException {

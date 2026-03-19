@@ -14,10 +14,11 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
 
     // ✅ Грузим фильтр сразу с Region и RegionGroup (чтобы не было LazyInitializationException)
     @Query("""
-    select uf from UserFilter uf
-    left join fetch uf.region
-    left join fetch uf.regionGroup
-    where uf.telegramUserId = :id
-""")
+        select uf
+        from UserFilter uf
+        left join fetch uf.region
+        left join fetch uf.regionGroup
+        where uf.telegramUserId = :id
+    """)
     Optional<UserFilter> findFullById(@Param("id") Long id);
 }
