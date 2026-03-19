@@ -106,6 +106,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
+        // ВРЕМЕННО
+        send(chatId, "Your chatId: " + chatId, null);
+
         // === ADMIN ===
         if (text.equalsIgnoreCase("/admin")) {
             long users = userFilterRepo.count();
