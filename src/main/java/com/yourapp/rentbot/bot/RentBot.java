@@ -50,6 +50,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
     private final String token;
 
+    private static final long ADMIN_ID = 1246486851L;
+
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
     private final Map<Long, List<ListingDto>> searchCache = new HashMap<>();
     private final Map<Long, Integer> searchOffset = new HashMap<>();
@@ -106,11 +108,14 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
-        // ВРЕМЕННО
-        send(chatId, "Your chatId: " + chatId, null);
 
         // === ADMIN ===
         if (text.equalsIgnoreCase("/admin")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, "⛔ У тебе немає доступу", Keyboards.persistentNavKeyboard());
+                return;
+            }
+
             long users = userFilterRepo.count();
             long active = userFilterRepo.countByActiveTrue();
             long favorites = favoriteService.countAll();
