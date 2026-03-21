@@ -303,7 +303,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             if (!f.isOnboarded()) {
                 String welcome = """
-🏠 Вітаю у боті пошуку житла в Чехії 🇨🇿
+🏠 Вітаю у боті пошуку житла в Чехії
 
 Я допомагаю знаходити нові оголошення про оренду квартир швидше за інших.
 
@@ -549,7 +549,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             flowService.save(f);
 
             send(chatId,
-                    "Готово ✅\n" + flowService.pretty(f),
+                    """
+        🔔 Підписка ще не увімкнена
+        
+        Натисни «Підписатися», щоб активувати пошук квартир автоматично.
+                    
+        """ + flowService.pretty(f),
                     Keyboards.confirmKeyboard());
 
             return;
