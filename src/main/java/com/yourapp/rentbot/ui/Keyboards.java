@@ -182,10 +182,14 @@ public class Keyboards {
         row3.add("📤 Поширити бота");
         row3.add("💙 Підтримати проєкт");
 
+        KeyboardRow row4 = new KeyboardRow();
+        row4.add("🌐 Мова / Language");
+
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
         keyboard.add(row2);
         keyboard.add(row3);
+        keyboard.add(row4);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)

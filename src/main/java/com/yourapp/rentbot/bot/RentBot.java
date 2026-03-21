@@ -235,6 +235,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
+        if (text.equalsIgnoreCase("/language") || text.equals("🌐 Мова / Language")) {
+            send(chatId,
+                    messageService.get(Language.UA, "language.choose"),
+                    Keyboards.languageKeyboard());
+            return;
+        }
+
         if (text.equals("🔄 Новий пошук")) {
             flowService.reset(userId);
 
@@ -365,15 +372,23 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             Language language = Language.valueOf(langCode);
             f.setLanguage(language);
-            f.setOnboarded(true);
             flowService.save(f);
 
-            flowService.reset(userId);
+            if (!f.isOnboarded()) {
+                f.setOnboarded(true);
+                flowService.save(f);
 
-            List<Region> regions = regionRepo.findAll();
-            send(chatId,
-                    msg(userId, "filter.start"),
-                    Keyboards.regionsKeyboard(regions));
+                flowService.reset(userId);
+
+                List<Region> regions = regionRepo.findAll();
+                send(chatId,
+                        msg(userId, "filter.start"),
+                        Keyboards.regionsKeyboard(regions));
+            } else {
+                send(chatId,
+                        msg(userId, "language.updated"),
+                        Keyboards.persistentNavKeyboard());
+            }
             return;
         }
 
