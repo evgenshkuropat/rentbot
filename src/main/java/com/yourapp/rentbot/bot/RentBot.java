@@ -6,6 +6,8 @@ import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
+import com.yourapp.rentbot.i18n.Language;
+import com.yourapp.rentbot.i18n.MessageService;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
@@ -47,6 +49,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final NotificationService notificationService;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
+    private final MessageService messageService;
 
     private final String token;
 
@@ -66,7 +69,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             ParserService parserService,
             NotificationService notificationService,
             FavoriteService favoriteService,
-            ListingCacheService listingCacheService
+            ListingCacheService listingCacheService,
+            MessageService messageService
     ) {
         this.token = token;
         this.flowService = flowService;
@@ -77,6 +81,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.notificationService = notificationService;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
+        this.messageService = messageService;
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -108,12 +113,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
 
-
-        // === ADMIN ===
         if (text.equalsIgnoreCase("/admin")) {
 
             if (chatId != ADMIN_ID) {
-                send(chatId, "⛔ У тебе немає доступу", Keyboards.persistentNavKeyboard());
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard());
                 return;
             }
 
@@ -237,7 +240,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             List<Region> regions = regionRepo.findAll();
             send(chatId,
-                    "Починаємо новий пошук 🔍\nОбери місто:",
+                    msg(userId, "search.new"),
                     Keyboards.regionsKeyboard(regions));
             return;
         }
@@ -259,7 +262,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .orElseGet(() -> flowService.getOrCreate(userId));
 
             if (!f.isActive()) {
-                send(chatId, "Пошук вже зупинено 🙂", Keyboards.persistentNavKeyboard());
+                send(chatId, msg(userId, "search.stopped.already"), Keyboards.persistentNavKeyboard());
                 return;
             }
 
@@ -270,7 +273,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .orElseGet(() -> f);
 
             send(chatId,
-                    "⛔ Пошук зупинено\n\n" + flowService.pretty(fullFilter),
+                    msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter),
                     Keyboards.persistentNavKeyboard());
             return;
         }
@@ -299,26 +302,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         if (text.equalsIgnoreCase("/start")) {
             UserFilter f = flowService.getOrCreate(userId);
 
-            send(chatId, "Меню закріплено внизу 👇", Keyboards.persistentNavKeyboard());
+            send(chatId, msg(userId, "menu.pinned"), Keyboards.persistentNavKeyboard());
 
             if (!f.isOnboarded()) {
-                String welcome = """
-🏠 Вітаю у боті пошуку житла в Чехії
-
-Я допомагаю знаходити нові оголошення про оренду квартир швидше за інших.
-
-🔎 Джерела:
-• Sreality
-• Bezrealitky
-• iDNES
-• Bazoš
-
-📢 Нові варіанти приходять одразу після появи — ти перший їх бачиш.
-
-💡 Є як пропозиції від власників, так і від агентств.
-""";
-
-                send(chatId, welcome, Keyboards.onboardingKeyboard());
+                send(chatId,
+                        messageService.get(Language.UA, "language.choose"),
+                        Keyboards.languageKeyboard());
                 return;
             }
 
@@ -326,7 +315,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             List<Region> regions = regionRepo.findAll();
             send(chatId,
-                    "Обери місто 👇",
+                    msg(userId, "city.choose"),
                     Keyboards.regionsKeyboard(regions));
             return;
         }
@@ -355,7 +344,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         }
 
         send(chatId,
-                "Користуйся кнопками 🙂\nНатисни /start щоб почати.",
+                msg(userId, "unknown.command"),
                 Keyboards.persistentNavKeyboard());
     }
 
@@ -371,6 +360,23 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         UserFilter f = userFilterRepo.findFullById(userId)
                 .orElseGet(() -> flowService.getOrCreate(userId));
 
+        if (data.startsWith("LANG:")) {
+            String langCode = data.substring("LANG:".length());
+
+            Language language = Language.valueOf(langCode);
+            f.setLanguage(language);
+            f.setOnboarded(true);
+            flowService.save(f);
+
+            flowService.reset(userId);
+
+            List<Region> regions = regionRepo.findAll();
+            send(chatId,
+                    msg(userId, "filter.start"),
+                    Keyboards.regionsKeyboard(regions));
+            return;
+        }
+
         if (data.equals("ONBOARDING:START")) {
             f.setOnboarded(true);
             flowService.save(f);
@@ -379,7 +385,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             List<Region> regions = regionRepo.findAll();
             send(chatId,
-                    "Супер, почнемо 🔍\nОбери місто:",
+                    msg(userId, "filter.start"),
                     Keyboards.regionsKeyboard(regions));
             return;
         }
@@ -468,7 +474,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
                 case "STOP" -> {
                     if (!f.isActive()) {
-                        send(chatId, "Пошук вже зупинено 🙂", Keyboards.mainMenuKeyboard());
+                        send(chatId, msg(userId, "search.stopped.already"), Keyboards.mainMenuKeyboard());
                         return;
                     }
 
@@ -479,7 +485,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             .orElseGet(() -> f);
 
                     send(chatId,
-                            "⛔ Пошук зупинено\n\n" + flowService.pretty(fullFilter),
+                            msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter),
                             Keyboards.mainMenuKeyboard());
                 }
 
@@ -549,12 +555,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             flowService.save(f);
 
             send(chatId,
-                    """
-        🔔 Підписка ще не увімкнена
-        
-        Натисни «Підписатися», щоб активувати пошук квартир автоматично.
-                    
-        """ + flowService.pretty(f),
+                    msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(f),
                     Keyboards.confirmKeyboard());
 
             return;
@@ -568,7 +569,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .orElseGet(() -> f);
 
             send(chatId,
-                    "🔔 Сповіщення увімкнено!\n\n" + flowService.pretty(fullFilter),
+                    msg(userId, "subscribe.enabled") + "\n\n" + flowService.pretty(fullFilter),
                     Keyboards.mainMenuKeyboard());
 
             try {
@@ -659,11 +660,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         List<FavoriteListing> favorites = favoriteService.getFavorites(userId);
 
         if (favorites.isEmpty()) {
-            send(chatId, "У тебе ще немає збережених оголошень ⭐", Keyboards.mainMenuKeyboard());
+            send(chatId, msg(userId, "favorites.empty"), Keyboards.mainMenuKeyboard());
             return;
         }
 
-        send(chatId, "⭐ Твоє обране:", Keyboards.mainMenuKeyboard());
+        send(chatId, msg(userId, "favorites.title"), Keyboards.mainMenuKeyboard());
 
         for (FavoriteListing fav : favorites) {
             sendFavorite(chatId, fav);
@@ -775,6 +776,16 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key)))
                         .build()
         );
+    }
+
+    private Language getUserLanguage(long userId) {
+        return userFilterRepo.findById(userId)
+                .map(UserFilter::getLanguage)
+                .orElse(Language.UA);
+    }
+
+    private String msg(long userId, String key) {
+        return messageService.get(getUserLanguage(userId), key);
     }
 
     private String nvl(String s) {

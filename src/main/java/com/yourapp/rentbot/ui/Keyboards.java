@@ -98,7 +98,7 @@ public class Keyboards {
         rows.add(new InlineKeyboardRow(
                 InlineKeyboardButton.builder()
                         .text("4+")
-                        .callbackData("LAYOUT:4+")
+                        .callbackData("LAYOUT:4")
                         .build()
         ));
 
@@ -244,11 +244,11 @@ public class Keyboards {
                 .build();
     }
 
-    public static InlineKeyboardMarkup removeFromFavoritesKeyboard(String link) {
+    public static InlineKeyboardMarkup removeFromFavoritesKeyboard(String key) {
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(InlineKeyboardButton.builder()
                 .text("❌ Прибрати з обраного")
-                .callbackData("FAV:REMOVE:" + link.hashCode())
+                .callbackData("FAV:REMOVE:" + key)
                 .build());
 
         return InlineKeyboardMarkup.builder()
@@ -265,6 +265,32 @@ public class Keyboards {
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup languageKeyboard() {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(InlineKeyboardButton.builder()
+                .text("🇺🇦 Українська")
+                .callbackData("LANG:UA")
+                .build());
+        row1.add(InlineKeyboardButton.builder()
+                .text("🇷🇺 Русский")
+                .callbackData("LANG:RU")
+                .build());
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(InlineKeyboardButton.builder()
+                .text("🇨🇿 Čeština")
+                .callbackData("LANG:CZ")
+                .build());
+        row2.add(InlineKeyboardButton.builder()
+                .text("🇬🇧 English")
+                .callbackData("LANG:EN")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
                 .build();
     }
 

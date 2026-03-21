@@ -1,6 +1,7 @@
 package com.yourapp.rentbot.domain;
 
 import com.yourapp.rentbot.flow.FlowStep;
+import com.yourapp.rentbot.i18n.Language;
 import jakarta.persistence.*;
 
 import java.time.Instant;
@@ -36,6 +37,10 @@ public class UserFilter {
 
     @Column(nullable = false)
     private boolean onboarded = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Language language = Language.UA;
 
     @Column(name = "updated_at")
     private Instant updatedAt;
@@ -102,6 +107,14 @@ public class UserFilter {
 
     public void setOnboarded(boolean onboarded) {
         this.onboarded = onboarded;
+    }
+
+    public Language getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(Language language) {
+        this.language = language;
     }
 
     public Instant getUpdatedAt() {
