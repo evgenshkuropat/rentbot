@@ -2,6 +2,7 @@ package com.yourapp.rentbot.service;
 
 import com.yourapp.rentbot.domain.SentLog;
 import com.yourapp.rentbot.domain.UserFilter;
+import com.yourapp.rentbot.i18n.Language;
 import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -43,12 +44,35 @@ public class NotificationService {
             return;
         }
 
+        Language lang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
+
+        String sourceLabel = switch (lang) {
+            case RU -> "Источник";
+            case CZ -> "Zdroj";
+            case EN -> "Source";
+            default -> "Джерело";
+        };
+
+        String locationLabel = switch (lang) {
+            case RU -> "Локация";
+            case CZ -> "Lokalita";
+            case EN -> "Location";
+            default -> "Локація";
+        };
+
+        String linkLabel = switch (lang) {
+            case RU -> "Ссылка";
+            case CZ -> "Odkaz";
+            case EN -> "Link";
+            default -> "Посилання";
+        };
+
         String caption =
                 "🏠 " + nvl(listing.title()) + "\n" +
-                        "🏷 Джерело: " + nvl(listing.source()) + "\n" +
+                        "🏷 " + sourceLabel + ": " + nvl(listing.source()) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + nvl(listing.locality()) + "\n" +
-                        "🔗 " + nvl(listing.link());
+                        "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
+                        "🔗 " + linkLabel + ": " + nvl(listing.link());
 
         try {
             String token = listingCacheService.put(listing);
@@ -59,7 +83,7 @@ public class NotificationService {
                                 .chatId(chatId)
                                 .photo(new InputFile(listing.photoUrl()))
                                 .caption(caption)
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
                                 .build()
                 );
             } else {
@@ -67,7 +91,7 @@ public class NotificationService {
                         SendMessage.builder()
                                 .chatId(chatId)
                                 .text(caption)
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
                                 .build()
                 );
             }
@@ -90,7 +114,7 @@ public class NotificationService {
                             SendMessage.builder()
                                     .chatId(chatId)
                                     .text(caption)
-                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token))
+                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
                                     .build()
                     );
                 } catch (TelegramApiException ex) {
