@@ -779,9 +779,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     }
 
     private Language getUserLanguage(long userId) {
-        return userFilterRepo.findById(userId)
-                .map(UserFilter::getLanguage)
-                .orElse(Language.UA);
+        try {
+            return userFilterRepo.findById(userId)
+                    .map(UserFilter::getLanguage)
+                    .orElse(Language.UA);
+        } catch (Exception e) {
+            return Language.UA;
+        }
     }
 
     private String msg(long userId, String key) {
