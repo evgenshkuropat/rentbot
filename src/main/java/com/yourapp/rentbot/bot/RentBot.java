@@ -127,10 +127,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long layoutChosen = userFilterRepo.countByLayoutIsNotNull();
             long priceChosen = userFilterRepo.countByMaxPriceIsNotNull();
 
-            long layout1 = userFilterRepo.countByLayout("1+kk");
-            long layout2 = userFilterRepo.countByLayout("2+kk");
-            long layout3 = userFilterRepo.countByLayout("3+kk");
-            long layout4 = userFilterRepo.countByLayout("4+kk");
+            long layout1 = userFilterRepo.countByLayout("1");
+            long layout2 = userFilterRepo.countByLayout("2");
+            long layout3 = userFilterRepo.countByLayout("3");
+            long layout4 = userFilterRepo.countByLayout("4");
 
             Double avgMaxPriceValue = userFilterRepo.findAverageMaxPrice();
             long avgMaxPrice = avgMaxPriceValue != null ? Math.round(avgMaxPriceValue) : 0;
@@ -157,6 +157,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
 
+            long onboardingConversion = users > 0 ? Math.round((onboarded * 100.0) / users) : 0;
+            long activeConversion = users > 0 ? Math.round((active * 100.0) / users) : 0;
+
             String stats = """
 📊 Статистика бота
 
@@ -164,17 +167,17 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 ✅ Активних підписок: %d
 ⛔ Неактивних: %d
 
-🚀 Пройшли онбординг: %d
+🚀 Пройшли онбординг: %d (%d%%)
 😴 Не пройшли онбординг: %d
 
 🛏 Обрали тип квартири: %d
 💰 Обрали max price: %d
 💵 Середній max price: %d Kč
 
-🏠 1+kk: %d
-🏠 2+kk: %d
-🏠 3+kk: %d
-🏠 4+kk: %d
+🏠 1 кімната: %d
+🏠 2 кімнати: %d
+🏠 3 кімнати: %d
+🏠 4+ кімнати: %d
 
 🧭 STEP CITY: %d
 🧭 STEP DISTRICT_GROUP: %d
@@ -188,6 +191,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
 
+📈 Конверсія в активну підписку: %d%%
+
 🗂 Користувачів у searchCache: %d
 📦 Оголошень у searchCache: %d
 📄 Користувачів у paging: %d
@@ -198,6 +203,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             active,
                             inactive,
                             onboarded,
+                            onboardingConversion,
                             notOnboarded,
                             layoutChosen,
                             priceChosen,
@@ -215,6 +221,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             sent,
                             updated24h,
                             updated7d,
+                            activeConversion,
                             cachedSearchUsers,
                             cachedSearchResults,
                             pagingUsers,

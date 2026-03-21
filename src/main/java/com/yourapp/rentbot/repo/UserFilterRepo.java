@@ -33,13 +33,21 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     Optional<UserFilter> findFullById(@Param("id") Long id);
 
     long countBy();
+
     long countByActiveTrue();
+
     long countByOnboardedTrue();
+
     long countByOnboardedFalse();
+
     long countByLayoutIsNotNull();
+
     long countByMaxPriceIsNotNull();
+
     long countByLayout(String layout);
+
     long countByStep(FlowStep step);
+
     long countByUpdatedAtAfter(Instant instant);
 
     @Query("select avg(uf.maxPrice) from UserFilter uf where uf.maxPrice is not null")
