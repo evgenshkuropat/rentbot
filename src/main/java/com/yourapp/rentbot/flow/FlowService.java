@@ -2,6 +2,7 @@ package com.yourapp.rentbot.flow;
 
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.UserFilter;
+import com.yourapp.rentbot.i18n.Language;
 import com.yourapp.rentbot.repo.RegionRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import org.springframework.stereotype.Service;
@@ -56,41 +57,121 @@ public class FlowService {
                 .orElseThrow(() -> new IllegalStateException("Region PRAHA not found in DB"));
     }
 
-    public String pretty(UserFilter f) {
+    public String pretty(UserFilter f, Language lang) {
         String regionTitle = f.getRegion() == null ? "—" : f.getRegion().getTitle();
         String groupTitle = f.getRegionGroup() == null ? "—" : f.getRegionGroup().getTitle();
-        String layoutTitle = prettyLayout(f.getLayout());
-        String priceTitle = f.getMaxPrice() == null
-                ? "—"
-                : (f.getMaxPrice() == 0 ? "Без ліміту" : f.getMaxPrice() + " Kč");
-        String activeTitle = f.isActive() ? "увімкнено" : "вимкнено";
+        String layoutTitle = prettyLayout(f.getLayout(), lang);
+
+        String priceTitle;
+        if (f.getMaxPrice() == null) {
+            priceTitle = "—";
+        } else if (f.getMaxPrice() == 0) {
+            priceTitle = switch (lang) {
+                case RU -> "Без лимита";
+                case CZ -> "Bez limitu";
+                case EN -> "No limit";
+                default -> "Без ліміту";
+            };
+        } else {
+            priceTitle = f.getMaxPrice() + " Kč";
+        }
+
+        String activeTitle = switch (lang) {
+            case RU -> f.isActive() ? "включены" : "выключены";
+            case CZ -> f.isActive() ? "zapnuto" : "vypnuto";
+            case EN -> f.isActive() ? "enabled" : "disabled";
+            default -> f.isActive() ? "увімкнено" : "вимкнено";
+        };
+
+        String title = switch (lang) {
+            case RU -> "Ваши настройки:";
+            case CZ -> "Vaše nastavení:";
+            case EN -> "Your settings:";
+            default -> "Ваші налаштування:";
+        };
+
+        String cityLabel = switch (lang) {
+            case RU -> "Город";
+            case CZ -> "Město";
+            case EN -> "City";
+            default -> "Місто";
+        };
+
+        String districtLabel = switch (lang) {
+            case RU -> "Районы";
+            case CZ -> "Oblast";
+            case EN -> "District";
+            default -> "Райони";
+        };
+
+        String typeLabel = switch (lang) {
+            case RU -> "Тип";
+            case CZ -> "Typ";
+            case EN -> "Type";
+            default -> "Тип";
+        };
+
+        String priceLabel = switch (lang) {
+            case RU -> "Цена до";
+            case CZ -> "Cena do";
+            case EN -> "Price up to";
+            default -> "Ціна до";
+        };
+
+        String notificationsLabel = switch (lang) {
+            case RU -> "Уведомления";
+            case CZ -> "Upozornění";
+            case EN -> "Notifications";
+            default -> "Сповіщення";
+        };
 
         return """
-🧾 Ваші налаштування:
-🏙 Місто: %s
-📍 Райони: %s
-🏠 Тип: %s
-💰 Ціна до: %s
-🔔 Сповіщення: %s
+🧾 %s
+🏙 %s: %s
+📍 %s: %s
+🏠 %s: %s
+💰 %s: %s
+🔔 %s: %s
 """.formatted(
-                regionTitle,
-                groupTitle,
-                layoutTitle,
-                priceTitle,
-                activeTitle
+                title,
+                cityLabel, regionTitle,
+                districtLabel, groupTitle,
+                typeLabel, layoutTitle,
+                priceLabel, priceTitle,
+                notificationsLabel, activeTitle
         );
     }
 
-    private String prettyLayout(String layout) {
+    private String prettyLayout(String layout, Language lang) {
         if (layout == null || layout.isBlank()) {
             return "—";
         }
 
         return switch (layout) {
-            case "1" -> "1 кімната";
-            case "2" -> "2 кімнати";
-            case "3" -> "3 кімнати";
-            case "4+" -> "4+ кімнати";
+            case "1" -> switch (lang) {
+                case RU -> "1 комната";
+                case CZ -> "1 pokoj";
+                case EN -> "1 room";
+                default -> "1 кімната";
+            };
+            case "2" -> switch (lang) {
+                case RU -> "2 комнаты";
+                case CZ -> "2 pokoje";
+                case EN -> "2 rooms";
+                default -> "2 кімнати";
+            };
+            case "3" -> switch (lang) {
+                case RU -> "3 комнаты";
+                case CZ -> "3 pokoje";
+                case EN -> "3 rooms";
+                default -> "3 кімнати";
+            };
+            case "4", "4+" -> switch (lang) {
+                case RU -> "4+ комнаты";
+                case CZ -> "4+ pokoje";
+                case EN -> "4+ rooms";
+                default -> "4+ кімнати";
+            };
             default -> layout;
         };
     }

@@ -255,7 +255,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         if (text.equals(msg(userId, "menu.my.filter"))) {
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
-            send(chatId, flowService.pretty(f), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, flowService.pretty(f, lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -280,7 +280,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .orElseGet(() -> f);
 
             send(chatId,
-                    msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter),
+                    msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter, lang),
                     Keyboards.persistentNavKeyboard(lang));
             return;
         }
@@ -476,7 +476,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 case "FILTER" -> {
                     UserFilter fullFilter = userFilterRepo.findFullById(userId)
                             .orElseGet(() -> f);
-                    send(chatId, flowService.pretty(fullFilter), Keyboards.mainMenuKeyboard(lang));
+                    send(chatId, flowService.pretty(fullFilter, lang), Keyboards.mainMenuKeyboard(lang));
                 }
 
                 case "FAVORITES" -> showFavorites(chatId, userId);
@@ -494,7 +494,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             .orElseGet(() -> f);
 
                     send(chatId,
-                            msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter),
+                            msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter, lang),
                             Keyboards.mainMenuKeyboard(lang));
                 }
 
@@ -564,7 +564,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             flowService.save(f);
 
             send(chatId,
-                    msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(f),
+                    msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(f, lang),
                     Keyboards.confirmKeyboard(lang));
 
             return;
@@ -578,7 +578,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .orElseGet(() -> f);
 
             send(chatId,
-                    msg(userId, "subscribe.enabled") + "\n\n" + flowService.pretty(fullFilter),
+                    msg(userId, "subscribe.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
                     Keyboards.mainMenuKeyboard(lang));
 
             try {
@@ -614,7 +614,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         if (data.startsWith("CONFIRM:SHOW")) {
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> f);
-            send(chatId, flowService.pretty(fullFilter), Keyboards.confirmKeyboard(lang));
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.confirmKeyboard(lang));
             return;
         }
 
