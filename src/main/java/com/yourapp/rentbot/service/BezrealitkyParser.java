@@ -41,6 +41,8 @@ public class BezrealitkyParser {
 
         String baseSearchUrl = BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug;
 
+        log.info("Bezrealitky URL = {}", baseSearchUrl);
+
         List<ListingDto> result = new ArrayList<>();
         Set<String> seenLinks = new HashSet<>();
 
@@ -55,6 +57,8 @@ public class BezrealitkyParser {
                         .get();
 
                 List<ListingDto> pageListings = parsePage(doc, seenLinks);
+
+                log.info("Bezrealitky page {} parsed {} listings", pageUrl, pageListings.size());
 
                 if (pageListings.isEmpty()) {
                     break;
