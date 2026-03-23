@@ -137,17 +137,23 @@ public class ParserService {
             }
 
             String layout = normalizeLayout(dto.layout());
-            String locality = normalizeLocality(dto.locality());
             int price = dto.priceCzk();
+            String addressCore = extractAddressCore(dto);
 
-            if (layout == null || locality == null || price <= 0) {
+            if (layout == null || addressCore == null || addressCore.isBlank() || price <= 0) {
                 String fallbackKey = "LINK:" + (dto.link() == null ? "" : dto.link());
                 map.putIfAbsent(fallbackKey, dto);
                 continue;
             }
 
-            String key = layout + "|" + locality + "|" + price;
-            map.putIfAbsent(key, dto);
+            String key = layout + "|" + price + "|" + addressCore;
+
+            ListingDto existing = map.get(key);
+            if (existing == null) {
+                map.put(key, dto);
+            } else {
+                map.put(key, pickBetterListing(existing, dto));
+            }
         }
 
         return new ArrayList<>(map.values());
@@ -315,9 +321,120 @@ public class ParserService {
                 .replace('ů', 'u')
                 .replace('ú', 'u')
                 .replace('ň', 'n')
-                .replaceAll("[^a-z0-9\\s-]", " ")
+                .replace('ď', 'd')
+                .replace('ť', 't')
+                .replace('ľ', 'l')
+                .replace('ĺ', 'l')
+                .replace('ó', 'o')
+                .replace('?', ' ')
+                .replaceAll("[^a-z0-9\\s,-]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private String extractAddressCore(ListingDto dto) {
+        String raw = firstNonBlank(dto.locality(), dto.title(), dto.link());
+
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+
+        String normalized = normalizeLocality(raw);
+
+        normalized = normalized
+                .replaceAll("\\bnovy pronajem bytu\\b", " ")
+                .replaceAll("\\bpronajem bytu\\b", " ")
+                .replaceAll("\\bzlevneno\\b", " ")
+                .replaceAll("\\brezervovano\\b", " ")
+                .replaceAll("\\bbyt\\b", " ")
+                .replaceAll("\\bm2\\b", " ")
+                .replaceAll("\\bkc\\b", " ")
+                .replaceAll("\\bmesic\\b", " ")
+                .replaceAll("\\bmesicne\\b", " ")
+                .replaceAll("\\bmesic\\b", " ")
+                .replaceAll("\\bpronajem\\b", " ")
+                .replaceAll("\\bnove\\b", " ")
+                .replaceAll("\\bnovy\\b", " ");
+
+        normalized = normalized
+                .replaceAll("\\b\\d+\\+kk\\b", " ")
+                .replaceAll("\\b\\d+\\+1\\b", " ")
+                .replaceAll("\\b\\d{1,3}\\s*m\\b", " ")
+                .replaceAll("\\b\\d{1,3}\\b", " ")
+                .replaceAll("\\b\\d{4,6}\\b", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        String street = extractStreetCore(normalized);
+        if (street != null && !street.isBlank()) {
+            return street;
+        }
+
+        return normalized;
+    }
+
+    private String extractStreetCore(String normalized) {
+        if (normalized == null || normalized.isBlank()) {
+            return null;
+        }
+
+        String[] parts = normalized.split(",");
+
+        if (parts.length > 0) {
+            String first = parts[0].trim();
+            if (!first.isBlank()) {
+                return first;
+            }
+        }
+
+        return normalized;
+    }
+
+    private ListingDto pickBetterListing(ListingDto a, ListingDto b) {
+        return scoreListing(b) > scoreListing(a) ? b : a;
+    }
+
+    private int scoreListing(ListingDto dto) {
+        int score = 0;
+
+        if (dto == null) {
+            return score;
+        }
+
+        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) {
+            score += 3;
+        }
+
+        if (dto.locality() != null && dto.locality().length() < 80) {
+            score += 2;
+        }
+
+        if (dto.link() != null && !dto.link().isBlank()) {
+            score += 1;
+        }
+
+        String source = dto.source() == null ? "" : dto.source().toLowerCase();
+
+        if (source.contains("bezrealitky")) score += 5;
+        else if (source.contains("sreality")) score += 4;
+        else if (source.contains("idnes")) score += 3;
+        else if (source.contains("bazo")) score += 2;
+
+        return score;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+
+        for (String v : values) {
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+        }
+
+        return null;
     }
 
     private List<ListingDto> diversifyBySource(List<ListingDto> input, int maxPerSource, int totalLimit) {
