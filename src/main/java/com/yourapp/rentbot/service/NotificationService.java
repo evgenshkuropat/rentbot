@@ -74,60 +74,93 @@ public class NotificationService {
                         "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
                         "🔗 " + linkLabel + ": " + nvl(listing.link());
 
-        try {
-            String token = listingCacheService.put(listing);
+        String token = listingCacheService.put(listing);
 
-            if (listing.photoUrl() != null && !listing.photoUrl().isBlank()) {
-                telegramClient.execute(
-                        SendPhoto.builder()
-                                .chatId(chatId)
-                                .photo(new InputFile(listing.photoUrl()))
-                                .caption(caption)
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
-                                .build()
-                );
-            } else {
-                telegramClient.execute(
-                        SendMessage.builder()
-                                .chatId(chatId)
-                                .text(caption)
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
-                                .build()
-                );
+        try {
+            if (hasUsablePhotoUrl(listing.photoUrl())) {
+                try {
+                    telegramClient.execute(
+                            SendPhoto.builder()
+                                    .chatId(chatId)
+                                    .photo(new InputFile(listing.photoUrl()))
+                                    .caption(trimCaption(caption))
+                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
+                                    .build()
+                    );
+
+                    saveSent(chatId, key);
+                    return;
+
+                } catch (TelegramApiException e) {
+                    String msg = e.getMessage();
+
+                    if (isBlockedByUser(msg)) {
+                        user.setActive(false);
+                        userFilterRepo.save(user);
+                        System.out.println("User blocked bot, subscription disabled: " + chatId);
+                        return;
+                    }
+
+                    System.out.println("SendPhoto failed in NotificationService for link=" + listing.link()
+                            + " photo=" + listing.photoUrl());
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    System.out.println("Unexpected SendPhoto failure in NotificationService for link=" + listing.link()
+                            + " photo=" + listing.photoUrl());
+                    e.printStackTrace();
+                }
             }
+
+            telegramClient.execute(
+                    SendMessage.builder()
+                            .chatId(chatId)
+                            .text(caption)
+                            .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
+                            .build()
+            );
+
+            saveSent(chatId, key);
 
         } catch (TelegramApiException e) {
             String msg = e.getMessage();
 
-            if (msg != null && msg.contains("bot was blocked by the user")) {
+            if (isBlockedByUser(msg)) {
                 user.setActive(false);
                 userFilterRepo.save(user);
                 System.out.println("User blocked bot, subscription disabled: " + chatId);
                 return;
             }
 
-            if (msg != null && msg.contains("failed to get HTTP URL content")) {
-                try {
-                    String token = listingCacheService.put(listing);
+            e.printStackTrace();
+        }
+    }
 
-                    telegramClient.execute(
-                            SendMessage.builder()
-                                    .chatId(chatId)
-                                    .text(caption)
-                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
-                                    .build()
-                    );
-                } catch (TelegramApiException ex) {
-                    ex.printStackTrace();
-                    return;
-                }
-            } else {
-                e.printStackTrace();
-                return;
-            }
+    private boolean hasUsablePhotoUrl(String photoUrl) {
+        if (photoUrl == null || photoUrl.isBlank()) {
+            return false;
         }
 
-        saveSent(chatId, key);
+        String lower = photoUrl.toLowerCase();
+
+        if (!(lower.startsWith("http://") || lower.startsWith("https://"))) {
+            return false;
+        }
+
+        return !lower.contains(".html")
+                && !lower.contains("placeholder")
+                && !lower.contains("noimage");
+    }
+
+    private boolean isBlockedByUser(String msg) {
+        return msg != null && msg.contains("bot was blocked by the user");
+    }
+
+    private String trimCaption(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.length() <= 1024 ? text : text.substring(0, 1020) + "...";
     }
 
     private void saveSent(Long telegramUserId, String key) {
