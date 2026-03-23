@@ -8,55 +8,100 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.SocketTimeoutException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class BezrealitkyParser {
 
-    public List<ListingDto> fetchListings(Region region) throws IOException {
-        String citySlug = mapRegionToCitySlug(region);
+    private static final Logger log = LoggerFactory.getLogger(BezrealitkyParser.class);
 
-        if (citySlug == null) {
+    private static final String BASE_URL = "https://www.bezrealitky.cz";
+    private static final int TIMEOUT_MS = 15000;
+    private static final int MAX_PAGES = 3;
+
+    private static final Pattern PRICE_PATTERN =
+            Pattern.compile("(\\d{1,3}(?:[\\s\\u00A0]\\d{3})+)\\s*Kč", Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern LAYOUT_PATTERN =
+            Pattern.compile("\\b(\\d+\\+(?:kk|1))\\b", Pattern.CASE_INSENSITIVE);
+
+    public List<ListingDto> fetchListings(Region region) {
+        String regionSlug = mapRegionToSlug(region);
+
+        if (regionSlug == null) {
             return List.of();
         }
 
-        String url = "https://www.bezrealitky.cz/vypis/nabidka-pronajem/byt/" + citySlug;
+        String baseSearchUrl = BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug;
 
         List<ListingDto> result = new ArrayList<>();
+        Set<String> seenLinks = new HashSet<>();
 
-        Document doc = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0")
-                .timeout(15000)
-                .get();
+        for (int page = 1; page <= MAX_PAGES; page++) {
+            String pageUrl = page == 1 ? baseSearchUrl : baseSearchUrl + "?page=" + page;
 
-        Elements listings = doc.select("article");
+            try {
+                Document doc = Jsoup.connect(pageUrl)
+                        .userAgent("Mozilla/5.0")
+                        .referrer("https://www.google.com/")
+                        .timeout(TIMEOUT_MS)
+                        .get();
 
-        if (listings.isEmpty()) {
-            return List.of();
+                List<ListingDto> pageListings = parsePage(doc, seenLinks);
+
+                if (pageListings.isEmpty()) {
+                    break;
+                }
+
+                result.addAll(pageListings);
+
+            } catch (SocketTimeoutException e) {
+                log.warn("Bezrealitky timeout for page {}", pageUrl, e);
+                break;
+            } catch (Exception e) {
+                log.warn("Bezrealitky parsing failed for page {}", pageUrl, e);
+                break;
+            }
         }
 
-        for (Element e : listings) {
-            String title = e.select("h2").text().trim();
-            if (title.isBlank()) {
+        return result;
+    }
+
+    private List<ListingDto> parsePage(Document doc, Set<String> seenLinks) {
+        List<ListingDto> result = new ArrayList<>();
+
+        Elements articles = doc.select("article");
+
+        for (Element article : articles) {
+            Element linkEl = article.selectFirst("a[href]");
+            if (linkEl == null) {
                 continue;
             }
 
-            String priceText = e.text().replaceAll("[^0-9]", " ").trim();
-            int price = extractFirstReasonablePrice(priceText);
-
-            Element linkEl = e.selectFirst("a[href]");
-            String link = linkEl != null ? toAbsoluteBezrealitkyUrl(linkEl.attr("href")) : "";
-
-            Element imgEl = e.selectFirst("img[src]");
-            String photo = imgEl != null ? imgEl.attr("src") : "";
-
-            String locality = extractLocality(title, e.text());
-            String layout = extractLayout(title);
-
-            if (link.isBlank()) {
+            String link = toAbsoluteBezrealitkyUrl(linkEl.attr("href"));
+            if (link.isBlank() || !isListingLink(link)) {
                 continue;
+            }
+
+            if (!seenLinks.add(link)) {
+                continue;
+            }
+
+            String title = extractTitle(article);
+            String fullText = normalizeWhitespace(article.text());
+
+            int price = extractPrice(fullText);
+            String layout = extractLayout(title + " " + fullText);
+            String locality = extractLocality(title, fullText);
+            String photo = extractPhoto(article);
+
+            if (title.isBlank()) {
+                title = fallbackTitleFromText(fullText);
             }
 
             result.add(new ListingDto(
@@ -73,13 +118,125 @@ public class BezrealitkyParser {
         return result;
     }
 
-    private String mapRegionToCitySlug(Region region) {
+    private String extractTitle(Element article) {
+        String[] selectors = {"h1", "h2", "h3", "[class*=title]", "[class*=headline]"};
+
+        for (String selector : selectors) {
+            Element el = article.selectFirst(selector);
+            if (el != null) {
+                String text = normalizeWhitespace(el.text());
+                if (!text.isBlank()) {
+                    return text;
+                }
+            }
+        }
+
+        return "";
+    }
+
+    private String extractPhoto(Element article) {
+        Element img = article.selectFirst("img[src]");
+        if (img != null) {
+            return img.attr("abs:src");
+        }
+
+        Element source = article.selectFirst("source[srcset]");
+        if (source != null) {
+            String srcset = source.attr("srcset");
+            if (srcset != null && !srcset.isBlank()) {
+                return srcset.split(",")[0].trim().split("\\s+")[0];
+            }
+        }
+
+        return "";
+    }
+
+    private int extractPrice(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+
+        Matcher matcher = PRICE_PATTERN.matcher(text);
+        if (matcher.find()) {
+            String raw = matcher.group(1).replace("\u00A0", " ").replaceAll("\\s+", "");
+            try {
+                return Integer.parseInt(raw);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        return 0;
+    }
+
+    private String extractLayout(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = LAYOUT_PATTERN.matcher(text.toLowerCase());
+        if (matcher.find()) {
+            return matcher.group(1).toLowerCase();
+        }
+
+        return null;
+    }
+
+    private String extractLocality(String title, String fullText) {
+        String source = (title != null && !title.isBlank()) ? title : fullText;
+        if (source == null || source.isBlank()) {
+            return "";
+        }
+
+        int commaIndex = source.indexOf(',');
+        if (commaIndex >= 0 && commaIndex + 1 < source.length()) {
+            return source.substring(commaIndex + 1).trim();
+        }
+
+        return source;
+    }
+
+    private String fallbackTitleFromText(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+
+        return text.length() > 120 ? text.substring(0, 120) + "..." : text;
+    }
+
+    private boolean isListingLink(String link) {
+        return link.contains("/nemovitosti-byty-domy/")
+                || link.contains("/nemovitosti/")
+                || link.contains("/vypis/");
+    }
+
+    private String toAbsoluteBezrealitkyUrl(String href) {
+        if (href == null || href.isBlank()) {
+            return "";
+        }
+
+        if (href.startsWith("http")) {
+            return href;
+        }
+
+        if (href.startsWith("/")) {
+            return BASE_URL + href;
+        }
+
+        return BASE_URL + "/" + href;
+    }
+
+    private String normalizeWhitespace(String text) {
+        return text == null ? "" : text.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private String mapRegionToSlug(Region region) {
         if (region == null || region.getCode() == null) {
             return "praha";
         }
 
         return switch (region.getCode().toUpperCase()) {
             case "PRAHA" -> "praha";
+            case "KOLIN" -> "okres-kolin";
             case "BRNO" -> "brno";
             case "OSTRAVA" -> "ostrava";
             case "PLZEN" -> "plzen";
@@ -94,64 +251,5 @@ public class BezrealitkyParser {
             case "JIHLAVA" -> "jihlava";
             default -> null;
         };
-    }
-
-    private String toAbsoluteBezrealitkyUrl(String href) {
-        if (href == null || href.isBlank()) {
-            return "";
-        }
-        if (href.startsWith("http")) {
-            return href;
-        }
-        return "https://www.bezrealitky.cz" + href;
-    }
-
-    private int extractFirstReasonablePrice(String text) {
-        if (text == null || text.isBlank()) {
-            return 0;
-        }
-
-        String[] parts = text.split("\\s+");
-
-        for (String part : parts) {
-            try {
-                int value = Integer.parseInt(part);
-                if (value >= 1000) {
-                    return value;
-                }
-            } catch (NumberFormatException ignored) {
-            }
-        }
-
-        return 0;
-    }
-
-    private String extractLayout(String title) {
-        if (title == null || title.isBlank()) {
-            return null;
-        }
-
-        String lower = title.toLowerCase();
-
-        for (int rooms = 1; rooms <= 10; rooms++) {
-            String kk = rooms + "+kk";
-            String one = rooms + "+1";
-
-            if (lower.contains(kk)) {
-                return kk;
-            }
-            if (lower.contains(one)) {
-                return one;
-            }
-        }
-
-        return null;
-    }
-
-    private String extractLocality(String title, String fallbackText) {
-        if (title != null && !title.isBlank()) {
-            return title;
-        }
-        return fallbackText == null ? "" : fallbackText;
     }
 }
