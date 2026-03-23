@@ -61,6 +61,7 @@ public class BezrealitkyParser {
                 log.info("Bezrealitky page {} parsed {} listings", pageUrl, pageListings.size());
 
                 if (pageListings.isEmpty()) {
+                    log.info("Bezrealitky stopping pagination at page {} because no listings were found", pageUrl);
                     break;
                 }
 
