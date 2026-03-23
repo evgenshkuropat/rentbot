@@ -728,20 +728,21 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         String tokenValue = listingCacheService.put(l);
 
-        try {
-            if (l.photoUrl() != null && !l.photoUrl().isBlank()) {
+        if (hasUsablePhotoUrl(l.photoUrl())) {
+            try {
                 telegramClient.execute(
                         SendPhoto.builder()
                                 .chatId(chatId)
                                 .photo(new InputFile(l.photoUrl()))
-                                .caption(caption)
+                                .caption(trimCaption(caption))
                                 .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue, lang))
                                 .build()
                 );
                 return;
+            } catch (Exception e) {
+                System.out.println("SendPhoto failed for listing link=" + l.link() + " photo=" + l.photoUrl());
+                e.printStackTrace();
             }
-
-        } catch (Exception ignored) {
         }
 
         telegramClient.execute(
@@ -766,20 +767,21 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         int key = fav.getLink().hashCode();
         favoriteLinkCache.put(key, fav.getLink());
 
-        try {
-            if (fav.getPhotoUrl() != null && !fav.getPhotoUrl().isBlank()) {
+        if (hasUsablePhotoUrl(fav.getPhotoUrl())) {
+            try {
                 telegramClient.execute(
                         SendPhoto.builder()
                                 .chatId(chatId)
                                 .photo(new InputFile(fav.getPhotoUrl()))
-                                .caption(caption)
+                                .caption(trimCaption(caption))
                                 .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key), lang))
                                 .build()
                 );
                 return;
+            } catch (Exception e) {
+                System.out.println("SendPhoto failed for favorite link=" + fav.getLink() + " photo=" + fav.getPhotoUrl());
+                e.printStackTrace();
             }
-
-        } catch (Exception ignored) {
         }
 
         telegramClient.execute(
@@ -789,6 +791,30 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                         .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key), lang))
                         .build()
         );
+    }
+
+    private boolean hasUsablePhotoUrl(String photoUrl) {
+        if (photoUrl == null || photoUrl.isBlank()) {
+            return false;
+        }
+
+        String lower = photoUrl.toLowerCase();
+
+        if (!(lower.startsWith("http://") || lower.startsWith("https://"))) {
+            return false;
+        }
+
+        return !lower.contains(".html")
+                && !lower.contains("placeholder")
+                && !lower.contains("noimage");
+    }
+
+    private String trimCaption(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text.length() <= 1024 ? text : text.substring(0, 1020) + "...";
     }
 
     private Language getUserLanguage(long userId) {
