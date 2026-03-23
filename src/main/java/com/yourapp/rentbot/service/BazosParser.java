@@ -24,9 +24,6 @@ public class BazosParser {
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern PRICE_PATTERN =
-            Pattern.compile("(\\d[\\d\\s]{2,})\\s*Kč", Pattern.CASE_INSENSITIVE);
-
     public List<ListingDto> fetchListings(Region region) throws IOException {
 
         String url = buildUrl(region);
@@ -53,7 +50,6 @@ public class BazosParser {
             Element container = findReasonableContainer(linkEl);
 
             String containerText = container != null ? container.text() : "";
-
             String fullText = title + "\n" + containerText;
 
             String link = extractLink(linkEl);
@@ -64,11 +60,10 @@ public class BazosParser {
 
             String layout = extractLayout(fullText);
 
-            int price = extractPrice(fullText);
+            int price = extractPrice(linkEl, container, fullText);
 
             String locality = extractLocality(fullText);
 
-            // ⭐ fallback если город не нашли
             if (locality.isBlank() && region != null && region.getTitle() != null) {
                 locality = region.getTitle();
             }
@@ -140,7 +135,58 @@ public class BazosParser {
         return BASE_URL + "/" + href;
     }
 
-    private int extractPrice(String text) {
+    private int extractPrice(Element linkEl, Element container, String fullText) {
+        int priceFromDom = extractPriceFromDom(linkEl, container);
+        if (priceFromDom > 0) {
+            return priceFromDom;
+        }
+
+        return extractPriceFromText(fullText);
+    }
+
+    private int extractPriceFromDom(Element linkEl, Element container) {
+        if (linkEl == null) {
+            return 0;
+        }
+
+        Element current = linkEl;
+        for (int i = 0; i < 5 && current != null; i++) {
+            int price = extractPriceFromText(current.text());
+            if (price > 0) {
+                return price;
+            }
+            current = current.parent();
+        }
+
+        if (container != null) {
+            for (Element child : container.children()) {
+                int price = extractPriceFromText(child.text());
+                if (price > 0) {
+                    return price;
+                }
+            }
+
+            Element next = container.nextElementSibling();
+            if (next != null) {
+                int price = extractPriceFromText(next.text());
+                if (price > 0) {
+                    return price;
+                }
+            }
+
+            Element prev = container.previousElementSibling();
+            if (prev != null) {
+                int price = extractPriceFromText(prev.text());
+                if (price > 0) {
+                    return price;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private int extractPriceFromText(String text) {
         if (text == null || text.isBlank()) {
             return 0;
         }
@@ -154,19 +200,33 @@ public class BazosParser {
                 .replace("mesicne", " Kč")
                 .replace("měsíčně", " Kč");
 
-        Pattern p = Pattern.compile(
-                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)?",
+        Pattern strict = Pattern.compile(
+                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)",
                 Pattern.CASE_INSENSITIVE
         );
 
-        Matcher m = p.matcher(normalized);
-
-        while (m.find()) {
-            String raw = m.group(1).replaceAll("\\s+", "");
+        Matcher strictMatcher = strict.matcher(normalized);
+        while (strictMatcher.find()) {
+            String raw = strictMatcher.group(1).replaceAll("\\s+", "");
             try {
                 int value = Integer.parseInt(raw);
+                if (value >= 3000 && value <= 200000) {
+                    return value;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+        }
 
-                // отсеиваем мусорные числа
+        Pattern fallback = Pattern.compile(
+                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})",
+                Pattern.CASE_INSENSITIVE
+        );
+
+        Matcher fallbackMatcher = fallback.matcher(normalized);
+        while (fallbackMatcher.find()) {
+            String raw = fallbackMatcher.group(1).replaceAll("\\s+", "");
+            try {
+                int value = Integer.parseInt(raw);
                 if (value >= 3000 && value <= 200000) {
                     return value;
                 }
@@ -267,11 +327,6 @@ public class BazosParser {
         return new ArrayList<>(map.values());
     }
 
-    private boolean containsIgnoreCase(String text, String part) {
-        return text != null && part != null &&
-                text.toLowerCase().contains(part.toLowerCase());
-    }
-
     private int indexOfIgnoreCase(String text, String part) {
         if (text == null || part == null) {
             return -1;
@@ -279,27 +334,27 @@ public class BazosParser {
         return text.toLowerCase().indexOf(part.toLowerCase());
     }
 
-private int findFirstStop(String s) {
-    String lower = s.toLowerCase();
+    private int findFirstStop(String s) {
+        String lower = s.toLowerCase();
 
-    int comma = s.indexOf(',');
-    int pipe = s.indexOf('|');
-    int semicolon = s.indexOf(';');
-    int kc = lower.indexOf("kč");
-    int m2 = lower.indexOf("m²");
-    int m2alt = lower.indexOf("m2");
+        int comma = s.indexOf(',');
+        int pipe = s.indexOf('|');
+        int semicolon = s.indexOf(';');
+        int kc = lower.indexOf("kč");
+        int m2 = lower.indexOf("m²");
+        int m2alt = lower.indexOf("m2");
 
-    int stop = -1;
+        int stop = -1;
 
-    if (comma >= 0) stop = comma;
-    if (pipe >= 0 && (stop == -1 || pipe < stop)) stop = pipe;
-    if (semicolon >= 0 && (stop == -1 || semicolon < stop)) stop = semicolon;
-    if (kc >= 0 && (stop == -1 || kc < stop)) stop = kc;
-    if (m2 >= 0 && (stop == -1 || m2 < stop)) stop = m2;
-    if (m2alt >= 0 && (stop == -1 || m2alt < stop)) stop = m2alt;
+        if (comma >= 0) stop = comma;
+        if (pipe >= 0 && (stop == -1 || pipe < stop)) stop = pipe;
+        if (semicolon >= 0 && (stop == -1 || semicolon < stop)) stop = semicolon;
+        if (kc >= 0 && (stop == -1 || kc < stop)) stop = kc;
+        if (m2 >= 0 && (stop == -1 || m2 < stop)) stop = m2;
+        if (m2alt >= 0 && (stop == -1 || m2alt < stop)) stop = m2alt;
 
-    return stop;
-}
+        return stop;
+    }
 
     private String cleanupLocality(String s) {
         if (s == null) {
@@ -313,26 +368,26 @@ private int findFirstStop(String s) {
                 .trim();
     }
 
-private String extractKnownPlaceFragment(String text, String[] knownPlaces) {
-    if (text == null || text.isBlank()) {
+    private String extractKnownPlaceFragment(String text, String[] knownPlaces) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+
+        for (String place : knownPlaces) {
+            int idx = indexOfIgnoreCase(text, place);
+            if (idx >= 0) {
+                int end = Math.min(text.length(), idx + place.length() + 30);
+                String candidate = text.substring(idx, end);
+
+                int stop = findFirstStop(candidate);
+                if (stop > 0) {
+                    candidate = candidate.substring(0, stop);
+                }
+
+                return cleanupLocality(candidate);
+            }
+        }
+
         return "";
     }
-
-    for (String place : knownPlaces) {
-        int idx = indexOfIgnoreCase(text, place);
-        if (idx >= 0) {
-            int end = Math.min(text.length(), idx + place.length() + 30);
-            String candidate = text.substring(idx, end);
-
-            int stop = findFirstStop(candidate);
-            if (stop > 0) {
-                candidate = candidate.substring(0, stop);
-            }
-
-            return cleanupLocality(candidate);
-        }
-    }
-
-    return "";
-}
 }
