@@ -5,10 +5,9 @@ import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
+import com.yourapp.rentbot.service.dto.ParserRunStats;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.yourapp.rentbot.service.dto.ParserRunStats;
-import java.util.concurrent.atomic.AtomicReference;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,6 +15,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class ParserService {
@@ -25,6 +25,13 @@ public class ParserService {
     private final BezrealitkyParser bezrealitkyParser;
     private final BazosParser bazosParser;
     private final UserFilterRepo userFilterRepo;
+
+    private final AtomicReference<ParserRunStats> lastRunStats =
+            new AtomicReference<>(new ParserRunStats(
+                    0, 0, 0, 0,
+                    0, 0, 0,
+                    0, 0, 0, 0
+            ));
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
@@ -522,13 +529,6 @@ public class ParserService {
 
         return result;
     }
-
-    private final AtomicReference<ParserRunStats> lastRunStats =
-            new AtomicReference<>(new ParserRunStats(
-                    0, 0, 0, 0,
-                    0, 0, 0,
-                    0, 0, 0, 0
-            ));
 
     public ParserRunStats getLastRunStats() {
         return lastRunStats.get();

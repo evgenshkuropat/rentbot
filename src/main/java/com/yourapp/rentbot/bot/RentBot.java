@@ -157,6 +157,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             int pagingUsers = searchOffset.size();
             int favoriteCacheSize = favoriteLinkCache.size();
 
+            ParserRunStats runStats = parserService.getLastRunStats();
+
+
             java.time.Instant now = java.time.Instant.now();
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
@@ -201,6 +204,23 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 📦 Оголошень у searchCache: %d
 📄 Користувачів у paging: %d
 🧷 favoriteLinkCache: %d
+
+📡 Останній запуск парсерів:
+Sreality raw: %d
+iDNES raw: %d
+Bezrealitky raw: %d
+Bazoš raw: %d
+
+🔁 Після дедуплікації:
+By link: %d
+By signature: %d
+
+🎯 У фінальній видачі:
+Всього: %d
+Sreality: %d
+iDNES: %d
+Bezrealitky: %d
+Bazoš: %d
 """
                     .formatted(
                             users,
@@ -229,7 +249,19 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                             cachedSearchUsers,
                             cachedSearchResults,
                             pagingUsers,
-                            favoriteCacheSize
+                            favoriteCacheSize,
+
+                            runStats.srealityRaw(),
+                            runStats.idnesRaw(),
+                            runStats.bezrealitkyRaw(),
+                            runStats.bazosRaw(),
+                            runStats.afterDedupeByLink(),
+                            runStats.afterDedupeBySignature(),
+                            runStats.finalFiltered(),
+                            runStats.finalSreality(),
+                            runStats.finalIdnes(),
+                            runStats.finalBezrealitky(),
+                            runStats.finalBazos()
                     );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard(lang));
