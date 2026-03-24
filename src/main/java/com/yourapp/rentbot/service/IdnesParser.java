@@ -365,6 +365,7 @@ public class IdnesParser {
                 .replaceAll("(?i)\\b\\d+\\s*m²\\b", " ")
                 .replaceAll("(?i)\\b\\d+\\s*m2\\b", " ")
                 .replaceAll("(?i)\\b\\d{4,6}\\s*kč.*$", " ")
+                .replaceAll("\\b\\d{1,3}(?:\\s\\d{3})\\b$", "")
                 .replaceAll("\\s+", " ")
                 .replaceAll("^[\\-–,.;:\\s]+", "")
                 .replaceAll("[\\-–,.;:\\s]+$", "")
