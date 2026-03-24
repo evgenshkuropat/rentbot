@@ -11,7 +11,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,29 +41,53 @@ public class SrealityParser {
                                 "&per_page=20" +
                                 "&page=" + page;
 
+                System.out.println("SREALITY URL = " + apiUrl);
+
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(apiUrl))
                         .header("User-Agent", "Mozilla/5.0")
+                        .header("Accept", "application/json")
                         .GET()
                         .build();
 
                 HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
-                String json = resp.body();
 
+                System.out.println("SREALITY STATUS = " + resp.statusCode());
+
+                if (resp.statusCode() != 200) {
+                    System.out.println("SREALITY NON-200 RESPONSE, STOP PAGE = " + page);
+                    break;
+                }
+
+                String json = resp.body();
                 JsonNode root = mapper.readTree(json);
                 JsonNode estates = root.path("_embedded").path("estates");
 
-                if (!estates.isArray() || estates.isEmpty()) {
+                if (!estates.isArray()) {
+                    System.out.println("SREALITY page " + page + " has no estates array");
+                    break;
+                }
+
+                System.out.println("SREALITY page " + page + " parsed " + estates.size() + " listings");
+
+                if (estates.isEmpty()) {
+                    if (page == 1) {
+                        System.out.println("SREALITY first page empty for regionId = " + regionId);
+                    }
                     break;
                 }
 
                 for (JsonNode estate : estates) {
                     String title = estate.path("name").asText("");
-                    int priceCzk = estate.path("price_czk").path("value_raw").asInt();
+                    int priceCzk = extractPrice(estate);
                     String link = buildLink(estate);
                     String layout = extractLayout(title);
                     String photoUrl = extractPhotoUrl(estate);
                     String locality = estate.path("locality").asText("");
+
+                    if (link == null || link.isBlank()) {
+                        continue;
+                    }
 
                     result.add(new ListingDto(
                             title,
@@ -75,21 +101,45 @@ public class SrealityParser {
                 }
             }
 
-            return result.stream()
-                    .filter(x -> x.link() != null && !x.link().isBlank())
-                    .collect(java.util.stream.Collectors.toMap(
-                            ListingDto::link,
-                            x -> x,
-                            (a, b) -> a
-                    ))
-                    .values()
-                    .stream()
-                    .toList();
+            return dedupeByLink(result);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("Interrupted while fetching sreality", e);
+            throw new IOException("Interrupted while fetching Sreality", e);
         }
+    }
+
+    private int extractPrice(JsonNode estate) {
+        JsonNode priceCzkNode = estate.path("price_czk");
+
+        if (priceCzkNode.isInt() || priceCzkNode.isLong()) {
+            return priceCzkNode.asInt();
+        }
+
+        JsonNode valueRaw = priceCzkNode.path("value_raw");
+        if (valueRaw.isInt() || valueRaw.isLong()) {
+            return valueRaw.asInt();
+        }
+
+        JsonNode price = estate.path("price");
+        if (price.isInt() || price.isLong()) {
+            return price.asInt();
+        }
+
+        return 0;
+    }
+
+    private List<ListingDto> dedupeByLink(List<ListingDto> input) {
+        Map<String, ListingDto> map = new LinkedHashMap<>();
+
+        for (ListingDto dto : input) {
+            if (dto == null || dto.link() == null || dto.link().isBlank()) {
+                continue;
+            }
+            map.putIfAbsent(dto.link(), dto);
+        }
+
+        return new ArrayList<>(map.values());
     }
 
     private String buildLink(JsonNode estate) {
