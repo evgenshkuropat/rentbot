@@ -7,6 +7,8 @@ import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.yourapp.rentbot.service.dto.ParserRunStats;
+import java.util.concurrent.atomic.AtomicReference;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,9 +54,15 @@ public class ParserService {
 
         List<ListingDto> all = new ArrayList<>();
 
+        int srealityRaw = 0;
+        int idnesRaw = 0;
+        int bezrealitkyRaw = 0;
+        int bazosRaw = 0;
+
         try {
             List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
-            System.out.println("SREALITY LISTINGS = " + sreality.size());
+            srealityRaw = sreality.size();
+            System.out.println("SREALITY LISTINGS = " + srealityRaw);
             all.addAll(sreality);
         } catch (Exception e) {
             System.out.println("Sreality parser failed: " + e.getMessage());
@@ -62,7 +70,8 @@ public class ParserService {
 
         try {
             List<ListingDto> idnes = idnesParser.fetchListings(region, regionGroup);
-            System.out.println("IDNES LISTINGS = " + idnes.size());
+            idnesRaw = idnes.size();
+            System.out.println("IDNES LISTINGS = " + idnesRaw);
             all.addAll(idnes);
         } catch (Exception e) {
             System.out.println("Idnes parser failed: " + e.getMessage());
@@ -70,7 +79,8 @@ public class ParserService {
 
         try {
             List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(region);
-            System.out.println("BEZREALITKY LISTINGS = " + bezrealitky.size());
+            bezrealitkyRaw = bezrealitky.size();
+            System.out.println("BEZREALITKY LISTINGS = " + bezrealitkyRaw);
             all.addAll(bezrealitky);
         } catch (Exception e) {
             System.out.println("Bezrealitky parser failed: " + e.getMessage());
@@ -78,17 +88,20 @@ public class ParserService {
 
         try {
             List<ListingDto> bazos = bazosParser.fetchListings(region);
-            System.out.println("BAZOS LISTINGS = " + bazos.size());
+            bazosRaw = bazos.size();
+            System.out.println("BAZOS LISTINGS = " + bazosRaw);
             all.addAll(bazos);
         } catch (Exception e) {
             System.out.println("Bazos parser failed: " + e.getMessage());
         }
 
         all = dedupeByLink(all);
-        System.out.println("AFTER DEDUPE BY LINK = " + all.size());
+        int afterDedupeByLink = all.size();
+        System.out.println("AFTER DEDUPE BY LINK = " + afterDedupeByLink);
 
         all = dedupeBySignature(all);
-        System.out.println("AFTER DEDUPE BY SIGNATURE = " + all.size());
+        int afterDedupeBySignature = all.size();
+        System.out.println("AFTER DEDUPE BY SIGNATURE = " + afterDedupeBySignature);
 
         System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
@@ -102,6 +115,35 @@ public class ParserService {
                 .toList();
 
         List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
+
+        int finalFiltered = filtered.size();
+
+        int finalSreality = 0;
+        int finalIdnes = 0;
+        int finalBezrealitky = 0;
+        int finalBazos = 0;
+
+        for (ListingDto x : filtered) {
+            String source = x.source() == null ? "" : x.source().toLowerCase();
+            if (source.contains("sreality")) finalSreality++;
+            else if (source.contains("idnes")) finalIdnes++;
+            else if (source.contains("bezrealitky")) finalBezrealitky++;
+            else if (source.contains("bazo")) finalBazos++;
+        }
+
+        lastRunStats.set(new ParserRunStats(
+                srealityRaw,
+                idnesRaw,
+                bezrealitkyRaw,
+                bazosRaw,
+                afterDedupeByLink,
+                afterDedupeBySignature,
+                finalFiltered,
+                finalSreality,
+                finalIdnes,
+                finalBezrealitky,
+                finalBazos
+        ));
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
 
@@ -479,5 +521,16 @@ public class ParserService {
         }
 
         return result;
+    }
+
+    private final AtomicReference<ParserRunStats> lastRunStats =
+            new AtomicReference<>(new ParserRunStats(
+                    0, 0, 0, 0,
+                    0, 0, 0,
+                    0, 0, 0, 0
+            ));
+
+    public ParserRunStats getLastRunStats() {
+        return lastRunStats.get();
     }
 }

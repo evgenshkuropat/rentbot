@@ -32,6 +32,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import com.yourapp.rentbot.service.dto.ParserRunStats;
 
 import java.util.HashMap;
 import java.util.List;
