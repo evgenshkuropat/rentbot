@@ -215,6 +215,13 @@ Bazoš raw: %d
 By link: %d
 By signature: %d
 
+🧪 Після фільтрів до diversify:
+Всього: %d
+Sreality: %d
+iDNES: %d
+Bezrealitky: %d
+Bazoš: %d
+
 🎯 У фінальній видачі:
 Всього: %d
 Sreality: %d
@@ -257,6 +264,13 @@ Bazoš: %d
                             runStats.bazosRaw(),
                             runStats.afterDedupeByLink(),
                             runStats.afterDedupeBySignature(),
+
+                            runStats.filteredBaseTotal(),
+                            runStats.filteredBaseSreality(),
+                            runStats.filteredBaseIdnes(),
+                            runStats.filteredBaseBezrealitky(),
+                            runStats.filteredBaseBazos(),
+
                             runStats.finalFiltered(),
                             runStats.finalSreality(),
                             runStats.finalIdnes(),

@@ -29,8 +29,9 @@ public class ParserService {
     private final AtomicReference<ParserRunStats> lastRunStats =
             new AtomicReference<>(new ParserRunStats(
                     0, 0, 0, 0,
-                    0, 0, 0,
-                    0, 0, 0, 0
+                    0, 0,
+                    0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0
             ));
 
     public ParserService(SrealityParser srealityParser,
@@ -121,6 +122,21 @@ public class ParserService {
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
                 .toList();
 
+        int filteredBaseTotal = filteredBase.size();
+
+        int filteredBaseSreality = 0;
+        int filteredBaseIdnes = 0;
+        int filteredBaseBezrealitky = 0;
+        int filteredBaseBazos = 0;
+
+        for (ListingDto x : filteredBase) {
+            String source = x.source() == null ? "" : x.source().toLowerCase();
+            if (source.contains("sreality")) filteredBaseSreality++;
+            else if (source.contains("idnes")) filteredBaseIdnes++;
+            else if (source.contains("bezrealitky")) filteredBaseBezrealitky++;
+            else if (source.contains("bazo")) filteredBaseBazos++;
+        }
+
         List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
 
         int finalFiltered = filtered.size();
@@ -145,6 +161,13 @@ public class ParserService {
                 bazosRaw,
                 afterDedupeByLink,
                 afterDedupeBySignature,
+
+                filteredBaseTotal,
+                filteredBaseSreality,
+                filteredBaseIdnes,
+                filteredBaseBezrealitky,
+                filteredBaseBazos,
+
                 finalFiltered,
                 finalSreality,
                 finalIdnes,
