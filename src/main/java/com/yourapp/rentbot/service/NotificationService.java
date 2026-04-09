@@ -60,21 +60,14 @@ public class NotificationService {
             default -> "Локація";
         };
 
-        String linkLabel = switch (lang) {
-            case RU -> "Ссылка";
-            case CZ -> "Odkaz";
-            case EN -> "Link";
-            default -> "Посилання";
-        };
-
         String caption =
                 "🏠 " + nvl(listing.title()) + "\n" +
                         "🏷 " + sourceLabel + ": " + nvl(listing.source()) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
-                        "🔗 " + linkLabel + ": " + nvl(listing.link());
+                        "📍 " + locationLabel + ": " + nvl(listing.locality());
 
         String token = listingCacheService.put(listing);
+        String link = safeUrl(listing.link());
 
         try {
             if (hasUsablePhotoUrl(listing.photoUrl())) {
@@ -84,7 +77,7 @@ public class NotificationService {
                                     .chatId(chatId)
                                     .photo(new InputFile(listing.photoUrl()))
                                     .caption(trimCaption(caption))
-                                    .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
+                                    .replyMarkup(Keyboards.listingKeyboard(token, link, lang))
                                     .build()
                     );
 
@@ -115,7 +108,7 @@ public class NotificationService {
                     SendMessage.builder()
                             .chatId(chatId)
                             .text(caption)
-                            .replyMarkup(Keyboards.addToFavoritesKeyboard(token, lang))
+                            .replyMarkup(Keyboards.listingKeyboard(token, link, lang))
                             .build()
             );
 
@@ -168,6 +161,13 @@ public class NotificationService {
         log.setTelegramUserId(telegramUserId);
         log.setListingKey(key);
         sentLogRepo.save(log);
+    }
+
+    private String safeUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "https://t.me/zhytloCZ_bot";
+        }
+        return url;
     }
 
     private String nvl(String s) {
