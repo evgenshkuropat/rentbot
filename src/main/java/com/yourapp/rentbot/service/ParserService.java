@@ -134,7 +134,7 @@ public class ParserService {
             if (source.contains("sreality")) filteredBaseSreality++;
             else if (source.contains("idnes")) filteredBaseIdnes++;
             else if (source.contains("bezrealitky")) filteredBaseBezrealitky++;
-            else if (source.contains("bazos")) filteredBaseBazos++;
+            else if (source.contains("bazo")) filteredBaseBazos++;
         }
 
         List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
@@ -151,7 +151,7 @@ public class ParserService {
             if (source.contains("sreality")) finalSreality++;
             else if (source.contains("idnes")) finalIdnes++;
             else if (source.contains("bezrealitky")) finalBezrealitky++;
-            else if (source.contains("bazos")) finalBazos++;
+            else if (source.contains("bazo")) finalBazos++;
         }
 
         lastRunStats.set(new ParserRunStats(
@@ -490,7 +490,7 @@ public class ParserService {
         if (source.contains("bezrealitky")) score += 5;
         else if (source.contains("sreality")) score += 4;
         else if (source.contains("idnes")) score += 3;
-        else if (source.contains("bazos")) score += 2;
+        else if (source.contains("bazo")) score += 2;
 
         return score;
     }
