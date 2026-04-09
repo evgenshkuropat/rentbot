@@ -435,16 +435,6 @@ public class Keyboards {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "⭐ В избранное";
-                    case CZ -> "⭐ Do oblíbených";
-                    case EN -> "⭐ Add to favorites";
-                    default -> "⭐ В обране";
-                })
-                .callbackData("FAV:ADD:" + token)
-                .build());
-
-        row1.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
                     case RU -> "🔗 Открыть объявление";
                     case CZ -> "🔗 Otevřít inzerát";
                     case EN -> "🔗 Open listing";
@@ -456,12 +446,12 @@ public class Keyboards {
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "📤 Поделиться";
-                    case CZ -> "📤 Sdílet";
-                    case EN -> "📤 Share";
-                    default -> "📤 Поділитися";
+                    case RU -> "⭐ В избранное";
+                    case CZ -> "⭐ Do oblíbených";
+                    case EN -> "⭐ Add to favorites";
+                    default -> "⭐ В обране";
                 })
-                .url("https://t.me/share/url?url=" + link)
+                .callbackData("FAV:ADD:" + token)
                 .build());
 
         return InlineKeyboardMarkup.builder()
@@ -473,16 +463,6 @@ public class Keyboards {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "❌ Убрать из избранного";
-                    case CZ -> "❌ Odebrat z oblíbených";
-                    case EN -> "❌ Remove from favorites";
-                    default -> "❌ Прибрати з обраного";
-                })
-                .callbackData("FAV:REMOVE:" + key)
-                .build());
-
-        row1.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
                     case RU -> "🔗 Открыть объявление";
                     case CZ -> "🔗 Otevřít inzerát";
                     case EN -> "🔗 Open listing";
@@ -494,12 +474,12 @@ public class Keyboards {
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "📤 Поделиться";
-                    case CZ -> "📤 Sdílet";
-                    case EN -> "📤 Share";
-                    default -> "📤 Поділитися";
+                    case RU -> "❌ Убрать из избранного";
+                    case CZ -> "❌ Odebrat z oblíbených";
+                    case EN -> "❌ Remove from favorites";
+                    default -> "❌ Прибрати з обраного";
                 })
-                .url("https://t.me/share/url?url=" + link)
+                .callbackData("FAV:REMOVE:" + key)
                 .build());
 
         return InlineKeyboardMarkup.builder()
