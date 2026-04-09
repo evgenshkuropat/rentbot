@@ -770,10 +770,10 @@ Bazoš: %d
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
                         "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
-                        "🔗 " + msg(userId, "listing.link") + ": " + nvl(l.link());
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
 
         String tokenValue = listingCacheService.put(l);
+        String link = safeUrl(l.link());
 
         if (hasUsablePhotoUrl(l.photoUrl())) {
             try {
@@ -782,7 +782,7 @@ Bazoš: %d
                                 .chatId(chatId)
                                 .photo(new InputFile(l.photoUrl()))
                                 .caption(trimCaption(caption))
-                                .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue, lang))
+                                .replyMarkup(Keyboards.listingKeyboard(tokenValue, link, lang))
                                 .build()
                 );
                 return;
@@ -796,7 +796,7 @@ Bazoš: %d
                 SendMessage.builder()
                         .chatId(chatId)
                         .text(caption)
-                        .replyMarkup(Keyboards.addToFavoritesKeyboard(tokenValue, lang))
+                        .replyMarkup(Keyboards.listingKeyboard(tokenValue, link, lang))
                         .build()
         );
     }
@@ -808,11 +808,11 @@ Bazoš: %d
                 "🏠 " + nvl(fav.getTitle()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(fav.getSource()) + "\n" +
                         "💰 " + (fav.getPriceCzk() != null && fav.getPriceCzk() > 0 ? fav.getPriceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality()) + "\n" +
-                        "🔗 " + msg(userId, "listing.link") + ": " + nvl(fav.getLink());
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality());
 
         int key = fav.getLink().hashCode();
         favoriteLinkCache.put(key, fav.getLink());
+        String link = safeUrl(fav.getLink());
 
         if (hasUsablePhotoUrl(fav.getPhotoUrl())) {
             try {
@@ -821,7 +821,7 @@ Bazoš: %d
                                 .chatId(chatId)
                                 .photo(new InputFile(fav.getPhotoUrl()))
                                 .caption(trimCaption(caption))
-                                .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key), lang))
+                                .replyMarkup(Keyboards.favoriteKeyboard(String.valueOf(key), link, lang))
                                 .build()
                 );
                 return;
@@ -835,7 +835,7 @@ Bazoš: %d
                 SendMessage.builder()
                         .chatId(chatId)
                         .text(caption)
-                        .replyMarkup(Keyboards.removeFromFavoritesKeyboard(String.valueOf(key), lang))
+                        .replyMarkup(Keyboards.favoriteKeyboard(String.valueOf(key), link, lang))
                         .build()
         );
     }
@@ -880,5 +880,12 @@ Bazoš: %d
 
     private String nvl(String s) {
         return (s == null || s.isBlank()) ? "—" : s;
+    }
+
+    private String safeUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return "https://t.me/zhytloCZ_bot";
+        }
+        return url;
     }
 }
