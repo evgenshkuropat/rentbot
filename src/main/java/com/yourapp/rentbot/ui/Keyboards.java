@@ -243,13 +243,12 @@ public class Keyboards {
             case EN -> "⛔ Stop search";
             default -> "⛔ Зупинити пошук";
         });
-
         KeyboardRow row3 = new KeyboardRow();
         row3.add(switch (lang) {
-            case RU -> "📤 Поделиться ботом";
-            case CZ -> "📤 Sdílet bota";
-            case EN -> "📤 Share bot";
-            default -> "📤 Поширити бота";
+            case RU -> "🚗 Найти авто";
+            case CZ -> "🚗 Najít auto";
+            case EN -> "🚗 Find a car";
+            default -> "🚗 Знайти авто";
         });
         row3.add(switch (lang) {
             case RU -> "💙 Поддержать проект";
@@ -325,13 +324,14 @@ public class Keyboards {
         InlineKeyboardRow row4 = new InlineKeyboardRow();
         row4.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "📤 Поделиться ботом";
-                    case CZ -> "📤 Sdílet bota";
-                    case EN -> "📤 Share bot";
-                    default -> "📤 Поширити бота";
+                    case RU -> "🚗 Найти авто в ЧР";
+                    case CZ -> "🚗 Najít auto v ČR";
+                    case EN -> "🚗 Find a car in CZ";
+                    default -> "🚗 Знайти авто в ЧР";
                 })
-                .url("https://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿")
+                .url("https://t.me/CarRadarCZ_bot")
                 .build());
+
         row4.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "💙 Поддержать проект";
