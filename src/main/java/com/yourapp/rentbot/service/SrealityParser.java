@@ -28,18 +28,10 @@ public class SrealityParser {
 
     public List<ListingDto> fetchListings(Integer srealityRegionId) throws IOException {
         try {
-            int regionId = (srealityRegionId == null) ? 10 : srealityRegionId;
-
             List<ListingDto> result = new ArrayList<>();
 
             for (int page = 1; page <= 10; page++) {
-                String apiUrl =
-                        "https://www.sreality.cz/api/cs/v2/estates" +
-                                "?category_main_cb=1" +
-                                "&category_type_cb=2" +
-                                "&locality_region_id=" + regionId +
-                                "&per_page=20" +
-                                "&page=" + page;
+                String apiUrl = buildApiUrl(srealityRegionId, page);
 
                 System.out.println("SREALITY URL = " + apiUrl);
 
@@ -55,7 +47,9 @@ public class SrealityParser {
                 System.out.println("SREALITY STATUS = " + resp.statusCode());
 
                 if (resp.statusCode() != 200) {
+                    String body = resp.body() == null ? "" : resp.body();
                     System.out.println("SREALITY NON-200 RESPONSE, STOP PAGE = " + page);
+                    System.out.println("SREALITY BODY = " + body.substring(0, Math.min(300, body.length())));
                     break;
                 }
 
@@ -72,7 +66,7 @@ public class SrealityParser {
 
                 if (estates.isEmpty()) {
                     if (page == 1) {
-                        System.out.println("SREALITY first page empty for regionId = " + regionId);
+                        System.out.println("SREALITY first page empty, regionId = " + srealityRegionId);
                     }
                     break;
                 }
@@ -85,7 +79,7 @@ public class SrealityParser {
                     String photoUrl = extractPhotoUrl(estate);
                     String locality = estate.path("locality").asText("");
 
-                    if (link == null || link.isBlank()) {
+                    if (link == null || link.isBlank() || link.equals("https://www.sreality.cz")) {
                         continue;
                     }
 
@@ -107,6 +101,20 @@ public class SrealityParser {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while fetching Sreality", e);
         }
+    }
+
+    private String buildApiUrl(Integer srealityRegionId, int page) {
+        StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
+                .append("?category_main_cb=1")
+                .append("&category_type_cb=2")
+                .append("&per_page=20")
+                .append("&page=").append(page);
+
+        if (srealityRegionId != null) {
+            url.append("&locality_region_id=").append(srealityRegionId);
+        }
+
+        return url.toString();
     }
 
     private int extractPrice(JsonNode estate) {
@@ -143,28 +151,28 @@ public class SrealityParser {
     }
 
     private String buildLink(JsonNode estate) {
-        String hash = estate.path("hash_id").asText();
-        String locality = estate.path("seo").path("locality").asText();
+        String hash = estate.path("hash_id").asText("");
+        String locality = estate.path("seo").path("locality").asText("");
+        String categorySubCb = estate.path("seo").path("category_sub_cb").asText("");
 
-        String title = estate.path("name").asText("");
-        String layout = extractLayout(title);
-
-        if (hash == null || hash.isBlank()) {
-            return "https://www.sreality.cz";
+        if (hash.isBlank()) {
+            return null;
         }
 
-        if (locality == null || locality.isBlank()) {
-            return "https://www.sreality.cz/detail/pronajem/byt/" + hash;
+        if (!categorySubCb.isBlank() && !locality.isBlank()) {
+            return "https://www.sreality.cz/detail/pronajem/byt/"
+                    + categorySubCb + "/"
+                    + locality + "/"
+                    + hash;
         }
 
-        if (layout == null || layout.isBlank()) {
-            return "https://www.sreality.cz/detail/pronajem/byt/" + locality + "/" + hash;
+        if (!locality.isBlank()) {
+            return "https://www.sreality.cz/detail/pronajem/byt/"
+                    + locality + "/"
+                    + hash;
         }
 
-        return "https://www.sreality.cz/detail/pronajem/byt/"
-                + layout + "/"
-                + locality + "/"
-                + hash;
+        return "https://www.sreality.cz/detail/pronajem/byt/" + hash;
     }
 
     private String extractLayout(String title) {
@@ -188,21 +196,22 @@ public class SrealityParser {
 
             if (images.isArray() && !images.isEmpty()) {
                 JsonNode first = images.get(0);
-                String href = first.path("href").asText();
-                if (href != null && !href.isBlank()) {
+                String href = first.path("href").asText("");
+                if (!href.isBlank()) {
                     return href;
                 }
             }
         }
 
         JsonNode embedded = estate.path("_embedded");
+
         if (embedded.isObject()) {
             JsonNode images = embedded.path("images");
 
             if (images.isArray() && !images.isEmpty()) {
                 JsonNode first = images.get(0);
-                String href = first.path("href").asText();
-                if (href != null && !href.isBlank()) {
+                String href = first.path("href").asText("");
+                if (!href.isBlank()) {
                     return href;
                 }
             }
