@@ -134,17 +134,23 @@ public class ParserService {
             return List.of();
         }
 
+        Region region = filter.getRegion();
         RegionGroup regionGroup = filter.getRegionGroup();
 
+        String regionCode = region == null ? null : region.getCode();
         String needLayout = normalizeLayout(filter.getLayout());
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
-        System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
+        System.out.println("FILTER region = " + regionCode
+                + ", layout = " + needLayout
+                + ", maxPrice = " + maxPrice
+                + ", group = " + groupCode);
 
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
+                .filter(x -> matchesRegion(x.locality(), regionCode))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
@@ -217,6 +223,18 @@ public class ParserService {
         }
 
         return filtered;
+    }
+
+    private boolean matchesRegion(String locality, String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return true;
+        }
+
+        if ("PRAHA".equals(regionCode)) {
+            return isPrahaListing(locality);
+        }
+
+        return true;
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
@@ -318,14 +336,11 @@ public class ParserService {
                 || lower.contains("vysocany")
                 || lower.contains("troja")
                 || lower.contains("michle")
-                || lower.contains("braník")
                 || lower.contains("branik")
                 || lower.contains("modrany")
                 || lower.contains("krc")
                 || lower.contains("hlubocepy")
-                || lower.contains("bubeneč")
                 || lower.contains("bubenec")
-                || lower.contains("ruzyně")
                 || lower.contains("ruzyne")
                 || lower.contains("stresovice")
                 || lower.contains("vokovice")
@@ -340,7 +355,11 @@ public class ParserService {
                 || lower.contains("cerny most")
                 || lower.contains("hostavice")
                 || lower.contains("hostivar")
-                || lower.contains("mecholupy");
+                || lower.contains("mecholupy")
+                || lower.contains("podoli")
+                || lower.contains("zlicin")
+                || lower.contains("kunratice")
+                || lower.contains("dablice");
     }
 
     private int extractPrahaDistrict(String locality) {
@@ -372,10 +391,12 @@ public class ParserService {
         if (lower.contains("krc")) return 4;
         if (lower.contains("michle")) return 4;
         if (lower.contains("nusle")) return 4;
+        if (lower.contains("podoli")) return 4;
 
         if (lower.contains("smichov")) return 5;
         if (lower.contains("jinonice")) return 5;
         if (lower.contains("hlubocepy")) return 5;
+        if (lower.contains("zlicin")) return 5;
 
         if (lower.contains("dejvice")) return 6;
         if (lower.contains("bubenec")) return 6;
@@ -393,6 +414,7 @@ public class ParserService {
         if (lower.contains("bohnice")) return 8;
         if (lower.contains("cimice")) return 8;
         if (lower.contains("kobylisy")) return 8;
+        if (lower.contains("dablice")) return 8;
 
         if (lower.contains("vysocany")) return 9;
         if (lower.contains("letnany")) return 9;
@@ -417,6 +439,7 @@ public class ParserService {
         if (lower.contains("hostivar")) return 15;
         if (lower.contains("horni mecholupy")) return 15;
         if (lower.contains("dolni mecholupy")) return 15;
+        if (lower.contains("mecholupy")) return 15;
 
         return -1;
     }
