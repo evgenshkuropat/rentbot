@@ -7,6 +7,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import java.nio.charset.StandardCharsets;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,12 +42,17 @@ public class BazosParser {
 
             System.out.println("BAZOS URL = " + url);
 
-            Document doc = Jsoup.connect(url)
+            byte[] bytes = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0")
                     .timeout(15000)
-                    .get();
+                    .ignoreHttpErrors(true)
+                    .execute()
+                    .bodyAsBytes();
 
-            doc.outputSettings().charset("UTF-8");
+            Document doc = Jsoup.parse(
+                    new String(bytes, StandardCharsets.UTF_8),
+                    url
+            );
 
             Elements links = doc.select("a[href*='/inzerat/']");
 

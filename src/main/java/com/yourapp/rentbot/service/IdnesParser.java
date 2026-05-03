@@ -40,10 +40,17 @@ public class IdnesParser {
     public List<ListingDto> fetchListings(Region region, RegionGroup regionGroup) throws IOException {
         String url = buildSearchUrl(region, regionGroup);
 
-        Document doc = Jsoup.connect(url)
+        var response = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0")
                 .timeout(15000)
-                .get();
+                .ignoreHttpErrors(true)
+                .execute();
+
+        Document doc = Jsoup.parse(
+                response.bodyStream(),
+                "UTF-8",
+                url
+        );
 
         List<ListingDto> result = new ArrayList<>();
 

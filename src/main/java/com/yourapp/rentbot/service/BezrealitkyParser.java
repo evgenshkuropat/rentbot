@@ -8,6 +8,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -53,11 +54,18 @@ public class BezrealitkyParser {
                 String pageUrl = page == 1 ? baseSearchUrl : baseSearchUrl + "?page=" + page;
 
                 try {
-                    Document doc = Jsoup.connect(pageUrl)
+                    byte[] bytes = Jsoup.connect(pageUrl)
                             .userAgent("Mozilla/5.0")
                             .referrer("https://www.google.com/")
                             .timeout(TIMEOUT_MS)
-                            .get();
+                            .ignoreHttpErrors(true)
+                            .execute()
+                            .bodyAsBytes();
+
+                    Document doc = Jsoup.parse(
+                            new String(bytes, StandardCharsets.UTF_8),
+                            pageUrl
+                    );
 
                     List<ListingDto> pageListings = parsePage(doc, seenLinks);
 

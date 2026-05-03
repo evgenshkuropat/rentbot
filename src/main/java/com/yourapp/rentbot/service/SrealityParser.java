@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class SrealityParser {
@@ -42,18 +43,18 @@ public class SrealityParser {
                         .GET()
                         .build();
 
-                HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<byte[]> resp = http.send(req, HttpResponse.BodyHandlers.ofByteArray());
 
                 System.out.println("SREALITY STATUS = " + resp.statusCode());
 
                 if (resp.statusCode() != 200) {
-                    String body = resp.body() == null ? "" : resp.body();
+                    String body = resp.body() == null ? "" : new String(resp.body(), StandardCharsets.UTF_8);
                     System.out.println("SREALITY NON-200 RESPONSE, STOP PAGE = " + page);
                     System.out.println("SREALITY BODY = " + body.substring(0, Math.min(300, body.length())));
                     break;
                 }
 
-                String json = resp.body();
+                String json = new String(resp.body(), StandardCharsets.UTF_8);
                 JsonNode root = mapper.readTree(json);
                 JsonNode estates = root.path("_embedded").path("estates");
 
