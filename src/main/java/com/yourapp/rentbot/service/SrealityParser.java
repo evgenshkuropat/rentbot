@@ -186,6 +186,10 @@ public class SrealityParser {
                 || lower.contains("spolubydleni")
                 || lower.contains("samostatný pokoj")
                 || lower.contains("samostatny pokoj")
+                || lower.contains("pronájem pokoje")
+                || lower.contains("pronajem pokoje")
+                || lower.contains("pokoj k pronájmu")
+                || lower.contains("pokoj k pronajmu")
                 || lower.matches(".*\\bpokoj\\b.*")) {
             return "ROOM";
         }

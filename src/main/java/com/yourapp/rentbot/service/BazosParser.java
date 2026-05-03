@@ -35,71 +35,74 @@ public class BazosParser {
     };
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
-
-        String url = buildUrl(region);
-
-        Document doc = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0")
-                .timeout(15000)
-                .get();
-
-        doc.outputSettings().charset("UTF-8");
-
         List<ListingDto> result = new ArrayList<>();
 
-        Elements links = doc.select("a[href*='/inzerat/']");
+        for (String url : buildUrls(region)) {
+            Document doc = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0")
+                    .timeout(15000)
+                    .get();
 
-        for (Element linkEl : links) {
+            doc.outputSettings().charset("UTF-8");
 
-            String title = linkEl.text().trim();
+            Elements links = doc.select("a[href*='/inzerat/']");
 
-            if (title.isBlank()) {
-                continue;
+            for (Element linkEl : links) {
+                String title = linkEl.text().trim();
+
+                if (title.isBlank()) {
+                    continue;
+                }
+
+                Element container = findReasonableContainer(linkEl);
+
+                String containerText = container != null ? container.text() : "";
+                String fullText = title + "\n" + containerText;
+
+                String link = extractLink(linkEl);
+
+                if (link.isBlank()) {
+                    continue;
+                }
+
+                String layout = extractLayout(fullText);
+                int price = extractPrice(linkEl, container, fullText);
+
+                String locality = extractLocality(fullText);
+                if (locality.isBlank() && region != null && region.getTitle() != null) {
+                    locality = region.getTitle();
+                }
+
+                String photoUrl = extractPhoto(container);
+
+                result.add(new ListingDto(
+                        title,
+                        price,
+                        link,
+                        layout,
+                        locality,
+                        photoUrl,
+                        "Bazoš"
+                ));
             }
-
-            Element container = findReasonableContainer(linkEl);
-
-            String containerText = container != null ? container.text() : "";
-            String fullText = title + "\n" + containerText;
-
-            String link = extractLink(linkEl);
-
-            if (link.isBlank()) {
-                continue;
-            }
-
-            String layout = extractLayout(fullText);
-            int price = extractPrice(linkEl, container, fullText);
-
-            String locality = extractLocality(fullText);
-            if (locality.isBlank() && region != null && region.getTitle() != null) {
-                locality = region.getTitle();
-            }
-
-            String photoUrl = extractPhoto(container);
-
-            result.add(new ListingDto(
-                    title,
-                    price,
-                    link,
-                    layout,
-                    locality,
-                    photoUrl,
-                    "Bazoš"
-            ));
         }
 
         return dedupeByLink(result);
     }
 
-    private String buildUrl(Region region) {
+    private List<String> buildUrls(Region region) {
+        String flatUrl;
+        String roomUrl;
+
         if (region == null || region.getCode() == null) {
-            return BASE_URL + "/pronajmu/byt/";
+            flatUrl = BASE_URL + "/pronajmu/byt/";
+            roomUrl = BASE_URL + "/pronajmu/pokoj/";
+            return List.of(flatUrl, roomUrl);
         }
 
         String code = region.getCode().toUpperCase();
 
-        return switch (code) {
+        flatUrl = switch (code) {
             case "PRAHA" -> BASE_URL + "/pronajmu/byt/?hlokalita=10000&humkreis=25";
             case "BRNO" -> BASE_URL + "/pronajmu/byt/?hlokalita=60200&humkreis=20";
             case "OSTRAVA" -> BASE_URL + "/pronajmu/byt/?hlokalita=70030&humkreis=20";
@@ -111,6 +114,21 @@ public class BazosParser {
             case "KUTNA_HORA" -> BASE_URL + "/pronajmu/byt/?hlokalita=28401&humkreis=20";
             default -> BASE_URL + "/pronajmu/byt/";
         };
+
+        roomUrl = switch (code) {
+            case "PRAHA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=10000&humkreis=25";
+            case "BRNO" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=60200&humkreis=20";
+            case "OSTRAVA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=70030&humkreis=20";
+            case "PLZEN" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=30100&humkreis=20";
+            case "PARDUBICE" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=53002&humkreis=20";
+            case "OLOMOUC" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=77900&humkreis=20";
+            case "LIBEREC" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=46001&humkreis=20";
+            case "KOLIN" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=28002&humkreis=20";
+            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=28401&humkreis=20";
+            default -> BASE_URL + "/pronajmu/pokoj/";
+        };
+
+        return List.of(flatUrl, roomUrl);
     }
 
     private Element findReasonableContainer(Element linkEl) {

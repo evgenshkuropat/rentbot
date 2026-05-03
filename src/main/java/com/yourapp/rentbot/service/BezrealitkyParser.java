@@ -39,40 +39,44 @@ public class BezrealitkyParser {
             return List.of();
         }
 
-        String baseSearchUrl = BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug;
-
-        log.info("Bezrealitky URL = {}", baseSearchUrl);
+        List<String> searchUrls = List.of(
+                BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug,
+                BASE_URL + "/vypis/nabidka-pronajem/pokoj/" + regionSlug
+        );
 
         List<ListingDto> result = new ArrayList<>();
         Set<String> seenLinks = new HashSet<>();
 
-        for (int page = 1; page <= MAX_PAGES; page++) {
-            String pageUrl = page == 1 ? baseSearchUrl : baseSearchUrl + "?page=" + page;
+        for (String baseSearchUrl : searchUrls) {
+            log.info("Bezrealitky URL = {}", baseSearchUrl);
 
-            try {
-                Document doc = Jsoup.connect(pageUrl)
-                        .userAgent("Mozilla/5.0")
-                        .referrer("https://www.google.com/")
-                        .timeout(TIMEOUT_MS)
-                        .get();
+            for (int page = 1; page <= MAX_PAGES; page++) {
+                String pageUrl = page == 1 ? baseSearchUrl : baseSearchUrl + "?page=" + page;
 
-                List<ListingDto> pageListings = parsePage(doc, seenLinks);
+                try {
+                    Document doc = Jsoup.connect(pageUrl)
+                            .userAgent("Mozilla/5.0")
+                            .referrer("https://www.google.com/")
+                            .timeout(TIMEOUT_MS)
+                            .get();
 
-                log.info("Bezrealitky page {} parsed {} listings", pageUrl, pageListings.size());
+                    List<ListingDto> pageListings = parsePage(doc, seenLinks);
 
-                if (pageListings.isEmpty()) {
-                    log.info("Bezrealitky stopping pagination at page {} because no listings were found", pageUrl);
+                    log.info("Bezrealitky page {} parsed {} listings", pageUrl, pageListings.size());
+
+                    if (pageListings.isEmpty()) {
+                        break;
+                    }
+
+                    result.addAll(pageListings);
+
+                } catch (SocketTimeoutException e) {
+                    log.warn("Bezrealitky timeout for page {}", pageUrl, e);
+                    break;
+                } catch (Exception e) {
+                    log.warn("Bezrealitky parsing failed for page {}", pageUrl, e);
                     break;
                 }
-
-                result.addAll(pageListings);
-
-            } catch (SocketTimeoutException e) {
-                log.warn("Bezrealitky timeout for page {}", pageUrl, e);
-                break;
-            } catch (Exception e) {
-                log.warn("Bezrealitky parsing failed for page {}", pageUrl, e);
-                break;
             }
         }
 
@@ -227,7 +231,9 @@ public class BezrealitkyParser {
     private boolean isListingLink(String link) {
         return link.contains("/nemovitosti-byty-domy/")
                 || link.contains("/nemovitosti/")
-                || link.contains("/vypis/");
+                || link.contains("/vypis/")
+                || link.contains("/spolubydleni/")
+                || link.contains("/pokoje/");
     }
 
     private String toAbsoluteBezrealitkyUrl(String href) {
