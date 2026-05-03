@@ -76,6 +76,12 @@ public class BazosParser {
                     locality = region.getTitle();
                 }
 
+                if ("ROOM".equals(layout)) {
+                    System.out.println("BAZOS ROOM -> price=" + price
+                            + ", locality=" + locality
+                            + ", title=" + title);
+                }
+
                 String photoUrl = extractPhoto(container);
 
                 result.add(new ListingDto(
