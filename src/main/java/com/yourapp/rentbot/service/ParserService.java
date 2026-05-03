@@ -142,11 +142,6 @@ public class ParserService {
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
-        System.out.println("FILTER region = " + regionTitle
-                + ", layout = " + needLayout
-                + ", maxPrice = " + maxPrice
-                + ", group = " + groupCode);
-
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
@@ -213,14 +208,12 @@ public class ParserService {
                 previous.finalBazos() + finalBazos
         ));
 
-        System.out.println("FILTERED LISTINGS = " + filtered.size());
-
-        for (ListingDto x : filtered) {
-            System.out.println("FILTERED -> source=" + x.source()
-                    + ", price=" + x.priceCzk()
-                    + ", layout=" + x.layout()
-                    + ", locality=" + x.locality());
-        }
+        System.out.println("FILTER region=" + regionTitle
+                + ", layout=" + needLayout
+                + ", maxPrice=" + maxPrice
+                + ", group=" + groupCode
+                + ", base=" + filteredBase.size()
+                + ", final=" + filtered.size());
 
         return filtered;
     }
