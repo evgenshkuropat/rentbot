@@ -46,19 +46,28 @@ public class ParserService {
         this.userFilterRepo = userFilterRepo;
     }
 
+    /**
+     * Backward-compatible method for /test, MENU:NEW, CONFIRM:SUBSCRIBE.
+     * It still fetches parsers once for this single user.
+     */
     @Transactional(readOnly = true)
     public List<ListingDto> findNewListings(Long telegramUserId) throws IOException {
-
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
-        Region region = filter.getRegion();
-        RegionGroup regionGroup = filter.getRegionGroup();
+        List<ListingDto> all = fetchAllListingsOnce();
 
-        String needLayout = normalizeLayout(filter.getLayout());
-        Integer maxPrice = filter.getMaxPrice();
-        String groupCode = regionGroup == null ? null : regionGroup.getCode();
-        Integer srealityRegionId = region == null ? 10 : region.getSrealityRegionId();
+        return filterForUser(all, filter);
+    }
+
+    /**
+     * Correct method for SchedulerService.
+     * Fetches all parsers only once per scheduler tick.
+     */
+    public List<ListingDto> fetchAllListingsOnce() throws IOException {
+        Region defaultRegion = null;
+        RegionGroup defaultGroup = null;
+        Integer defaultSrealityRegionId = 10; // Praha
 
         List<ListingDto> all = new ArrayList<>();
 
@@ -68,7 +77,7 @@ public class ParserService {
         int bazosRaw = 0;
 
         try {
-            List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
+            List<ListingDto> sreality = srealityParser.fetchListings(defaultSrealityRegionId);
             srealityRaw = sreality.size();
             System.out.println("SREALITY LISTINGS = " + srealityRaw);
             all.addAll(sreality);
@@ -77,7 +86,7 @@ public class ParserService {
         }
 
         try {
-            List<ListingDto> idnes = idnesParser.fetchListings(region, regionGroup);
+            List<ListingDto> idnes = idnesParser.fetchListings(defaultRegion, defaultGroup);
             idnesRaw = idnes.size();
             System.out.println("IDNES LISTINGS = " + idnesRaw);
             all.addAll(idnes);
@@ -86,7 +95,7 @@ public class ParserService {
         }
 
         try {
-            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(region);
+            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(defaultRegion);
             bezrealitkyRaw = bezrealitky.size();
             System.out.println("BEZREALITKY LISTINGS = " + bezrealitkyRaw);
             all.addAll(bezrealitky);
@@ -95,7 +104,7 @@ public class ParserService {
         }
 
         try {
-            List<ListingDto> bazos = bazosParser.fetchListings(region);
+            List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
             bazosRaw = bazos.size();
             System.out.println("BAZOS LISTINGS = " + bazosRaw);
             all.addAll(bazos);
@@ -112,6 +121,36 @@ public class ParserService {
         System.out.println("AFTER DEDUPE BY SIGNATURE = " + afterDedupeBySignature);
 
         System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
+
+        lastRunStats.set(new ParserRunStats(
+                srealityRaw,
+                idnesRaw,
+                bezrealitkyRaw,
+                bazosRaw,
+                afterDedupeByLink,
+                afterDedupeBySignature,
+
+                0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0
+        ));
+
+        return all;
+    }
+
+    /**
+     * Filters already fetched listings for one specific user.
+     */
+    public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
+        if (all == null || all.isEmpty() || filter == null) {
+            return List.of();
+        }
+
+        RegionGroup regionGroup = filter.getRegionGroup();
+
+        String needLayout = normalizeLayout(filter.getLayout());
+        Integer maxPrice = filter.getMaxPrice();
+        String groupCode = regionGroup == null ? null : regionGroup.getCode();
+
         System.out.println("FILTER layout = " + needLayout + ", maxPrice = " + maxPrice + ", group = " + groupCode);
 
         List<ListingDto> filteredBase = all.stream()
@@ -131,6 +170,7 @@ public class ParserService {
 
         for (ListingDto x : filteredBase) {
             String source = x.source() == null ? "" : x.source().toLowerCase();
+
             if (source.contains("sreality")) filteredBaseSreality++;
             else if (source.contains("idnes")) filteredBaseIdnes++;
             else if (source.contains("bezrealitky")) filteredBaseBezrealitky++;
@@ -148,19 +188,22 @@ public class ParserService {
 
         for (ListingDto x : filtered) {
             String source = x.source() == null ? "" : x.source().toLowerCase();
+
             if (source.contains("sreality")) finalSreality++;
             else if (source.contains("idnes")) finalIdnes++;
             else if (source.contains("bezrealitky")) finalBezrealitky++;
             else if (source.contains("bazo")) finalBazos++;
         }
 
+        ParserRunStats previous = lastRunStats.get();
+
         lastRunStats.set(new ParserRunStats(
-                srealityRaw,
-                idnesRaw,
-                bezrealitkyRaw,
-                bazosRaw,
-                afterDedupeByLink,
-                afterDedupeBySignature,
+                previous.srealityRaw(),
+                previous.idnesRaw(),
+                previous.bezrealitkyRaw(),
+                previous.bazosRaw(),
+                previous.afterDedupeByLink(),
+                previous.afterDedupeBySignature(),
 
                 filteredBaseTotal,
                 filteredBaseSreality,
@@ -194,6 +237,7 @@ public class ParserService {
             if (dto == null || dto.link() == null || dto.link().isBlank()) {
                 continue;
             }
+
             map.putIfAbsent(dto.link(), dto);
         }
 
@@ -221,6 +265,7 @@ public class ParserService {
             String key = layout + "|" + price + "|" + addressCore;
 
             ListingDto existing = map.get(key);
+
             if (existing == null) {
                 map.put(key, dto);
             } else {
@@ -241,6 +286,7 @@ public class ParserService {
         }
 
         int district = extractPrahaDistrict(locality);
+
         if (district == -1) {
             return false;
         }
@@ -278,12 +324,10 @@ public class ParserService {
         if (lower.contains("jarov")) return 3;
 
         if (lower.contains("modřany")) return 4;
-        if (lower.contains("kamýk")) return 12;
         if (lower.contains("braník")) return 4;
         if (lower.contains("krč")) return 4;
         if (lower.contains("michle")) return 4;
         if (lower.contains("nusle")) return 4;
-        if (lower.contains("záběhlice")) return 10;
 
         if (lower.contains("smíchov")) return 5;
         if (lower.contains("jinonice")) return 5;
@@ -314,10 +358,12 @@ public class ParserService {
 
         if (lower.contains("vršovice")) return 10;
         if (lower.contains("strašnice")) return 10;
-        if (lower.contains("pitkovice")) return 10;
+        if (lower.contains("záběhlice")) return 10;
 
         if (lower.contains("chodov")) return 11;
         if (lower.contains("háje")) return 11;
+
+        if (lower.contains("kamýk")) return 12;
 
         if (lower.contains("stodůlky")) return 13;
 
@@ -355,7 +401,8 @@ public class ParserService {
             return normalizedListing.equals("3+kk") || normalizedListing.equals("3+1");
         }
 
-        if ("4+".equals(normalizedNeed)
+        if ("4".equals(normalizedNeed)
+                || "4+".equals(normalizedNeed)
                 || "4+kk".equals(normalizedNeed)
                 || "4+1".equals(normalizedNeed)) {
             return normalizedListing.startsWith("4+")
@@ -372,6 +419,7 @@ public class ParserService {
         if (s == null || s.isBlank()) {
             return null;
         }
+
         return s.toLowerCase().replaceAll("\\s+", "");
     }
 
@@ -423,7 +471,6 @@ public class ParserService {
                 .replaceAll("\\bkc\\b", " ")
                 .replaceAll("\\bmesic\\b", " ")
                 .replaceAll("\\bmesicne\\b", " ")
-                .replaceAll("\\bmesic\\b", " ")
                 .replaceAll("\\bpronajem\\b", " ")
                 .replaceAll("\\bnove\\b", " ")
                 .replaceAll("\\bnovy\\b", " ");
@@ -438,6 +485,7 @@ public class ParserService {
                 .trim();
 
         String street = extractStreetCore(normalized);
+
         if (street != null && !street.isBlank()) {
             return street;
         }
@@ -454,6 +502,7 @@ public class ParserService {
 
         if (parts.length > 0) {
             String first = parts[0].trim();
+
             if (!first.isBlank()) {
                 return first;
             }
@@ -519,11 +568,13 @@ public class ParserService {
             }
 
             String source = dto.source();
+
             if (source == null || source.isBlank()) {
                 source = "UNKNOWN";
             }
 
             int used = sourceCounts.getOrDefault(source, 0);
+
             if (used >= maxPerSource) {
                 continue;
             }

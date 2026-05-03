@@ -38,16 +38,42 @@ public class SchedulerService {
 
         log.info("Scheduler: checking {} users", users.size());
 
+        List<ListingDto> allListings;
+
+        try {
+            allListings = parserService.fetchAllListingsOnce();
+        } catch (Exception e) {
+            log.error("Scheduler: parser run failed", e);
+            return;
+        }
+
+        if (allListings == null || allListings.isEmpty()) {
+            log.info("Scheduler: no listings from parsers");
+            return;
+        }
+
+        log.info("Scheduler: fetched {} unique listings", allListings.size());
+
+        int usersProcessed = 0;
+        int usersWithMatches = 0;
+        int totalCandidates = 0;
+        int totalSendAttempts = 0;
+
         for (UserFilter user : users) {
             Long userId = user.getTelegramUserId();
 
             try {
-                List<ListingDto> listings = parserService.findNewListings(userId);
+                usersProcessed++;
+
+                List<ListingDto> listings = parserService.filterForUser(allListings, user);
 
                 if (listings == null || listings.isEmpty()) {
-                    log.debug("User {}: no new listings", userId);
+                    log.debug("User {}: no matching listings", userId);
                     continue;
                 }
+
+                usersWithMatches++;
+                totalCandidates += listings.size();
 
                 int processedCount = 0;
 
@@ -55,6 +81,7 @@ public class SchedulerService {
                     try {
                         notificationService.sendIfNotSent(user, listing);
                         processedCount++;
+                        totalSendAttempts++;
                     } catch (Exception e) {
                         log.error("Error sending listing to user {} link={}", userId, listing.link(), e);
                     }
@@ -66,5 +93,13 @@ public class SchedulerService {
                 log.error("Scheduler error for user {}", userId, e);
             }
         }
+
+        log.info(
+                "Scheduler finished: usersProcessed={}, usersWithMatches={}, totalCandidates={}, totalSendAttempts={}",
+                usersProcessed,
+                usersWithMatches,
+                totalCandidates,
+                totalSendAttempts
+        );
     }
 }
