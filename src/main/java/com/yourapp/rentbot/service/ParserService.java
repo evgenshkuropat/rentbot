@@ -379,7 +379,11 @@ public class ParserService {
 
         for (int i = 22; i >= 1; i--) {
             if (lower.matches(".*\\bpraha\\s+" + i + "\\b.*")
-                    || lower.matches(".*\\bpraha-" + i + "\\b.*")) {
+                    || lower.matches(".*\\bpraha\\s+" + i + "\\s.*")
+                    || lower.matches(".*\\bpraha-" + i + "\\b.*")
+                    || lower.matches(".*\\bpraha-" + i + "\\s.*")
+                    || lower.endsWith("praha " + i)
+                    || lower.endsWith("praha-" + i)) {
                 return i;
             }
         }
