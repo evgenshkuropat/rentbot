@@ -46,10 +46,6 @@ public class ParserService {
         this.userFilterRepo = userFilterRepo;
     }
 
-    /**
-     * Backward-compatible method for /test, MENU:NEW, CONFIRM:SUBSCRIBE.
-     * It still fetches parsers once for this single user.
-     */
     @Transactional(readOnly = true)
     public List<ListingDto> findNewListings(Long telegramUserId) throws IOException {
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
@@ -60,14 +56,10 @@ public class ParserService {
         return filterForUser(all, filter);
     }
 
-    /**
-     * Correct method for SchedulerService.
-     * Fetches all parsers only once per scheduler tick.
-     */
     public List<ListingDto> fetchAllListingsOnce() throws IOException {
         Region defaultRegion = null;
         RegionGroup defaultGroup = null;
-        Integer defaultSrealityRegionId = 10; // Praha
+        Integer defaultSrealityRegionId = 10;
 
         List<ListingDto> all = new ArrayList<>();
 
@@ -137,9 +129,6 @@ public class ParserService {
         return all;
     }
 
-    /**
-     * Filters already fetched listings for one specific user.
-     */
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
         if (all == null || all.isEmpty() || filter == null) {
             return List.of();
@@ -282,7 +271,11 @@ public class ParserService {
         }
 
         if ("PRAHA_ALL".equals(groupCode)) {
-            return true;
+            return isPrahaListing(locality);
+        }
+
+        if (groupCode.startsWith("PRAHA_") && !isPrahaListing(locality)) {
+            return false;
         }
 
         int district = extractPrahaDistrict(locality);
@@ -300,79 +293,130 @@ public class ParserService {
         };
     }
 
+    private boolean isPrahaListing(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return false;
+        }
+
+        String lower = normalizeLocality(locality);
+
+        return lower.contains("praha")
+                || lower.contains("zizkov")
+                || lower.contains("vinohrady")
+                || lower.contains("vrsovice")
+                || lower.contains("nusle")
+                || lower.contains("letnany")
+                || lower.contains("holesovice")
+                || lower.contains("smichov")
+                || lower.contains("chodov")
+                || lower.contains("stodulky")
+                || lower.contains("dejvice")
+                || lower.contains("karlin")
+                || lower.contains("liben")
+                || lower.contains("kobylisy")
+                || lower.contains("prosek")
+                || lower.contains("vysocany")
+                || lower.contains("troja")
+                || lower.contains("michle")
+                || lower.contains("braník")
+                || lower.contains("branik")
+                || lower.contains("modrany")
+                || lower.contains("krc")
+                || lower.contains("hlubocepy")
+                || lower.contains("bubeneč")
+                || lower.contains("bubenec")
+                || lower.contains("ruzyně")
+                || lower.contains("ruzyne")
+                || lower.contains("stresovice")
+                || lower.contains("vokovice")
+                || lower.contains("suchdol")
+                || lower.contains("brevnov")
+                || lower.contains("bohnice")
+                || lower.contains("cimice")
+                || lower.contains("hrdlorezy")
+                || lower.contains("strasnice")
+                || lower.contains("zabehlice")
+                || lower.contains("haje")
+                || lower.contains("cerny most")
+                || lower.contains("hostavice")
+                || lower.contains("hostivar")
+                || lower.contains("mecholupy");
+    }
+
     private int extractPrahaDistrict(String locality) {
         if (locality == null || locality.isBlank()) {
             return -1;
         }
 
-        String lower = locality.toLowerCase();
+        String lower = normalizeLocality(locality);
 
-        for (int i = 1; i <= 22; i++) {
-            if (lower.contains("praha " + i) || lower.contains("praha-" + i)) {
+        for (int i = 22; i >= 1; i--) {
+            if (lower.matches(".*\\bpraha\\s+" + i + "\\b.*")
+                    || lower.matches(".*\\bpraha-" + i + "\\b.*")) {
                 return i;
             }
         }
 
-        if (lower.contains("staré město")) return 1;
-        if (lower.contains("nové město")) return 1;
-        if (lower.contains("malá strana")) return 1;
+        if (lower.contains("stare mesto")) return 1;
+        if (lower.contains("nove mesto")) return 1;
+        if (lower.contains("mala strana")) return 1;
 
         if (lower.contains("vinohrady")) return 2;
-        if (lower.contains("vyšehrad")) return 2;
+        if (lower.contains("vysehrad")) return 2;
 
-        if (lower.contains("žižkov")) return 3;
+        if (lower.contains("zizkov")) return 3;
         if (lower.contains("jarov")) return 3;
 
-        if (lower.contains("modřany")) return 4;
-        if (lower.contains("braník")) return 4;
-        if (lower.contains("krč")) return 4;
+        if (lower.contains("modrany")) return 4;
+        if (lower.contains("branik")) return 4;
+        if (lower.contains("krc")) return 4;
         if (lower.contains("michle")) return 4;
         if (lower.contains("nusle")) return 4;
 
-        if (lower.contains("smíchov")) return 5;
+        if (lower.contains("smichov")) return 5;
         if (lower.contains("jinonice")) return 5;
-        if (lower.contains("hlubočepy")) return 5;
+        if (lower.contains("hlubocepy")) return 5;
 
         if (lower.contains("dejvice")) return 6;
-        if (lower.contains("bubeneč")) return 6;
-        if (lower.contains("ruzyně")) return 6;
-        if (lower.contains("střešovice")) return 6;
+        if (lower.contains("bubenec")) return 6;
+        if (lower.contains("ruzyne")) return 6;
+        if (lower.contains("stresovice")) return 6;
         if (lower.contains("vokovice")) return 6;
         if (lower.contains("suchdol")) return 6;
-        if (lower.contains("břevnov")) return 6;
+        if (lower.contains("brevnov")) return 6;
 
-        if (lower.contains("holešovice")) return 7;
+        if (lower.contains("holesovice")) return 7;
         if (lower.contains("troja")) return 7;
 
-        if (lower.contains("libeň")) return 8;
-        if (lower.contains("karlín")) return 8;
+        if (lower.contains("liben")) return 8;
+        if (lower.contains("karlin")) return 8;
         if (lower.contains("bohnice")) return 8;
-        if (lower.contains("čimice")) return 8;
+        if (lower.contains("cimice")) return 8;
         if (lower.contains("kobylisy")) return 8;
 
-        if (lower.contains("vysočany")) return 9;
-        if (lower.contains("letňany")) return 9;
+        if (lower.contains("vysocany")) return 9;
+        if (lower.contains("letnany")) return 9;
         if (lower.contains("prosek")) return 9;
-        if (lower.contains("hloubětín")) return 9;
-        if (lower.contains("hrdlořezy")) return 9;
+        if (lower.contains("hloubetin")) return 9;
+        if (lower.contains("hrdlorezy")) return 9;
 
-        if (lower.contains("vršovice")) return 10;
-        if (lower.contains("strašnice")) return 10;
-        if (lower.contains("záběhlice")) return 10;
+        if (lower.contains("vrsovice")) return 10;
+        if (lower.contains("strasnice")) return 10;
+        if (lower.contains("zabehlice")) return 10;
 
         if (lower.contains("chodov")) return 11;
-        if (lower.contains("háje")) return 11;
+        if (lower.contains("haje")) return 11;
 
-        if (lower.contains("kamýk")) return 12;
+        if (lower.contains("kamyk")) return 12;
 
-        if (lower.contains("stodůlky")) return 13;
+        if (lower.contains("stodulky")) return 13;
 
-        if (lower.contains("černý most")) return 14;
+        if (lower.contains("cerny most")) return 14;
         if (lower.contains("hostavice")) return 14;
 
-        if (lower.contains("hostivař")) return 15;
-        if (lower.contains("horní měcholupy")) return 15;
-        if (lower.contains("dolní měcholupy")) return 15;
+        if (lower.contains("hostivar")) return 15;
+        if (lower.contains("horni mecholupy")) return 15;
+        if (lower.contains("dolni mecholupy")) return 15;
 
         return -1;
     }
