@@ -205,7 +205,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 📄 Користувачів у paging: %d
 🧷 favoriteLinkCache: %d
 
-📡 Останній пошук користувача:
+📡 Останній запуск парсерів:
 Sreality raw: %d
 iDNES raw: %d
 Bezrealitky raw: %d
