@@ -171,7 +171,7 @@ public class ParserService {
                 .filter(x -> matchesRegion(x.locality(), regionTitle))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
-                .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
+                .sorted(Comparator.comparingInt(this::listingScore).reversed())
                 .toList();
 
         int filteredBaseTotal = filteredBase.size();
@@ -626,6 +626,58 @@ public class ParserService {
         }
 
         return result;
+    }
+
+    private int listingScore(ListingDto dto) {
+        if (dto == null) {
+            return 0;
+        }
+
+        int score = 0;
+
+        int price = dto.priceCzk();
+
+        // Цена: чем дешевле, тем выше
+        if (price > 0) {
+            if (price <= 12000) score += 60;
+            else if (price <= 15000) score += 50;
+            else if (price <= 18000) score += 40;
+            else if (price <= 20000) score += 30;
+            else if (price <= 25000) score += 20;
+            else if (price <= 30000) score += 10;
+        } else {
+            score -= 30;
+        }
+
+        // Фото
+        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) {
+            score += 15;
+        }
+
+        // Нормальная локация
+        if (dto.locality() != null && !dto.locality().isBlank() && dto.locality().length() <= 80) {
+            score += 10;
+        }
+
+        // Нормальный layout
+        if (dto.layout() != null && !dto.layout().isBlank()) {
+            score += 10;
+        }
+
+        // Приоритет источников
+        String source = dto.source() == null ? "" : dto.source().toLowerCase();
+
+        if (source.contains("bezrealitky")) {
+            score += 25;
+        } else if (source.contains("sreality")) {
+            score += 20;
+        } else if (source.contains("idnes")) {
+            score += 15;
+        } else if (source.contains("bazo")) {
+            score += 8;
+        }
+
+        return score;
     }
 
     public ParserRunStats getLastRunStats() {
