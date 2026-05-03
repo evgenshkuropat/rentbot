@@ -200,17 +200,17 @@ public class ParserService {
                 previous.afterDedupeByLink(),
                 previous.afterDedupeBySignature(),
 
-                filteredBaseTotal,
-                filteredBaseSreality,
-                filteredBaseIdnes,
-                filteredBaseBezrealitky,
-                filteredBaseBazos,
+                previous.filteredBaseTotal() + filteredBaseTotal,
+                previous.filteredBaseSreality() + filteredBaseSreality,
+                previous.filteredBaseIdnes() + filteredBaseIdnes,
+                previous.filteredBaseBezrealitky() + filteredBaseBezrealitky,
+                previous.filteredBaseBazos() + filteredBaseBazos,
 
-                finalFiltered,
-                finalSreality,
-                finalIdnes,
-                finalBezrealitky,
-                finalBazos
+                previous.finalFiltered() + finalFiltered,
+                previous.finalSreality() + finalSreality,
+                previous.finalIdnes() + finalIdnes,
+                previous.finalBezrealitky() + finalBezrealitky,
+                previous.finalBazos() + finalBazos
         ));
 
         System.out.println("FILTERED LISTINGS = " + filtered.size());
