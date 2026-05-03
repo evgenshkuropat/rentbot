@@ -105,7 +105,7 @@ public class BazosParser {
 
         if (region == null || region.getCode() == null) {
             flatUrl = BASE_URL + "/pronajmu/byt/";
-            roomUrl = BASE_URL + "/pronajmu/pokoj/";
+            roomUrl = BASE_URL + "/pronajmu/podnajem/";
             return List.of(flatUrl, roomUrl);
         }
 
