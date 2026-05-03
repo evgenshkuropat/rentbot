@@ -137,12 +137,12 @@ public class ParserService {
         Region region = filter.getRegion();
         RegionGroup regionGroup = filter.getRegionGroup();
 
-        String regionCode = region == null ? null : region.getCode();
+        String regionTitle = region == null ? null : region.getTitle();
         String needLayout = normalizeLayout(filter.getLayout());
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
-        System.out.println("FILTER region = " + regionCode
+        System.out.println("FILTER region = " + regionTitle
                 + ", layout = " + needLayout
                 + ", maxPrice = " + maxPrice
                 + ", group = " + groupCode);
@@ -150,7 +150,7 @@ public class ParserService {
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
-                .filter(x -> matchesRegion(x.locality(), regionCode))
+                .filter(x -> matchesRegion(x.locality(), regionTitle))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
                 .sorted(Comparator.comparingInt(x -> x.priceCzk() == 0 ? Integer.MAX_VALUE : x.priceCzk()))
@@ -225,27 +225,24 @@ public class ParserService {
         return filtered;
     }
 
-    private boolean matchesRegion(String locality, String regionCode) {
-        if (regionCode == null || regionCode.isBlank()) {
+    private boolean matchesRegion(String locality, String regionTitle) {
+
+        if (regionTitle == null || regionTitle.isBlank()) {
             return true;
         }
 
-        String lower = normalizeLocality(locality);
-
-        if (lower == null || lower.isBlank()) {
+        if (locality == null || locality.isBlank()) {
             return false;
         }
 
-        return switch (regionCode) {
-            case "PRAHA" -> isPrahaListing(locality);
-            case "PLZEN" -> lower.contains("plzen") || lower.contains("plzensky");
-            case "BRNO" -> lower.contains("brno") || lower.contains("jihomoravsky");
-            case "OSTRAVA" -> lower.contains("ostrava") || lower.contains("moravskoslezsky");
-            case "OLOMOUC" -> lower.contains("olomouc") || lower.contains("olomoucky");
-            case "PARDUBICE" -> lower.contains("pardubice") || lower.contains("pardubicky");
-            case "KARLOVY_VARY" -> lower.contains("karlovy vary") || lower.contains("karlovarsky");
-            default -> true;
-        };
+        String lowerLocality = normalizeLocality(locality);
+        String lowerRegion = normalizeLocality(regionTitle);
+
+        if (lowerRegion.equals("praha")) {
+            return isPrahaListing(locality);
+        }
+
+        return lowerLocality.contains(lowerRegion);
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
