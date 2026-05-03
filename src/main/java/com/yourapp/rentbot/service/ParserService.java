@@ -230,11 +230,22 @@ public class ParserService {
             return true;
         }
 
-        if ("PRAHA".equals(regionCode)) {
-            return isPrahaListing(locality);
+        String lower = normalizeLocality(locality);
+
+        if (lower == null || lower.isBlank()) {
+            return false;
         }
 
-        return true;
+        return switch (regionCode) {
+            case "PRAHA" -> isPrahaListing(locality);
+            case "PLZEN" -> lower.contains("plzen") || lower.contains("plzensky");
+            case "BRNO" -> lower.contains("brno") || lower.contains("jihomoravsky");
+            case "OSTRAVA" -> lower.contains("ostrava") || lower.contains("moravskoslezsky");
+            case "OLOMOUC" -> lower.contains("olomouc") || lower.contains("olomoucky");
+            case "PARDUBICE" -> lower.contains("pardubice") || lower.contains("pardubicky");
+            case "KARLOVY_VARY" -> lower.contains("karlovy vary") || lower.contains("karlovarsky");
+            default -> true;
+        };
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
