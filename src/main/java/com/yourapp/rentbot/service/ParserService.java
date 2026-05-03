@@ -20,6 +20,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class ParserService {
 
+    private static final long CACHE_TTL_MILLIS = 55_000;
+
+    private final Object fetchLock = new Object();
+    private volatile List<ListingDto> cachedListings = List.of();
+    private volatile long cachedAtMillis = 0;
+
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
     private final BezrealitkyParser bezrealitkyParser;
@@ -52,81 +58,98 @@ public class ParserService {
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
         List<ListingDto> all = fetchAllListingsOnce();
-
         return filterForUser(all, filter);
     }
 
     public List<ListingDto> fetchAllListingsOnce() throws IOException {
-        Region defaultRegion = null;
-        RegionGroup defaultGroup = null;
-        Integer defaultSrealityRegionId = 10;
+        long now = System.currentTimeMillis();
 
-        List<ListingDto> all = new ArrayList<>();
-
-        int srealityRaw = 0;
-        int idnesRaw = 0;
-        int bezrealitkyRaw = 0;
-        int bazosRaw = 0;
-
-        try {
-            List<ListingDto> sreality = srealityParser.fetchListings(defaultSrealityRegionId);
-            srealityRaw = sreality.size();
-            System.out.println("SREALITY LISTINGS = " + srealityRaw);
-            all.addAll(sreality);
-        } catch (Exception e) {
-            System.out.println("Sreality parser failed: " + e.getMessage());
+        if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
+            System.out.println("USING CACHED LISTINGS = " + cachedListings.size());
+            return cachedListings;
         }
 
-        try {
-            List<ListingDto> idnes = idnesParser.fetchListings(defaultRegion, defaultGroup);
-            idnesRaw = idnes.size();
-            System.out.println("IDNES LISTINGS = " + idnesRaw);
-            all.addAll(idnes);
-        } catch (Exception e) {
-            System.out.println("Idnes parser failed: " + e.getMessage());
+        synchronized (fetchLock) {
+            now = System.currentTimeMillis();
+
+            if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
+                System.out.println("USING CACHED LISTINGS = " + cachedListings.size());
+                return cachedListings;
+            }
+
+            Region defaultRegion = null;
+            RegionGroup defaultGroup = null;
+            Integer defaultSrealityRegionId = 10;
+
+            List<ListingDto> all = new ArrayList<>();
+
+            int srealityRaw = 0;
+            int idnesRaw = 0;
+            int bezrealitkyRaw = 0;
+            int bazosRaw = 0;
+
+            try {
+                List<ListingDto> sreality = srealityParser.fetchListings(defaultSrealityRegionId);
+                srealityRaw = sreality.size();
+                System.out.println("SREALITY LISTINGS = " + srealityRaw);
+                all.addAll(sreality);
+            } catch (Exception e) {
+                System.out.println("Sreality parser failed: " + e.getMessage());
+            }
+
+            try {
+                List<ListingDto> idnes = idnesParser.fetchListings(defaultRegion, defaultGroup);
+                idnesRaw = idnes.size();
+                System.out.println("IDNES LISTINGS = " + idnesRaw);
+                all.addAll(idnes);
+            } catch (Exception e) {
+                System.out.println("Idnes parser failed: " + e.getMessage());
+            }
+
+            try {
+                List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(defaultRegion);
+                bezrealitkyRaw = bezrealitky.size();
+                System.out.println("BEZREALITKY LISTINGS = " + bezrealitkyRaw);
+                all.addAll(bezrealitky);
+            } catch (Exception e) {
+                System.out.println("Bezrealitky parser failed: " + e.getMessage());
+            }
+
+            try {
+                List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
+                bazosRaw = bazos.size();
+                System.out.println("BAZOS LISTINGS = " + bazosRaw);
+                all.addAll(bazos);
+            } catch (Exception e) {
+                System.out.println("Bazos parser failed: " + e.getMessage());
+            }
+
+            all = dedupeByLink(all);
+            int afterDedupeByLink = all.size();
+            System.out.println("AFTER DEDUPE BY LINK = " + afterDedupeByLink);
+
+            all = dedupeBySignature(all);
+            int afterDedupeBySignature = all.size();
+            System.out.println("AFTER DEDUPE BY SIGNATURE = " + afterDedupeBySignature);
+
+            System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
+
+            lastRunStats.set(new ParserRunStats(
+                    srealityRaw,
+                    idnesRaw,
+                    bezrealitkyRaw,
+                    bazosRaw,
+                    afterDedupeByLink,
+                    afterDedupeBySignature,
+                    0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0
+            ));
+
+            cachedListings = all;
+            cachedAtMillis = System.currentTimeMillis();
+
+            return all;
         }
-
-        try {
-            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(defaultRegion);
-            bezrealitkyRaw = bezrealitky.size();
-            System.out.println("BEZREALITKY LISTINGS = " + bezrealitkyRaw);
-            all.addAll(bezrealitky);
-        } catch (Exception e) {
-            System.out.println("Bezrealitky parser failed: " + e.getMessage());
-        }
-
-        try {
-            List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
-            bazosRaw = bazos.size();
-            System.out.println("BAZOS LISTINGS = " + bazosRaw);
-            all.addAll(bazos);
-        } catch (Exception e) {
-            System.out.println("Bazos parser failed: " + e.getMessage());
-        }
-
-        all = dedupeByLink(all);
-        int afterDedupeByLink = all.size();
-        System.out.println("AFTER DEDUPE BY LINK = " + afterDedupeByLink);
-
-        all = dedupeBySignature(all);
-        int afterDedupeBySignature = all.size();
-        System.out.println("AFTER DEDUPE BY SIGNATURE = " + afterDedupeBySignature);
-
-        System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
-
-        lastRunStats.set(new ParserRunStats(
-                srealityRaw,
-                idnesRaw,
-                bezrealitkyRaw,
-                bazosRaw,
-                afterDedupeByLink,
-                afterDedupeBySignature,
-
-                0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0
-        ));
-
-        return all;
     }
 
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
@@ -219,14 +242,8 @@ public class ParserService {
     }
 
     private boolean matchesRegion(String locality, String regionTitle) {
-
-        if (regionTitle == null || regionTitle.isBlank()) {
-            return true;
-        }
-
-        if (locality == null || locality.isBlank()) {
-            return false;
-        }
+        if (regionTitle == null || regionTitle.isBlank()) return true;
+        if (locality == null || locality.isBlank()) return false;
 
         String lowerLocality = normalizeLocality(locality);
         String lowerRegion = normalizeLocality(regionTitle);
@@ -242,10 +259,7 @@ public class ParserService {
         Map<String, ListingDto> map = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
-            if (dto == null || dto.link() == null || dto.link().isBlank()) {
-                continue;
-            }
-
+            if (dto == null || dto.link() == null || dto.link().isBlank()) continue;
             map.putIfAbsent(dto.link(), dto);
         }
 
@@ -256,9 +270,7 @@ public class ParserService {
         Map<String, ListingDto> map = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
-            if (dto == null) {
-                continue;
-            }
+            if (dto == null) continue;
 
             String layout = normalizeLayout(dto.layout());
             int price = dto.priceCzk();
@@ -271,7 +283,6 @@ public class ParserService {
             }
 
             String key = layout + "|" + price + "|" + addressCore;
-
             ListingDto existing = map.get(key);
 
             if (existing == null) {
@@ -285,9 +296,7 @@ public class ParserService {
     }
 
     private boolean matchesRegionGroup(String locality, String groupCode) {
-        if (groupCode == null || groupCode.isBlank()) {
-            return true;
-        }
+        if (groupCode == null || groupCode.isBlank()) return true;
 
         if ("PRAHA_ALL".equals(groupCode)) {
             return isPrahaListing(locality);
@@ -299,9 +308,7 @@ public class ParserService {
 
         int district = extractPrahaDistrict(locality);
 
-        if (district == -1) {
-            return false;
-        }
+        if (district == -1) return false;
 
         return switch (groupCode) {
             case "PRAHA_1_3" -> district >= 1 && district <= 3;
@@ -313,9 +320,7 @@ public class ParserService {
     }
 
     private boolean isPrahaListing(String locality) {
-        if (locality == null || locality.isBlank()) {
-            return false;
-        }
+        if (locality == null || locality.isBlank()) return false;
 
         String lower = normalizeLocality(locality);
 
@@ -364,17 +369,13 @@ public class ParserService {
     }
 
     private int extractPrahaDistrict(String locality) {
-        if (locality == null || locality.isBlank()) {
-            return -1;
-        }
+        if (locality == null || locality.isBlank()) return -1;
 
         String lower = normalizeLocality(locality);
 
         for (int i = 22; i >= 1; i--) {
             if (lower.matches(".*\\bpraha\\s+" + i + "\\b.*")
-                    || lower.matches(".*\\bpraha\\s+" + i + "\\s.*")
                     || lower.matches(".*\\bpraha-" + i + "\\b.*")
-                    || lower.matches(".*\\bpraha-" + i + "\\s.*")
                     || lower.endsWith("praha " + i)
                     || lower.endsWith("praha-" + i)) {
                 return i;
@@ -384,25 +385,20 @@ public class ParserService {
         if (lower.contains("stare mesto")) return 1;
         if (lower.contains("nove mesto")) return 1;
         if (lower.contains("mala strana")) return 1;
-
         if (lower.contains("vinohrady")) return 2;
         if (lower.contains("vysehrad")) return 2;
-
         if (lower.contains("zizkov")) return 3;
         if (lower.contains("jarov")) return 3;
-
         if (lower.contains("modrany")) return 4;
         if (lower.contains("branik")) return 4;
         if (lower.contains("krc")) return 4;
         if (lower.contains("michle")) return 4;
         if (lower.contains("nusle")) return 4;
         if (lower.contains("podoli")) return 4;
-
         if (lower.contains("smichov")) return 5;
         if (lower.contains("jinonice")) return 5;
         if (lower.contains("hlubocepy")) return 5;
         if (lower.contains("zlicin")) return 5;
-
         if (lower.contains("dejvice")) return 6;
         if (lower.contains("bubenec")) return 6;
         if (lower.contains("ruzyne")) return 6;
@@ -410,37 +406,28 @@ public class ParserService {
         if (lower.contains("vokovice")) return 6;
         if (lower.contains("suchdol")) return 6;
         if (lower.contains("brevnov")) return 6;
-
         if (lower.contains("holesovice")) return 7;
         if (lower.contains("troja")) return 7;
-
         if (lower.contains("liben")) return 8;
         if (lower.contains("karlin")) return 8;
         if (lower.contains("bohnice")) return 8;
         if (lower.contains("cimice")) return 8;
         if (lower.contains("kobylisy")) return 8;
         if (lower.contains("dablice")) return 8;
-
         if (lower.contains("vysocany")) return 9;
         if (lower.contains("letnany")) return 9;
         if (lower.contains("prosek")) return 9;
         if (lower.contains("hloubetin")) return 9;
         if (lower.contains("hrdlorezy")) return 9;
-
         if (lower.contains("vrsovice")) return 10;
         if (lower.contains("strasnice")) return 10;
         if (lower.contains("zabehlice")) return 10;
-
         if (lower.contains("chodov")) return 11;
         if (lower.contains("haje")) return 11;
-
         if (lower.contains("kamyk")) return 12;
-
         if (lower.contains("stodulky")) return 13;
-
         if (lower.contains("cerny most")) return 14;
         if (lower.contains("hostavice")) return 14;
-
         if (lower.contains("hostivar")) return 15;
         if (lower.contains("horni mecholupy")) return 15;
         if (lower.contains("dolni mecholupy")) return 15;
@@ -450,20 +437,14 @@ public class ParserService {
     }
 
     private boolean layoutMatches(String needLayout, String listingLayout) {
-        if (needLayout == null) {
-            return true;
-        }
-
         String normalizedNeed = normalizeLayout(needLayout);
         String normalizedListing = normalizeLayout(listingLayout);
 
-        if (normalizedNeed == null || normalizedListing == null) {
-            return false;
-        }
+        if (normalizedNeed == null) return true;
+        if (normalizedListing == null) return false;
 
         if ("room".equals(normalizedNeed) || "pokoj".equals(normalizedNeed)) {
-            return normalizedListing.equals("room")
-                    || normalizedListing.equals("pokoj");
+            return normalizedListing.equals("room") || normalizedListing.equals("pokoj");
         }
 
         if ("1".equals(normalizedNeed) || "1+kk".equals(normalizedNeed) || "1+1".equals(normalizedNeed)) {
@@ -493,17 +474,19 @@ public class ParserService {
     }
 
     private String normalizeLayout(String s) {
-        if (s == null || s.isBlank()) {
-            return null;
+        if (s == null || s.isBlank()) return null;
+
+        String normalized = s.toLowerCase().replaceAll("\\s+", "");
+
+        if ("ROOM".equalsIgnoreCase(s) || "pokoj".equals(normalized)) {
+            return "room";
         }
 
-        return s.toLowerCase().replaceAll("\\s+", "");
+        return normalized;
     }
 
     private String normalizeLocality(String s) {
-        if (s == null || s.isBlank()) {
-            return null;
-        }
+        if (s == null || s.isBlank()) return null;
 
         return s.toLowerCase()
                 .replace('ě', 'e')
@@ -531,10 +514,7 @@ public class ParserService {
 
     private String extractAddressCore(ListingDto dto) {
         String raw = firstNonBlank(dto.locality(), dto.title(), dto.link());
-
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
+        if (raw == null || raw.isBlank()) return null;
 
         String normalized = normalizeLocality(raw);
 
@@ -571,18 +551,13 @@ public class ParserService {
     }
 
     private String extractStreetCore(String normalized) {
-        if (normalized == null || normalized.isBlank()) {
-            return null;
-        }
+        if (normalized == null || normalized.isBlank()) return null;
 
         String[] parts = normalized.split(",");
 
         if (parts.length > 0) {
             String first = parts[0].trim();
-
-            if (!first.isBlank()) {
-                return first;
-            }
+            if (!first.isBlank()) return first;
         }
 
         return normalized;
@@ -594,22 +569,11 @@ public class ParserService {
 
     private int scoreListing(ListingDto dto) {
         int score = 0;
+        if (dto == null) return score;
 
-        if (dto == null) {
-            return score;
-        }
-
-        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) {
-            score += 3;
-        }
-
-        if (dto.locality() != null && dto.locality().length() < 80) {
-            score += 2;
-        }
-
-        if (dto.link() != null && !dto.link().isBlank()) {
-            score += 1;
-        }
+        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) score += 3;
+        if (dto.locality() != null && dto.locality().length() < 80) score += 2;
+        if (dto.link() != null && !dto.link().isBlank()) score += 1;
 
         String source = dto.source() == null ? "" : dto.source().toLowerCase();
 
@@ -622,14 +586,10 @@ public class ParserService {
     }
 
     private String firstNonBlank(String... values) {
-        if (values == null) {
-            return null;
-        }
+        if (values == null) return null;
 
         for (String v : values) {
-            if (v != null && !v.isBlank()) {
-                return v;
-            }
+            if (v != null && !v.isBlank()) return v;
         }
 
         return null;
@@ -640,41 +600,28 @@ public class ParserService {
         List<ListingDto> result = new ArrayList<>();
 
         for (ListingDto dto : input) {
-            if (dto == null) {
-                continue;
-            }
+            if (dto == null) continue;
 
             String source = dto.source();
-
-            if (source == null || source.isBlank()) {
-                source = "UNKNOWN";
-            }
+            if (source == null || source.isBlank()) source = "UNKNOWN";
 
             int used = sourceCounts.getOrDefault(source, 0);
 
-            if (used >= maxPerSource) {
-                continue;
-            }
+            if (used >= maxPerSource) continue;
 
             result.add(dto);
             sourceCounts.put(source, used + 1);
 
-            if (result.size() >= totalLimit) {
-                break;
-            }
+            if (result.size() >= totalLimit) break;
         }
 
         if (result.size() < totalLimit) {
             for (ListingDto dto : input) {
-                if (dto == null || result.contains(dto)) {
-                    continue;
-                }
+                if (dto == null || result.contains(dto)) continue;
 
                 result.add(dto);
 
-                if (result.size() >= totalLimit) {
-                    break;
-                }
+                if (result.size() >= totalLimit) break;
             }
         }
 
