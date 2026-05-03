@@ -76,13 +76,19 @@ public class BazosParser {
                     locality = region.getTitle();
                 }
 
-                if ("ROOM".equals(layout)) {
-                    System.out.println("BAZOS ROOM -> price=" + price
-                            + ", locality=" + locality
-                            + ", title=" + title);
+                String photoUrl = extractPhoto(container);
+
+                if (price <= 0 || price > 60000) {
+                    continue;
                 }
 
-                String photoUrl = extractPhoto(container);
+                if (layout == null) {
+                    continue;
+                }
+
+                if (locality == null || locality.isBlank() || locality.length() > 80) {
+                    continue;
+                }
 
                 result.add(new ListingDto(
                         title,
@@ -236,33 +242,18 @@ public class BazosParser {
                 .replace("měsíčně", " Kč");
 
         Pattern strict = Pattern.compile(
-                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})\\s*(?:Kč|kc)",
+                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,5})\\s*(?:Kč|kc)",
                 Pattern.CASE_INSENSITIVE
         );
 
-        Matcher strictMatcher = strict.matcher(normalized);
-        while (strictMatcher.find()) {
-            String raw = strictMatcher.group(1).replaceAll("\\s+", "");
+        Matcher m = strict.matcher(normalized);
+        while (m.find()) {
+            String raw = m.group(1).replaceAll("\\s+", "");
             try {
                 int value = Integer.parseInt(raw);
-                if (value >= 3000 && value <= 200000) {
-                    return value;
-                }
-            } catch (NumberFormatException ignored) {
-            }
-        }
 
-        Pattern fallback = Pattern.compile(
-                "(\\d{1,3}(?:\\s\\d{3})+|\\d{4,6})",
-                Pattern.CASE_INSENSITIVE
-        );
-
-        Matcher fallbackMatcher = fallback.matcher(normalized);
-        while (fallbackMatcher.find()) {
-            String raw = fallbackMatcher.group(1).replaceAll("\\s+", "");
-            try {
-                int value = Integer.parseInt(raw);
-                if (value >= 3000 && value <= 200000) {
+                // аренда комнаты/квартиры, а не залог/продажа/телефон
+                if (value >= 3000 && value <= 60000) {
                     return value;
                 }
             } catch (NumberFormatException ignored) {
