@@ -38,6 +38,9 @@ public class BazosParser {
         List<ListingDto> result = new ArrayList<>();
 
         for (String url : buildUrls(region)) {
+
+            System.out.println("BAZOS URL = " + url);
+
             Document doc = Jsoup.connect(url)
                     .userAgent("Mozilla/5.0")
                     .timeout(15000)
