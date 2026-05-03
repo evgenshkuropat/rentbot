@@ -171,7 +171,7 @@ public class ParserService {
                 .filter(x -> matchesRegion(x.locality(), regionTitle))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
-                .sorted(Comparator.comparingInt(this::listingScore).reversed())
+                .sorted(Comparator.comparingInt((ListingDto x) -> listingScore(x, filter)).reversed())
                 .toList();
 
         // 🔍 DEBUG TOP-3 для конкретного фильтра
@@ -181,7 +181,7 @@ public class ParserService {
             System.out.println(
                     "TOP filter=" + regionTitle + "/" + needLayout + "/" + maxPrice + "/" + groupCode
                             + " rank=" + (i + 1)
-                            + " score=" + listingScore(dto)
+                            + " score=" + listingScore(dto, filter)
                             + " source=" + dto.source()
                             + " price=" + dto.priceCzk()
                             + " layout=" + dto.layout()
@@ -644,53 +644,54 @@ public class ParserService {
         return result;
     }
 
-    private int listingScore(ListingDto dto) {
+    private int listingScore(ListingDto dto, UserFilter filter) {
         if (dto == null) {
             return 0;
         }
 
         int score = 0;
-
         int price = dto.priceCzk();
 
-        // Цена: чем дешевле, тем выше
+        Integer maxPrice = filter == null ? null : filter.getMaxPrice();
+
+        // Насколько цена хороша относительно бюджета пользователя
         if (price > 0) {
-            if (price <= 12000) score += 60;
-            else if (price <= 15000) score += 50;
-            else if (price <= 18000) score += 40;
-            else if (price <= 20000) score += 30;
-            else if (price <= 25000) score += 20;
-            else if (price <= 30000) score += 10;
+            if (maxPrice != null && maxPrice > 0) {
+                double ratio = (double) price / maxPrice;
+
+                if (ratio <= 0.70) score += 60;
+                else if (ratio <= 0.80) score += 50;
+                else if (ratio <= 0.90) score += 40;
+                else if (ratio <= 1.00) score += 30;
+            } else {
+                if (price <= 12000) score += 60;
+                else if (price <= 15000) score += 50;
+                else if (price <= 18000) score += 40;
+                else if (price <= 20000) score += 30;
+                else if (price <= 25000) score += 20;
+                else if (price <= 30000) score += 10;
+            }
         } else {
             score -= 30;
         }
 
-        // Фото
-        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) {
-            score += 15;
-        }
+        if (dto.photoUrl() != null && !dto.photoUrl().isBlank()) score += 15;
+        if (dto.locality() != null && !dto.locality().isBlank() && dto.locality().length() <= 80) score += 10;
+        if (dto.layout() != null && !dto.layout().isBlank()) score += 10;
 
-        // Нормальная локация
-        if (dto.locality() != null && !dto.locality().isBlank() && dto.locality().length() <= 80) {
-            score += 10;
-        }
-
-        // Нормальный layout
-        if (dto.layout() != null && !dto.layout().isBlank()) {
-            score += 10;
-        }
-
-        // Приоритет источников
         String source = dto.source() == null ? "" : dto.source().toLowerCase();
 
-        if (source.contains("bezrealitky")) {
-            score += 25;
-        } else if (source.contains("sreality")) {
+        if (source.contains("bezrealitky")) score += 25;
+        else if (source.contains("sreality")) score += 20;
+        else if (source.contains("idnes")) score += 15;
+        else if (source.contains("bazo")) score += 8;
+
+        // Бонус, если объявление точно попало в выбранную группу Праги
+        RegionGroup group = filter == null ? null : filter.getRegionGroup();
+        String groupCode = group == null ? null : group.getCode();
+
+        if (groupCode != null && !groupCode.isBlank() && matchesRegionGroup(dto.locality(), groupCode)) {
             score += 20;
-        } else if (source.contains("idnes")) {
-            score += 15;
-        } else if (source.contains("bazo")) {
-            score += 8;
         }
 
         return score;
