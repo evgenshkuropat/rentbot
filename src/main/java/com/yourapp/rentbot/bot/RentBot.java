@@ -131,6 +131,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long layoutChosen = userFilterRepo.countByLayoutIsNotNull();
             long priceChosen = userFilterRepo.countByMaxPriceIsNotNull();
 
+            long layoutRoom = userFilterRepo.countByLayout("ROOM");
             long layout1 = userFilterRepo.countByLayout("1");
             long layout2 = userFilterRepo.countByLayout("2");
             long layout3 = userFilterRepo.countByLayout("3");
@@ -159,7 +160,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
             ParserRunStats runStats = parserService.getLastRunStats();
 
-
             java.time.Instant now = java.time.Instant.now();
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
@@ -181,6 +181,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 💰 Обрали max price: %d
 💵 Середній max price: %d Kč
 
+🚪 Кімната: %d
 🏠 1 кімната: %d
 🏠 2 кімнати: %d
 🏠 3 кімнати: %d
@@ -239,6 +240,7 @@ Bazoš: %d
                             layoutChosen,
                             priceChosen,
                             avgMaxPrice,
+                            layoutRoom,
                             layout1,
                             layout2,
                             layout3,

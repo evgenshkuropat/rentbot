@@ -83,6 +83,18 @@ public class Keyboards {
         rows.add(new InlineKeyboardRow(
                 InlineKeyboardButton.builder()
                         .text(switch (lang) {
+                            case RU -> "🚪 Комната";
+                            case CZ -> "🚪 Pokoj";
+                            case EN -> "🚪 Room";
+                            default -> "🚪 Кімната";
+                        })
+                        .callbackData("LAYOUT:ROOM")
+                        .build()
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                InlineKeyboardButton.builder()
+                        .text(switch (lang) {
                             case RU -> "1 комната";
                             case CZ -> "1 pokoj";
                             case EN -> "1 room";

@@ -148,6 +148,12 @@ public class FlowService {
         }
 
         return switch (layout) {
+            case "ROOM" -> switch (lang) {
+                case RU -> "Комната";
+                case CZ -> "Pokoj";
+                case EN -> "Room";
+                default -> "Кімната";
+            };
             case "1" -> switch (lang) {
                 case RU -> "1 комната";
                 case CZ -> "1 pokoj";

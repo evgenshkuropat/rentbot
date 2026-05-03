@@ -176,8 +176,18 @@ public class SrealityParser {
     }
 
     private String extractLayout(String title) {
-        if (title == null) {
+        if (title == null || title.isBlank()) {
             return null;
+        }
+
+        String lower = title.toLowerCase();
+
+        if (lower.contains("spolubydlení")
+                || lower.contains("spolubydleni")
+                || lower.contains("samostatný pokoj")
+                || lower.contains("samostatny pokoj")
+                || lower.matches(".*\\bpokoj\\b.*")) {
+            return "ROOM";
         }
 
         Matcher m = LAYOUT_PATTERN.matcher(title);

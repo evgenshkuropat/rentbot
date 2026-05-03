@@ -86,7 +86,15 @@ public class IdnesParser {
                 continue;
             }
 
-            if (!title.toLowerCase(Locale.ROOT).contains("byt")) {
+            String lowerTitle = title.toLowerCase(Locale.ROOT);
+            String lowerWholeText = wholeText.toLowerCase(Locale.ROOT);
+
+            boolean isRoom = lowerTitle.contains("pokoj")
+                    || lowerWholeText.contains("pokoj")
+                    || lowerWholeText.contains("spolubydlení")
+                    || lowerWholeText.contains("spolubydleni");
+
+            if (!lowerTitle.contains("byt") && !isRoom) {
                 continue;
             }
 
@@ -379,8 +387,22 @@ public class IdnesParser {
     }
 
     private String extractLayout(String text) {
-        if (text == null) {
+        if (text == null || text.isBlank()) {
             return null;
+        }
+
+        String lower = text.toLowerCase(Locale.ROOT);
+
+        if (lower.contains("spolubydlení")
+                || lower.contains("spolubydleni")
+                || lower.contains("samostatný pokoj")
+                || lower.contains("samostatny pokoj")
+                || lower.contains("pronájem pokoje")
+                || lower.contains("pronajem pokoje")
+                || lower.contains("pokoj k pronájmu")
+                || lower.contains("pokoj k pronajmu")
+                || lower.matches(".*\\bpokoj\\b.*")) {
+            return "ROOM";
         }
 
         Matcher m = LAYOUT_PATTERN.matcher(text);

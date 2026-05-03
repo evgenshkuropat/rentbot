@@ -457,8 +457,13 @@ public class ParserService {
         String normalizedNeed = normalizeLayout(needLayout);
         String normalizedListing = normalizeLayout(listingLayout);
 
-        if (normalizedListing == null) {
+        if (normalizedNeed == null || normalizedListing == null) {
             return false;
+        }
+
+        if ("room".equals(normalizedNeed) || "pokoj".equals(normalizedNeed)) {
+            return normalizedListing.equals("room")
+                    || normalizedListing.equals("pokoj");
         }
 
         if ("1".equals(normalizedNeed) || "1+kk".equals(normalizedNeed) || "1+1".equals(normalizedNeed)) {
