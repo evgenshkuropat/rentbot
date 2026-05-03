@@ -40,8 +40,7 @@ public class BezrealitkyParser {
         }
 
         List<String> searchUrls = List.of(
-                BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug,
-                BASE_URL + "/vypis/nabidka-pronajem/pokoj/" + regionSlug
+                BASE_URL + "/vypis/nabidka-pronajem/byt/" + regionSlug
         );
 
         List<ListingDto> result = new ArrayList<>();
