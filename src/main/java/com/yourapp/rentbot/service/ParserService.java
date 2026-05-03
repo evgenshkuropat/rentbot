@@ -192,6 +192,18 @@ public class ParserService {
 
         List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
 
+        for (int i = 0; i < Math.min(3, filtered.size()); i++) {
+            ListingDto x = filtered.get(i);
+
+            System.out.println("TOP " + (i + 1)
+                    + " score=" + listingScore(x)
+                    + ", source=" + x.source()
+                    + ", price=" + x.priceCzk()
+                    + ", layout=" + x.layout()
+                    + ", locality=" + x.locality()
+                    + ", title=" + x.title());
+        }
+
         int finalFiltered = filtered.size();
 
         int finalSreality = 0;
