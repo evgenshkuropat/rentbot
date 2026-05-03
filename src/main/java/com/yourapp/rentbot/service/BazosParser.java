@@ -119,16 +119,16 @@ public class BazosParser {
         };
 
         roomUrl = switch (code) {
-            case "PRAHA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=10000&humkreis=25";
-            case "BRNO" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=60200&humkreis=20";
-            case "OSTRAVA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=70030&humkreis=20";
-            case "PLZEN" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=30100&humkreis=20";
-            case "PARDUBICE" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=53002&humkreis=20";
-            case "OLOMOUC" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=77900&humkreis=20";
-            case "LIBEREC" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=46001&humkreis=20";
-            case "KOLIN" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=28002&humkreis=20";
-            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/pokoj/?hlokalita=28401&humkreis=20";
-            default -> BASE_URL + "/pronajmu/pokoj/";
+            case "PRAHA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=10000&humkreis=25";
+            case "BRNO" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=60200&humkreis=20";
+            case "OSTRAVA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=70030&humkreis=20";
+            case "PLZEN" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=30100&humkreis=20";
+            case "PARDUBICE" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=53002&humkreis=20";
+            case "OLOMOUC" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=77900&humkreis=20";
+            case "LIBEREC" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=46001&humkreis=20";
+            case "KOLIN" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28002&humkreis=20";
+            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28401&humkreis=20";
+            default -> BASE_URL + "/pronajmu/podnajem/";
         };
 
         return List.of(flatUrl, roomUrl);
