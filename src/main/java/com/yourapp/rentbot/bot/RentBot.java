@@ -293,6 +293,23 @@ Bazoš: %d
             return;
         }
 
+        if (text.equals("📦 Інші сервіси")
+                || text.equals("📦 Другие сервисы")
+                || text.equals("📦 Další služby")
+                || text.equals("📦 Other services")) {
+
+            send(chatId,
+                    switch (lang) {
+                        case RU -> "Другие полезные сервисы:";
+                        case CZ -> "Další užitečné služby:";
+                        case EN -> "Other useful services:";
+                        default -> "Інші корисні сервіси:";
+                    },
+                    Keyboards.servicesInlineKeyboard(lang));
+
+            return;
+        }
+
         if (text.equals(msg(userId, "menu.new.search"))) {
             flowService.reset(userId);
 
@@ -368,6 +385,37 @@ Bazoš: %d
             return;
         }
 
+        if (text.equals("🔍 Нові квартири")
+                || text.equals("🔍 Новые квартиры")
+                || text.equals("🔍 Nové byty")
+                || text.equals("🔍 New listings")) {
+            try {
+                List<ListingDto> listings = parserService.findNewListings(userId);
+
+                if (listings.isEmpty()) {
+                    send(chatId, msg(userId, "search.test.empty"), Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+
+                send(chatId,
+                        msg(userId, "search.found.prefix")
+                                + listings.size()
+                                + msg(userId, "search.found.middle")
+                                + Math.min(PAGE_SIZE, listings.size())
+                                + msg(userId, "search.found.suffix"),
+                        Keyboards.persistentNavKeyboard(lang));
+
+                startPagedSearch(chatId, userId, listings);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                send(chatId,
+                        msg(userId, "search.test.error.prefix") + e.getMessage(),
+                        Keyboards.persistentNavKeyboard(lang));
+            }
+            return;
+        }
+
         if (text.equalsIgnoreCase("/test")) {
             try {
                 List<ListingDto> listings = parserService.findNewListings(userId);
@@ -393,6 +441,27 @@ Bazoš: %d
                         msg(userId, "search.test.error.prefix") + e.getMessage(),
                         Keyboards.persistentNavKeyboard(lang));
             }
+            return;
+        }
+
+        if (text.equals("🚗 Пошук авто")
+                || text.equals("🚗 Поиск авто")
+                || text.equals("🚗 Hledání auta")
+                || text.equals("🚗 Car search")) {
+
+            send(chatId,
+                    "👉 https://t.me/CarRadarCZ_bot",
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.equals("⬅️ Назад")
+                || text.equals("⬅️ Zpět")
+                || text.equals("⬅️ Back")) {
+
+            send(chatId,
+                    msg(userId, "menu.title"),
+                    Keyboards.persistentNavKeyboard(lang));
             return;
         }
 

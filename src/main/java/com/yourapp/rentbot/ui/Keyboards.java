@@ -38,25 +38,27 @@ public class Keyboards {
 
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
-        for (Region r : sorted) {
-            rows.add(new InlineKeyboardRow(
-                    InlineKeyboardButton.builder()
-                            .text(r.getTitle())
-                            .callbackData("REGION:" + r.getCode())
-                            .build()
-            ));
+        for (int i = 0; i < sorted.size(); i += 2) {
+            InlineKeyboardRow row = new InlineKeyboardRow();
+
+            Region first = sorted.get(i);
+            row.add(button(first.getTitle(), "REGION:" + first.getCode()));
+
+            if (i + 1 < sorted.size()) {
+                Region second = sorted.get(i + 1);
+                row.add(button(second.getTitle(), "REGION:" + second.getCode()));
+            }
+
+            rows.add(row);
         }
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "📍 Другие города";
-                            case CZ -> "📍 Další města";
-                            case EN -> "📍 Other cities";
-                            default -> "📍 Інші міста";
-                        })
-                        .callbackData("REGION:OTHER")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "📍 Другие города";
+                    case CZ -> "📍 Další města";
+                    case EN -> "📍 Other cities";
+                    default -> "📍 Інші міста";
+                }, "REGION:OTHER")
         ));
 
         return InlineKeyboardMarkup.builder()
@@ -124,58 +126,37 @@ public class Keyboards {
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "🚪 Комната / подселение";
-                            case CZ -> "🚪 Pokoj / spolubydlení";
-                            case EN -> "🚪 Room / shared housing";
-                            default -> "🚪 Кімната / співжитло";
-                        })
-                        .callbackData("LAYOUT:ROOM")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "🚪 Комната / подселение";
+                    case CZ -> "🚪 Pokoj / spolubydlení";
+                    case EN -> "🚪 Room / shared housing";
+                    default -> "🚪 Кімната / співжитло";
+                }, "LAYOUT:ROOM")
         ));
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "1 комната";
-                            case CZ -> "1 pokoj";
-                            case EN -> "1 room";
-                            default -> "1 кімната";
-                        })
-                        .callbackData("LAYOUT:1")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "🏠 1 комната";
+                    case CZ -> "🏠 1 pokoj";
+                    case EN -> "🏠 1 room";
+                    default -> "🏠 1 кімната";
+                }, "LAYOUT:1"),
+                button(switch (lang) {
+                    case RU -> "🏠 2 комнаты";
+                    case CZ -> "🏠 2 pokoje";
+                    case EN -> "🏠 2 rooms";
+                    default -> "🏠 2 кімнати";
+                }, "LAYOUT:2")
         ));
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "2 комнаты";
-                            case CZ -> "2 pokoje";
-                            case EN -> "2 rooms";
-                            default -> "2 кімнати";
-                        })
-                        .callbackData("LAYOUT:2")
-                        .build()
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "3 комнаты";
-                            case CZ -> "3 pokoje";
-                            case EN -> "3 rooms";
-                            default -> "3 кімнати";
-                        })
-                        .callbackData("LAYOUT:3")
-                        .build()
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text("4+")
-                        .callbackData("LAYOUT:4")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "🏠 3 комнаты";
+                    case CZ -> "🏠 3 pokoje";
+                    case EN -> "🏠 3 rooms";
+                    default -> "🏠 3 кімнати";
+                }, "LAYOUT:3"),
+                button("🏠 4+", "LAYOUT:4")
         ));
 
         return InlineKeyboardMarkup.builder()
@@ -187,26 +168,26 @@ public class Keyboards {
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
         rows.add(new InlineKeyboardRow(
-                button("15000", "PRICE:15000"),
-                button("18000", "PRICE:18000")
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                button("20000", "PRICE:20000"),
-                button("25000", "PRICE:25000")
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                button("30000", "PRICE:30000")
-        ));
-
-        rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
                     case RU -> "Без лимита";
                     case CZ -> "Bez limitu";
                     case EN -> "No limit";
                     default -> "Без ліміту";
                 }, "PRICE:0")
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                button("15 000 Kč", "PRICE:15000"),
+                button("18 000 Kč", "PRICE:18000")
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                button("20 000 Kč", "PRICE:20000"),
+                button("25 000 Kč", "PRICE:25000")
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                button("30 000 Kč", "PRICE:30000")
         ));
 
         return InlineKeyboardMarkup.builder()
@@ -218,51 +199,36 @@ public class Keyboards {
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "✅ Подписаться";
-                            case CZ -> "✅ Odebírat";
-                            case EN -> "✅ Subscribe";
-                            default -> "✅ Підписатися";
-                        })
-                        .callbackData("CONFIRM:SUBSCRIBE")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "✅ Подписаться";
+                    case CZ -> "✅ Odebírat";
+                    case EN -> "✅ Subscribe";
+                    default -> "✅ Підписатися";
+                }, "CONFIRM:SUBSCRIBE")
         ));
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "⛔ Остановить";
-                            case CZ -> "⛔ Zastavit";
-                            case EN -> "⛔ Stop";
-                            default -> "⛔ Зупинити";
-                        })
-                        .callbackData("CONFIRM:STOP")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "📋 Мой фильтр";
+                    case CZ -> "📋 Můj filtr";
+                    case EN -> "📋 My filter";
+                    default -> "📋 Мій фільтр";
+                }, "CONFIRM:SHOW"),
+                button(switch (lang) {
+                    case RU -> "🔄 Изменить";
+                    case CZ -> "🔄 Změnit";
+                    case EN -> "🔄 Change";
+                    default -> "🔄 Змінити";
+                }, "CONFIRM:RESET")
         ));
 
         rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "🔄 Изменить фильтр";
-                            case CZ -> "🔄 Změnit filtr";
-                            case EN -> "🔄 Change filter";
-                            default -> "🔄 Змінити фільтр";
-                        })
-                        .callbackData("CONFIRM:RESET")
-                        .build()
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                InlineKeyboardButton.builder()
-                        .text(switch (lang) {
-                            case RU -> "📋 Мой фильтр";
-                            case CZ -> "📋 Můj filtr";
-                            case EN -> "📋 My filter";
-                            default -> "📋 Мій фільтр";
-                        })
-                        .callbackData("CONFIRM:SHOW")
-                        .build()
+                button(switch (lang) {
+                    case RU -> "⛔ Остановить";
+                    case CZ -> "⛔ Zastavit";
+                    case EN -> "⛔ Stop";
+                    default -> "⛔ Зупинити";
+                }, "CONFIRM:STOP")
         ));
 
         return InlineKeyboardMarkup.builder()
@@ -287,37 +253,44 @@ public class Keyboards {
 
         KeyboardRow row2 = new KeyboardRow();
         row2.add(switch (lang) {
+            case RU -> "🔍 Новые квартиры";
+            case CZ -> "🔍 Nové byty";
+            case EN -> "🔍 New listings";
+            default -> "🔍 Нові квартири";
+        });
+        row2.add(switch (lang) {
             case RU -> "⭐ Избранное";
             case CZ -> "⭐ Oblíbené";
             case EN -> "⭐ Favorites";
             default -> "⭐ Обране";
         });
-        row2.add(switch (lang) {
-            case RU -> "⛔ Остановить поиск";
-            case CZ -> "⛔ Zastavit hledání";
-            case EN -> "⛔ Stop search";
-            default -> "⛔ Зупинити пошук";
-        });
+
         KeyboardRow row3 = new KeyboardRow();
         row3.add(switch (lang) {
-            case RU -> "🚗 Найти авто";
-            case CZ -> "🚗 Najít auto";
-            case EN -> "🚗 Find a car";
-            default -> "🚗 Знайти авто";
+            case RU -> "🌐 Язык / Language";
+            case CZ -> "🌐 Jazyk / Language";
+            case EN -> "🌐 Language";
+            default -> "🌐 Мова / Language";
         });
         row3.add(switch (lang) {
+            case RU -> "📦 Другие сервисы";
+            case CZ -> "📦 Další služby";
+            case EN -> "📦 Other services";
+            default -> "📦 Інші сервіси";
+        });
+
+        KeyboardRow row4 = new KeyboardRow();
+        row4.add(switch (lang) {
             case RU -> "💙 Поддержать проект";
             case CZ -> "💙 Podpořit projekt";
             case EN -> "💙 Support project";
             default -> "💙 Підтримати проєкт";
         });
-
-        KeyboardRow row4 = new KeyboardRow();
         row4.add(switch (lang) {
-            case RU -> "🌐 Язык / Language";
-            case CZ -> "🌐 Jazyk / Language";
-            case EN -> "🌐 Language";
-            default -> "🌐 Мова / Language";
+            case RU -> "⛔ Остановить поиск";
+            case CZ -> "⛔ Zastavit hledání";
+            case EN -> "⛔ Stop search";
+            default -> "⛔ Зупинити пошук";
         });
 
         List<KeyboardRow> keyboard = new ArrayList<>();
@@ -335,61 +308,42 @@ public class Keyboards {
 
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
-        row1.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "🔍 Новые квартиры";
-                    case CZ -> "🔍 Nové byty";
-                    case EN -> "🔍 New listings";
-                    default -> "🔍 Нові квартири";
-                })
-                .callbackData("MENU:NEW")
-                .build());
-        row1.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "📋 Мой фильтр";
-                    case CZ -> "📋 Můj filtr";
-                    case EN -> "📋 My filter";
-                    default -> "📋 Мій фільтр";
-                })
-                .callbackData("MENU:FILTER")
-                .build());
+        row1.add(button(switch (lang) {
+            case RU -> "🔍 Новые квартиры";
+            case CZ -> "🔍 Nové byty";
+            case EN -> "🔍 New listings";
+            default -> "🔍 Нові квартири";
+        }, "MENU:NEW"));
+
+        row1.add(button(switch (lang) {
+            case RU -> "📋 Мой фильтр";
+            case CZ -> "📋 Můj filtr";
+            case EN -> "📋 My filter";
+            default -> "📋 Мій фільтр";
+        }, "MENU:FILTER"));
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
-        row2.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "⭐ Избранное";
-                    case CZ -> "⭐ Oblíbené";
-                    case EN -> "⭐ Favorites";
-                    default -> "⭐ Обране";
-                })
-                .callbackData("MENU:FAVORITES")
-                .build());
-        row2.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "⛔ Остановить";
-                    case CZ -> "⛔ Zastavit";
-                    case EN -> "⛔ Stop";
-                    default -> "⛔ Зупинити";
-                })
-                .callbackData("MENU:STOP")
-                .build());
+        row2.add(button(switch (lang) {
+            case RU -> "⭐ Избранное";
+            case CZ -> "⭐ Oblíbené";
+            case EN -> "⭐ Favorites";
+            default -> "⭐ Обране";
+        }, "MENU:FAVORITES"));
+
+        row2.add(button(switch (lang) {
+            case RU -> "⛔ Остановить";
+            case CZ -> "⛔ Zastavit";
+            case EN -> "⛔ Stop";
+            default -> "⛔ Зупинити";
+        }, "MENU:STOP"));
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
         row3.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "🚗 Найти авто";
-                    case CZ -> "🚗 Najít auto";
-                    case EN -> "🚗 Find a car";
-                    default -> "🚗 Знайти авто";
-                })
-                .url("https://t.me/CarRadarCZ_bot")
-                .build());
-        row3.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "💙 Поддержать";
-                    case CZ -> "💙 Podpořit";
-                    case EN -> "💙 Support";
-                    default -> "💙 Підтримати";
+                    case RU -> "💙 Поддержать проект";
+                    case CZ -> "💙 Podpořit projekt";
+                    case EN -> "💙 Support project";
+                    default -> "💙 Підтримати проєкт";
                 })
                 .url("https://revolut.me/evzen13")
                 .build());
@@ -483,6 +437,30 @@ public class Keyboards {
                 .build();
     }
 
+    public static ReplyKeyboardMarkup servicesKeyboard(Language lang) {
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(switch (lang) {
+            case RU -> "🚗 Поиск авто";
+            case CZ -> "🚗 Hledání auta";
+            case EN -> "🚗 Car search";
+            default -> "🚗 Пошук авто";
+        });
+
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add(switch (lang) {
+            case RU -> "⬅️ Назад";
+            case CZ -> "⬅️ Zpět";
+            case EN -> "⬅️ Back";
+            default -> "⬅️ Назад";
+        });
+
+        return ReplyKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
+                .resizeKeyboard(true)
+                .isPersistent(true)
+                .build();
+    }
+
     public static InlineKeyboardMarkup listingKeyboard(String token, String link, Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
@@ -536,6 +514,23 @@ public class Keyboards {
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row1, row2))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup servicesInlineKeyboard(Language lang) {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "🚗 Поиск авто";
+                    case CZ -> "🚗 Hledání auta";
+                    case EN -> "🚗 Car search";
+                    default -> "🚗 Пошук авто";
+                })
+                .url("https://t.me/CarRadarCZ_bot")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1))
                 .build();
     }
 }
