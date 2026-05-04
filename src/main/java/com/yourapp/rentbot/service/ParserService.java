@@ -235,13 +235,6 @@ public class ParserService {
             return filtered;
         }
 
-        System.out.println("FILTER MATCH region=" + regionTitle
-                + ", layout=" + needLayout
-                + ", maxPrice=" + maxPrice
-                + ", group=" + groupCode
-                + ", base=" + filteredBase.size()
-                + ", final=" + filtered.size());
-
         return filtered;
     }
 
