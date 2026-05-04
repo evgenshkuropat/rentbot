@@ -3,6 +3,8 @@ package com.yourapp.rentbot.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yourapp.rentbot.service.dto.ListingDto;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -10,34 +12,46 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.nio.charset.StandardCharsets;
 
 @Service
 public class SrealityParser {
 
+    private static final Logger log = LoggerFactory.getLogger(SrealityParser.class);
+
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
-    private final HttpClient http = HttpClient.newHttpClient();
+    private final HttpClient http = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(15))
+            .build();
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     public List<ListingDto> fetchListings(Integer srealityRegionId) throws IOException {
+        String runId = UUID.randomUUID().toString().substring(0, 8);
+
         try {
             List<ListingDto> result = new ArrayList<>();
+
+            log.info("Sreality run={} started, regionId={}", runId, srealityRegionId);
 
             for (int page = 1; page <= 10; page++) {
                 String apiUrl = buildApiUrl(srealityRegionId, page);
 
-                System.out.println("SREALITY URL = " + apiUrl);
+                log.debug("Sreality run={} page={} url={}", runId, page, apiUrl);
 
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(apiUrl))
+                        .timeout(Duration.ofSeconds(20))
                         .header("User-Agent", "Mozilla/5.0")
                         .header("Accept", "application/json")
                         .GET()
@@ -45,12 +59,19 @@ public class SrealityParser {
 
                 HttpResponse<byte[]> resp = http.send(req, HttpResponse.BodyHandlers.ofByteArray());
 
-                System.out.println("SREALITY STATUS = " + resp.statusCode());
+                int status = resp.statusCode();
 
-                if (resp.statusCode() != 200) {
+                if (status != 200) {
                     String body = resp.body() == null ? "" : new String(resp.body(), StandardCharsets.UTF_8);
-                    System.out.println("SREALITY NON-200 RESPONSE, STOP PAGE = " + page);
-                    System.out.println("SREALITY BODY = " + body.substring(0, Math.min(300, body.length())));
+
+                    log.warn(
+                            "Sreality run={} page={} non-200 status={}, body={}",
+                            runId,
+                            page,
+                            status,
+                            body.substring(0, Math.min(300, body.length()))
+                    );
+
                     break;
                 }
 
@@ -59,15 +80,15 @@ public class SrealityParser {
                 JsonNode estates = root.path("_embedded").path("estates");
 
                 if (!estates.isArray()) {
-                    System.out.println("SREALITY page " + page + " has no estates array");
+                    log.warn("Sreality run={} page={} has no estates array", runId, page);
                     break;
                 }
 
-                System.out.println("SREALITY page " + page + " parsed " + estates.size() + " listings");
+                log.info("Sreality run={} page={} parsed={} listings", runId, page, estates.size());
 
                 if (estates.isEmpty()) {
                     if (page == 1) {
-                        System.out.println("SREALITY first page empty, regionId = " + srealityRegionId);
+                        log.warn("Sreality run={} first page empty, regionId={}", runId, srealityRegionId);
                     }
                     break;
                 }
@@ -96,7 +117,11 @@ public class SrealityParser {
                 }
             }
 
-            return dedupeByLink(result);
+            List<ListingDto> deduped = dedupeByLink(result);
+
+            log.info("Sreality run={} finished, raw={}, deduped={}", runId, result.size(), deduped.size());
+
+            return deduped;
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -145,6 +170,7 @@ public class SrealityParser {
             if (dto == null || dto.link() == null || dto.link().isBlank()) {
                 continue;
             }
+
             map.putIfAbsent(dto.link(), dto);
         }
 
@@ -212,6 +238,7 @@ public class SrealityParser {
             if (images.isArray() && !images.isEmpty()) {
                 JsonNode first = images.get(0);
                 String href = first.path("href").asText("");
+
                 if (!href.isBlank()) {
                     return href;
                 }
@@ -226,6 +253,7 @@ public class SrealityParser {
             if (images.isArray() && !images.isEmpty()) {
                 JsonNode first = images.get(0);
                 String href = first.path("href").asText("");
+
                 if (!href.isBlank()) {
                     return href;
                 }
