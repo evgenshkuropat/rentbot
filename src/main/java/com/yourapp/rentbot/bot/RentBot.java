@@ -296,8 +296,7 @@ Bazoš: %d
         if (text.equals(msg(userId, "menu.new.search"))) {
             flowService.reset(userId);
 
-            List<Region> regions = regionRepo.findAll();
-            send(chatId, msg(userId, "search.new"), Keyboards.regionsKeyboard(regions));
+            sendRegionsEntry(chatId, userId, msg(userId, "search.new"));
             return;
         }
 
@@ -365,8 +364,7 @@ Bazoš: %d
 
             flowService.reset(userId);
 
-            List<Region> regions = regionRepo.findAll();
-            send(chatId, msg(userId, "city.choose"), Keyboards.regionsKeyboard(regions));
+            sendRegionsEntry(chatId, userId, msg(userId, "city.choose"));
             return;
         }
 
@@ -428,8 +426,8 @@ Bazoš: %d
 
                 flowService.reset(userId);
 
-                List<Region> regions = regionRepo.findAll();
-                send(chatId, msg(userId, "filter.start"), Keyboards.regionsKeyboard(regions));
+                sendRegionsEntry(chatId, userId, msg(userId, "filter.start"));
+
             } else {
                 send(chatId,
                         msg(userId, "language.updated"),
@@ -560,6 +558,22 @@ Bazoš: %d
         if (data.startsWith("REGION:")) {
             String code = data.substring("REGION:".length());
 
+            if ("OTHER".equals(code)) {
+                List<Region> otherRegions = regionRepo.findByPopularFalseOrderByTitleAsc();
+
+                send(chatId,
+                        switch (lang) {
+                            case RU -> "Выберите город:";
+                            case CZ -> "Vyberte město:";
+                            case EN -> "Choose a city:";
+                            default -> "Оберіть місто:";
+                        },
+                        Keyboards.regionsKeyboard(otherRegions)
+                );
+
+                return;
+            }
+
             Region region = regionRepo.findByCode(code)
                     .orElseThrow(() -> new IllegalArgumentException("Region not found by code=" + code));
 
@@ -659,8 +673,7 @@ Bazoš: %d
 
         if (data.startsWith("CONFIRM:RESET")) {
             flowService.reset(userId);
-            List<Region> regions = regionRepo.findAll();
-            send(chatId, msg(userId, "filter.reset"), Keyboards.regionsKeyboard(regions));
+            sendRegionsEntry(chatId, userId, msg(userId, "filter.reset"));
             return;
         }
 
@@ -755,6 +768,17 @@ Bazoš: %d
                         .callbackQueryId(callbackQueryId)
                         .build()
         );
+    }
+
+    private void sendRegionsEntry(long chatId, long userId, String text) throws TelegramApiException {
+        Language lang = getUserLanguage(userId);
+        List<Region> popularRegions = regionRepo.findByPopularTrueOrderByTitleAsc();
+
+        if (popularRegions == null || popularRegions.isEmpty()) {
+            popularRegions = regionRepo.findAll();
+        }
+
+        send(chatId, text, Keyboards.regionsEntryKeyboard(popularRegions, lang));
     }
 
     private void send(long chatId, String text, ReplyKeyboard keyboard) throws TelegramApiException {

@@ -32,6 +32,38 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup regionsEntryKeyboard(List<Region> popularRegions, Language lang) {
+        List<Region> sorted = new ArrayList<>(popularRegions);
+        sorted.sort(Comparator.comparing(Region::getTitle));
+
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+
+        for (Region r : sorted) {
+            rows.add(new InlineKeyboardRow(
+                    InlineKeyboardButton.builder()
+                            .text(r.getTitle())
+                            .callbackData("REGION:" + r.getCode())
+                            .build()
+            ));
+        }
+
+        rows.add(new InlineKeyboardRow(
+                InlineKeyboardButton.builder()
+                        .text(switch (lang) {
+                            case RU -> "📍 Другие города";
+                            case CZ -> "📍 Další města";
+                            case EN -> "📍 Other cities";
+                            default -> "📍 Інші міста";
+                        })
+                        .callbackData("REGION:OTHER")
+                        .build()
+        ));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(rows)
+                .build();
+    }
+
     public static InlineKeyboardMarkup regionsKeyboard(List<Region> regions) {
         List<Region> sorted = new ArrayList<>(regions);
         sorted.sort(Comparator.comparing(Region::getTitle));

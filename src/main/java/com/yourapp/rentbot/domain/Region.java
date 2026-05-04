@@ -22,6 +22,9 @@ public class Region {
     @Column(name = "sreality_region_id")
     private Integer srealityRegionId;
 
+    @Column(name = "is_popular", nullable = false)
+    private boolean popular = false;
+
     public Long getId() {
         return id;
     }
@@ -56,5 +59,13 @@ public class Region {
 
     public void setSrealityRegionId(Integer srealityRegionId) {
         this.srealityRegionId = srealityRegionId;
+    }
+
+    public boolean isPopular() {
+        return popular;
+    }
+
+    public void setPopular(boolean popular) {
+        this.popular = popular;
     }
 }
