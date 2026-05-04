@@ -77,7 +77,8 @@ public class BazosParser {
                 String layout = extractLayout(fullText);
                 int price = extractPrice(linkEl, container, fullText);
 
-                String locality = extractLocality(fullText);
+                String locality = normalizeDisplayLocality(extractLocality(fullText));
+
                 if (locality.isBlank() && region != null && region.getTitle() != null) {
                     locality = region.getTitle();
                 }
@@ -513,5 +514,29 @@ public class BazosParser {
         }
 
         return tail;
+    }
+
+    private String normalizeDisplayLocality(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return "";
+        }
+
+        String s = locality
+                .replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        String lower = s.toLowerCase();
+
+        // praha 8 u metra praha 8 → Praha 8
+        Matcher m = Pattern.compile("\\bpraha\\s*(\\d{1,2})\\b", Pattern.CASE_INSENSITIVE).matcher(s);
+        if (m.find()) {
+            return "Praha " + m.group(1);
+        }
+
+        // убираем дубли слов: "praha praha"
+        s = s.replaceAll("(?i)\\b(\\w+)\\s+\\1\\b", "$1");
+
+        return s;
     }
 }
