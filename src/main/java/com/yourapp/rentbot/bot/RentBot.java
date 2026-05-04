@@ -923,8 +923,9 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + formatPrice(l.priceCzk()) + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
+                        "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n\n" +
+                        "📄 Оголошення " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
         String link = safeUrl(l.link());
@@ -959,10 +960,11 @@ Bazoš: %d
         Language lang = getUserLanguage(userId);
 
         String caption =
-                "🏠 " + nvl(fav.getTitle()) + "\n" +
-                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(fav.getSource()) + "\n" +
-                        "💰 " + formatPrice(fav.getPriceCzk() != null ? fav.getPriceCzk() : 0) + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality());
+                "🏠 " + nvl(l.title()) + "\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
+                        "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n\n" +
+                        "📄 Оголошення " + (index + 1) + " / " + total;
 
         int key = fav.getLink().hashCode();
         favoriteLinkCache.put(key, fav.getLink());
@@ -1058,9 +1060,9 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + formatPrice(l.priceCzk()) + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
-                        "📄 " + (index + 1) + " / " + total;
+                        "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n\n" +
+                        "📄 Оголошення " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
         String link = safeUrl(l.link());

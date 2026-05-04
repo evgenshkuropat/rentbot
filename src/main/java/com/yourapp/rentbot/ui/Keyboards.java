@@ -478,10 +478,28 @@ public class Keyboards {
 
     public static InlineKeyboardMarkup listingPagerKeyboard(String token, String link, Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
-        row1.add(button("⬅️", "LISTING:PREV"));
-        row1.add(button("➡️", "LISTING:NEXT"));
+        row1.add(button(switch (lang) {
+            case RU -> "⬅️ Назад";
+            case CZ -> "⬅️ Zpět";
+            case EN -> "⬅️ Back";
+            default -> "⬅️ Назад";
+        }, "LISTING:PREV"));
+
+        row1.add(button(switch (lang) {
+            case RU -> "Вперёд ➡️";
+            case CZ -> "Dále ➡️";
+            case EN -> "Next ➡️";
+            default -> "Далі ➡️";
+        }, "LISTING:NEXT"));
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(button(switch (lang) {
+            case RU -> "⭐ В избранное";
+            case CZ -> "⭐ Do oblíbených";
+            case EN -> "⭐ Favorite";
+            default -> "⭐ В обране";
+        }, "FAV:ADD:" + token));
+
         row2.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "🔗 Открыть";
@@ -492,15 +510,23 @@ public class Keyboards {
                 .url(link)
                 .build());
 
-        row2.add(button(switch (lang) {
-            case RU -> "⭐ В избранное";
-            case CZ -> "⭐ Do oblíbených";
-            case EN -> "⭐ Favorite";
-            default -> "⭐ В обране";
-        }, "FAV:ADD:" + token));
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(button(switch (lang) {
+            case RU -> "🔄 Изменить";
+            case CZ -> "🔄 Změnit";
+            case EN -> "🔄 Change";
+            default -> "🔄 Змінити";
+        }, "CONFIRM:RESET"));
+
+        row3.add(button(switch (lang) {
+            case RU -> "⛔ Остановить";
+            case CZ -> "⛔ Zastavit";
+            case EN -> "⛔ Stop";
+            default -> "⛔ Зупинити";
+        }, "MENU:STOP"));
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2))
+                .keyboard(List.of(row1, row2, row3))
                 .build();
     }
 }
