@@ -70,13 +70,24 @@ public class Keyboards {
 
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
-        for (Region r : sorted) {
-            rows.add(new InlineKeyboardRow(
-                    InlineKeyboardButton.builder()
-                            .text(r.getTitle())
-                            .callbackData("REGION:" + r.getCode())
-                            .build()
-            ));
+        for (int i = 0; i < sorted.size(); i += 2) {
+            InlineKeyboardRow row = new InlineKeyboardRow();
+
+            Region first = sorted.get(i);
+            row.add(InlineKeyboardButton.builder()
+                    .text(first.getTitle())
+                    .callbackData("REGION:" + first.getCode())
+                    .build());
+
+            if (i + 1 < sorted.size()) {
+                Region second = sorted.get(i + 1);
+                row.add(InlineKeyboardButton.builder()
+                        .text(second.getTitle())
+                        .callbackData("REGION:" + second.getCode())
+                        .build());
+            }
+
+            rows.add(row);
         }
 
         return InlineKeyboardMarkup.builder()
