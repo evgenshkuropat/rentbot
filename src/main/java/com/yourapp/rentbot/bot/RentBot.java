@@ -34,6 +34,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1059,7 +1060,8 @@ Bazoš: %d
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
                         "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
+                        "🕒 " + formatTimeAgo(l.foundAt(), lang) + "\n\n" +
                         "📄 Оголошення " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
@@ -1088,5 +1090,64 @@ Bazoš: %d
                         .replyMarkup(Keyboards.listingPagerKeyboard(tokenValue, link, lang))
                         .build()
         );
+    }
+
+    private String formatTimeAgo(LocalDateTime time, Language lang) {
+        if (time == null) {
+            return "—";
+        }
+
+        java.time.Duration diff = java.time.Duration.between(time, LocalDateTime.now());
+
+        long minutes = diff.toMinutes();
+        long hours = diff.toHours();
+        long days = diff.toDays();
+
+        if (minutes < 60) {
+            return switch (lang) {
+                case RU -> "только что";
+                case CZ -> "právě teď";
+                case EN -> "just now";
+                default -> "щойно";
+            };
+        }
+
+        if (hours < 24) {
+            return switch (lang) {
+                case RU -> hours + " ч назад";
+                case CZ -> "před " + hours + " h";
+                case EN -> hours + "h ago";
+                default -> hours + " год тому";
+            };
+        }
+
+        if (days == 1) {
+            return switch (lang) {
+                case RU -> "вчера";
+                case CZ -> "včera";
+                case EN -> "yesterday";
+                default -> "вчора";
+            };
+        }
+
+        if (days == 2) {
+            return switch (lang) {
+                case RU -> "позавчера";
+                case CZ -> "předevčírem";
+                case EN -> "the day before yesterday";
+                default -> "позавчора";
+            };
+        }
+
+        if (days < 7) {
+            return switch (lang) {
+                case RU -> days + " дн. назад";
+                case CZ -> "před " + days + " dny";
+                case EN -> days + " days ago";
+                default -> days + " днів тому";
+            };
+        }
+
+        return time.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM"));
     }
 }
