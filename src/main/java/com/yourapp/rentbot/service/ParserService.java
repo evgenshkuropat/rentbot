@@ -231,7 +231,11 @@ public class ParserService {
                 previous.finalBazos() + finalBazos
         ));
 
-        System.out.println("FILTER region=" + regionTitle
+        if (filtered.isEmpty()) {
+            return filtered;
+        }
+
+        System.out.println("FILTER MATCH region=" + regionTitle
                 + ", layout=" + needLayout
                 + ", maxPrice=" + maxPrice
                 + ", group=" + groupCode
