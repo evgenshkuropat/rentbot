@@ -60,19 +60,12 @@ public class NotificationService {
             default -> "Локація";
         };
 
-        String addedLabel = switch (lang) {
-            case RU -> "Добавлено";
-            case CZ -> "Přidáno";
-            case EN -> "Added";
-            default -> "Додано";
-        };
-
         String caption =
                 "🏠 " + nvl(listing.title()) + "\n" +
                         "🏷 " + sourceLabel + ": " + nvl(listing.source()) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
                         "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
-                        "🕒 " + addedLabel + ": " + formatAddedAt(listing.foundAt(), lang);
+                        "🕒 " + formatAddedAt(listing.foundAt(), lang);
 
         String token = listingCacheService.put(listing);
         String link = safeUrl(listing.link());
@@ -200,9 +193,34 @@ public class NotificationService {
             return "—";
         }
 
-        java.time.format.DateTimeFormatter formatter =
-                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate date = time.toLocalDate();
 
-        return time.format(formatter);
+        String todayText = switch (lang) {
+            case RU -> "сегодня";
+            case CZ -> "dnes";
+            case EN -> "today";
+            default -> "сьогодні";
+        };
+
+        String yesterdayText = switch (lang) {
+            case RU -> "вчера";
+            case CZ -> "včera";
+            case EN -> "yesterday";
+            default -> "вчора";
+        };
+
+        if (date.equals(today)) {
+            return todayText;
+        }
+
+        if (date.equals(today.minusDays(1))) {
+            return yesterdayText;
+        }
+
+        java.time.format.DateTimeFormatter formatter =
+                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+        return date.format(formatter);
     }
 }
