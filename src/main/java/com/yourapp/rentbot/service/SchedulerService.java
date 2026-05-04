@@ -9,11 +9,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class SchedulerService {
 
     private static final Logger log = LoggerFactory.getLogger(SchedulerService.class);
+
+    private final AtomicBoolean running = new AtomicBoolean(false);
 
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
@@ -27,8 +30,21 @@ public class SchedulerService {
         this.notificationService = notificationService;
     }
 
-    @Scheduled(fixedDelayString = "${rentbot.polling.delay-ms:60000}")
+    @Scheduled(fixedDelayString = "${rentbot.polling.delay-ms:180000}")
     public void tick() {
+        if (!running.compareAndSet(false, true)) {
+            log.warn("Scheduler already running, skipping...");
+            return;
+        }
+
+        try {
+            runScheduler();
+        } finally {
+            running.set(false);
+        }
+    }
+
+    private void runScheduler() {
         List<UserFilter> users = userFilterRepo.findAllActiveFull();
 
         if (users.isEmpty()) {
