@@ -924,7 +924,7 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
+                        "💰 " + formatPrice(l.priceCzk()) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
 
         String tokenValue = listingCacheService.put(l);
@@ -962,7 +962,7 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(fav.getTitle()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(fav.getSource()) + "\n" +
-                        "💰 " + formatPrice(fav.getPriceCzk() != null ? fav.getPriceCzk() : 0) + " / міс" + "\n" +
+                        "💰 " + formatPrice(fav.getPriceCzk() != null ? fav.getPriceCzk() : 0) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality());
 
         int key = fav.getLink().hashCode();
@@ -1046,6 +1046,38 @@ Bazoš: %d
                 .replace(",", " ") + " Kč";
     }
 
+    private String pricePeriod(Language lang) {
+        return switch (lang) {
+            case RU -> " / мес";
+            case CZ -> " / měs";
+            case EN -> " / month";
+            default -> " / міс";
+        };
+    }
+
+    private String addedLabel(Language lang) {
+        return switch (lang) {
+            case RU -> "Добавлено";
+            case CZ -> "Přidáno";
+            case EN -> "Added";
+            default -> "Додано";
+        };
+    }
+
+    private String freshnessIcon(LocalDateTime time) {
+        if (time == null) {
+            return "🕒";
+        }
+
+        java.time.Duration diff = java.time.Duration.between(time, LocalDateTime.now());
+
+        if (diff.toHours() < 3) {
+            return "🔥";
+        }
+
+        return "🕒";
+    }
+
     private String safeUrl(String url) {
         if (url == null || url.isBlank()) {
             return "https://t.me/zhytloCZ_bot";
@@ -1057,12 +1089,12 @@ Bazoš: %d
         Language lang = getUserLanguage(userId);
 
         String caption =
-                "🏠 " + nvl(l.title()) + "\n" +
-                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + formatPrice(l.priceCzk()) + " / міс" + "\n" +
+                "🏠 " + nvl(l.title()) + "\n\n" +
+                        "💰 " + formatPrice(l.priceCzk()) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
-                        "🕒 " + formatTimeAgo(l.foundAt(), lang) + "\n\n" +
-                        "📄 Оголошення " + (index + 1) + " / " + total;
+                        freshnessIcon(l.foundAt()) + " " + addedLabel(lang) + ": " + formatTimeAgo(l.foundAt(), lang) + "\n\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n\n" +
+                        "📄 " + listingLabel(lang) + " " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
         String link = safeUrl(l.link());
@@ -1149,5 +1181,14 @@ Bazoš: %d
         }
 
         return time.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM"));
+    }
+
+    private String listingLabel(Language lang) {
+        return switch (lang) {
+            case RU -> "Объявление";
+            case CZ -> "Inzerát";
+            case EN -> "Listing";
+            default -> "Оголошення";
+        };
     }
 }
