@@ -84,8 +84,6 @@ public class SchedulerService {
                     }
                 }
 
-                log.info("User {}: processed {} listings", userId, listings.size());
-
             } catch (Exception e) {
                 log.error("Error processing user {}", userId, e);
             }
