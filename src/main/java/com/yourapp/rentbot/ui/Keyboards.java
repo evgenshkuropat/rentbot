@@ -364,41 +364,38 @@ public class Keyboards {
                 })
                 .callbackData("MENU:FAVORITES")
                 .build());
-
-        InlineKeyboardRow row3 = new InlineKeyboardRow();
-        row3.add(InlineKeyboardButton.builder()
+        row2.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "⛔ Остановить поиск";
-                    case CZ -> "⛔ Zastavit hledání";
-                    case EN -> "⛔ Stop search";
-                    default -> "⛔ Зупинити пошук";
+                    case RU -> "⛔ Остановить";
+                    case CZ -> "⛔ Zastavit";
+                    case EN -> "⛔ Stop";
+                    default -> "⛔ Зупинити";
                 })
                 .callbackData("MENU:STOP")
                 .build());
 
-        InlineKeyboardRow row4 = new InlineKeyboardRow();
-        row4.add(InlineKeyboardButton.builder()
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "🚗 Найти авто в ЧР";
-                    case CZ -> "🚗 Najít auto v ČR";
-                    case EN -> "🚗 Find a car in CZ";
-                    default -> "🚗 Знайти авто в ЧР";
+                    case RU -> "🚗 Найти авто";
+                    case CZ -> "🚗 Najít auto";
+                    case EN -> "🚗 Find a car";
+                    default -> "🚗 Знайти авто";
                 })
                 .url("https://t.me/CarRadarCZ_bot")
                 .build());
-
-        row4.add(InlineKeyboardButton.builder()
+        row3.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
-                    case RU -> "💙 Поддержать проект";
-                    case CZ -> "💙 Podpořit projekt";
-                    case EN -> "💙 Support project";
-                    default -> "💙 Підтримати проєкт";
+                    case RU -> "💙 Поддержать";
+                    case CZ -> "💙 Podpořit";
+                    case EN -> "💙 Support";
+                    default -> "💙 Підтримати";
                 })
                 .url("https://revolut.me/evzen13")
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3, row4))
+                .keyboard(List.of(row1, row2, row3))
                 .build();
     }
 
