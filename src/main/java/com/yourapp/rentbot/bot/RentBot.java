@@ -59,6 +59,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
     private final Map<Long, List<ListingDto>> searchCache = new HashMap<>();
     private final Map<Long, Integer> searchOffset = new HashMap<>();
+    private final Map<Long, Integer> searchCurrentIndex = new HashMap<>();
     private static final int PAGE_SIZE = 10;
 
     public RentBot(
@@ -401,7 +402,7 @@ Bazoš: %d
                         msg(userId, "search.found.prefix")
                                 + listings.size()
                                 + msg(userId, "search.found.middle")
-                                + Math.min(PAGE_SIZE, listings.size())
+                                + 1
                                 + msg(userId, "search.found.suffix"),
                         Keyboards.persistentNavKeyboard(lang));
 
@@ -429,7 +430,7 @@ Bazoš: %d
                         msg(userId, "search.found.prefix")
                                 + listings.size()
                                 + msg(userId, "search.found.middle")
-                                + Math.min(PAGE_SIZE, listings.size())
+                                + 1
                                 + msg(userId, "search.found.suffix"),
                         Keyboards.persistentNavKeyboard(lang));
 
@@ -475,7 +476,10 @@ Bazoš: %d
         String callbackId = update.getCallbackQuery().getId();
 
         answerCallback(callbackId);
-        disableInlineKeyboard(update);
+
+        if (!data.startsWith("LISTING:")) {
+            disableInlineKeyboard(update);
+        }
 
         UserFilter f = userFilterRepo.findFullById(userId)
                 .orElseGet(() -> flowService.getOrCreate(userId));
@@ -561,6 +565,39 @@ Bazoš: %d
             return;
         }
 
+        if (data.startsWith("LISTING:")) {
+            String action = data.substring("LISTING:".length());
+
+            List<ListingDto> listings = searchCache.get(userId);
+
+            if (listings == null || listings.isEmpty()) {
+                send(chatId, msg(userId, "search.results.saved.empty"), Keyboards.mainMenuKeyboard(lang));
+                return;
+            }
+
+            int index = searchCurrentIndex.getOrDefault(userId, 0);
+
+            if ("NEXT".equals(action)) {
+                if (index < listings.size() - 1) {
+                    searchCurrentIndex.put(userId, index + 1);
+                    sendCurrentListing(chatId, userId);
+                } else {
+                    send(chatId, "Це останнє оголошення.", Keyboards.mainMenuKeyboard(lang));
+                }
+                return;
+            }
+
+            if ("PREV".equals(action)) {
+                if (index > 0) {
+                    searchCurrentIndex.put(userId, index - 1);
+                    sendCurrentListing(chatId, userId);
+                } else {
+                    send(chatId, "Це перше оголошення.", Keyboards.mainMenuKeyboard(lang));
+                }
+                return;
+            }
+        }
+
         if (data.startsWith("MENU:")) {
             String action = data.substring("MENU:".length());
 
@@ -578,7 +615,7 @@ Bazoš: %d
                                 msg(userId, "search.found.prefix")
                                         + listings.size()
                                         + msg(userId, "search.found.middle")
-                                        + Math.min(PAGE_SIZE, listings.size())
+                                        + 1
                                         + msg(userId, "search.found.suffix"),
                                 Keyboards.mainMenuKeyboard(lang));
 
@@ -589,8 +626,6 @@ Bazoš: %d
                         send(chatId, msg(userId, "search.error"), Keyboards.mainMenuKeyboard(lang));
                     }
                 }
-
-                case "MORE" -> sendNextPage(chatId, userId);
 
                 case "FILTER" -> {
                     UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -769,11 +804,11 @@ Bazoš: %d
 
     private void startPagedSearch(long chatId, long userId, List<ListingDto> listings) throws TelegramApiException {
         searchCache.put(userId, listings);
-        searchOffset.put(userId, 0);
-        sendNextPage(chatId, userId);
+        searchCurrentIndex.put(userId, 0);
+        sendCurrentListing(chatId, userId);
     }
 
-    private void sendNextPage(long chatId, long userId) throws TelegramApiException {
+    private void sendCurrentListing(long chatId, long userId) throws TelegramApiException {
         List<ListingDto> listings = searchCache.get(userId);
         Language lang = getUserLanguage(userId);
 
@@ -782,32 +817,20 @@ Bazoš: %d
             return;
         }
 
-        int offset = searchOffset.getOrDefault(userId, 0);
+        int index = searchCurrentIndex.getOrDefault(userId, 0);
 
-        if (offset >= listings.size()) {
-            send(chatId, msg(userId, "search.all.shown"), Keyboards.mainMenuKeyboard(lang));
-            return;
+        if (index < 0) {
+            index = 0;
         }
 
-        int toIndex = Math.min(offset + PAGE_SIZE, listings.size());
-
-        for (int i = offset; i < toIndex; i++) {
-            sendListing(chatId, userId, listings.get(i));
+        if (index >= listings.size()) {
+            index = listings.size() - 1;
         }
 
-        searchOffset.put(userId, toIndex);
+        searchCurrentIndex.put(userId, index);
 
-        if (toIndex < listings.size()) {
-            telegramClient.execute(
-                    SendMessage.builder()
-                            .chatId(chatId)
-                            .text(msg(userId, "search.more"))
-                            .replyMarkup(Keyboards.moreKeyboard(lang))
-                            .build()
-            );
-        } else {
-            send(chatId, msg(userId, "search.all.shown"), Keyboards.mainMenuKeyboard(lang));
-        }
+        ListingDto listing = listings.get(index);
+        sendListingCard(chatId, userId, listing, index, listings.size());
     }
 
     private void showFavorites(long chatId, long userId) throws TelegramApiException {
@@ -1005,5 +1028,43 @@ Bazoš: %d
             return "https://t.me/zhytloCZ_bot";
         }
         return url;
+    }
+
+    private void sendListingCard(long chatId, long userId, ListingDto l, int index, int total) throws TelegramApiException {
+        Language lang = getUserLanguage(userId);
+
+        String caption =
+                "🏠 " + nvl(l.title()) + "\n" +
+                        "📄 " + (index + 1) + " / " + total + "\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
+                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
+
+        String tokenValue = listingCacheService.put(l);
+        String link = safeUrl(l.link());
+
+        if (hasUsablePhotoUrl(l.photoUrl())) {
+            try {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(l.photoUrl()))
+                                .caption(trimCaption(caption))
+                                .replyMarkup(Keyboards.listingPagerKeyboard(tokenValue, link, lang))
+                                .build()
+                );
+                return;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        telegramClient.execute(
+                SendMessage.builder()
+                        .chatId(chatId)
+                        .text(caption)
+                        .replyMarkup(Keyboards.listingPagerKeyboard(tokenValue, link, lang))
+                        .build()
+        );
     }
 }

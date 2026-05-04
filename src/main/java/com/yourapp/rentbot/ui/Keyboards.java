@@ -286,12 +286,6 @@ public class Keyboards {
             case EN -> "💙 Support project";
             default -> "💙 Підтримати проєкт";
         });
-        row4.add(switch (lang) {
-            case RU -> "⛔ Остановить поиск";
-            case CZ -> "⛔ Zastavit hledání";
-            case EN -> "⛔ Stop search";
-            default -> "⛔ Зупинити пошук";
-        });
 
         List<KeyboardRow> keyboard = new ArrayList<>();
         keyboard.add(row1);
@@ -337,19 +331,8 @@ public class Keyboards {
             default -> "⛔ Зупинити";
         }, "MENU:STOP"));
 
-        InlineKeyboardRow row3 = new InlineKeyboardRow();
-        row3.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "💙 Поддержать проект";
-                    case CZ -> "💙 Podpořit projekt";
-                    case EN -> "💙 Support project";
-                    default -> "💙 Підтримати проєкт";
-                })
-                .url("https://revolut.me/evzen13")
-                .build());
-
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3))
+                .keyboard(List.of(row1, row2))
                 .build();
     }
 
@@ -387,23 +370,6 @@ public class Keyboards {
                 .build();
     }
 
-    public static InlineKeyboardMarkup moreKeyboard(Language lang) {
-        InlineKeyboardRow row = new InlineKeyboardRow();
-        row.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "⬇️ Показать ещё";
-                    case CZ -> "⬇️ Zobrazit více";
-                    case EN -> "⬇️ Show more";
-                    default -> "⬇️ Показати ще";
-                })
-                .callbackData("MENU:MORE")
-                .build());
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row))
-                .build();
-    }
-
     public static InlineKeyboardMarkup languageKeyboard() {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()
@@ -434,30 +400,6 @@ public class Keyboards {
         return InlineKeyboardButton.builder()
                 .text(text)
                 .callbackData(data)
-                .build();
-    }
-
-    public static ReplyKeyboardMarkup servicesKeyboard(Language lang) {
-        KeyboardRow row1 = new KeyboardRow();
-        row1.add(switch (lang) {
-            case RU -> "🚗 Поиск авто";
-            case CZ -> "🚗 Hledání auta";
-            case EN -> "🚗 Car search";
-            default -> "🚗 Пошук авто";
-        });
-
-        KeyboardRow row2 = new KeyboardRow();
-        row2.add(switch (lang) {
-            case RU -> "⬅️ Назад";
-            case CZ -> "⬅️ Zpět";
-            case EN -> "⬅️ Back";
-            default -> "⬅️ Назад";
-        });
-
-        return ReplyKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2))
-                .resizeKeyboard(true)
-                .isPersistent(true)
                 .build();
     }
 
@@ -531,6 +473,34 @@ public class Keyboards {
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row1))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup listingPagerKeyboard(String token, String link, Language lang) {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(button("⬅️", "LISTING:PREV"));
+        row1.add(button("➡️", "LISTING:NEXT"));
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "🔗 Открыть";
+                    case CZ -> "🔗 Otevřít";
+                    case EN -> "🔗 Open";
+                    default -> "🔗 Відкрити";
+                })
+                .url(link)
+                .build());
+
+        row2.add(button(switch (lang) {
+            case RU -> "⭐ В избранное";
+            case CZ -> "⭐ Do oblíbených";
+            case EN -> "⭐ Favorite";
+            default -> "⭐ В обране";
+        }, "FAV:ADD:" + token));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
                 .build();
     }
 }
