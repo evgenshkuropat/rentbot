@@ -910,7 +910,7 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
+                        "💰 " + formatPrice(l.priceCzk()) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
 
         String tokenValue = listingCacheService.put(l);
@@ -948,7 +948,7 @@ Bazoš: %d
         String caption =
                 "🏠 " + nvl(fav.getTitle()) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(fav.getSource()) + "\n" +
-                        "💰 " + (fav.getPriceCzk() != null && fav.getPriceCzk() > 0 ? fav.getPriceCzk() + " Kč" : "—") + "\n" +
+                        "💰 " + formatPrice(fav.getPriceCzk() != null ? fav.getPriceCzk() : 0) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality());
 
         int key = fav.getLink().hashCode();
@@ -1023,6 +1023,15 @@ Bazoš: %d
         return (s == null || s.isBlank()) ? "—" : s;
     }
 
+    private String formatPrice(int price) {
+        if (price <= 0) {
+            return "—";
+        }
+
+        return String.format("%,d", price)
+                .replace(",", " ") + " Kč";
+    }
+
     private String safeUrl(String url) {
         if (url == null || url.isBlank()) {
             return "https://t.me/zhytloCZ_bot";
@@ -1035,10 +1044,10 @@ Bazoš: %d
 
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
-                        "📄 " + (index + 1) + " / " + total + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
-                        "💰 " + (l.priceCzk() > 0 ? l.priceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
+                        "💰 " + formatPrice(l.priceCzk()) + "\n" +
+                        "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
+                        "📄 " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
         String link = safeUrl(l.link());
