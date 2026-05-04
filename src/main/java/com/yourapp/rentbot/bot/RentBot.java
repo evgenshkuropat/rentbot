@@ -766,9 +766,22 @@ Bazoš: %d
             try {
                 List<ListingDto> listings = parserService.findNewListings(userId);
 
-                for (ListingDto l : listings) {
-                    notificationService.sendIfNotSent(f, l);
+                if (listings.isEmpty()) {
+                    send(chatId,
+                            msg(userId, "search.new.empty"),
+                            Keyboards.mainMenuKeyboard(lang));
+                    return;
                 }
+
+                send(chatId,
+                        msg(userId, "search.found.prefix")
+                                + listings.size()
+                                + msg(userId, "search.found.middle")
+                                + 1
+                                + msg(userId, "search.found.suffix"),
+                        Keyboards.mainMenuKeyboard(lang));
+
+                startPagedSearch(chatId, userId, listings);
 
             } catch (Exception e) {
                 e.printStackTrace();
