@@ -57,8 +57,56 @@ public class ParserService {
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
-        List<ListingDto> all = fetchAllListingsOnce();
+        List<ListingDto> all = fetchListingsForFilter(filter);
         return filterForUser(all, filter);
+    }
+
+    public List<ListingDto> fetchListingsForFilter(UserFilter filter) throws IOException {
+        Region region = filter != null ? filter.getRegion() : null;
+        RegionGroup group = filter != null ? filter.getRegionGroup() : null;
+
+        Integer srealityRegionId = region != null ? region.getSrealityRegionId() : 10;
+
+        List<ListingDto> all = new ArrayList<>();
+
+        try {
+            List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
+            System.out.println("SREALITY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + sreality.size());
+            all.addAll(sreality);
+        } catch (Exception e) {
+            System.out.println("Sreality parser failed: " + e.getMessage());
+        }
+
+        try {
+            List<ListingDto> idnes = idnesParser.fetchListings(region, group);
+            System.out.println("IDNES LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + idnes.size());
+            all.addAll(idnes);
+        } catch (Exception e) {
+            System.out.println("Idnes parser failed: " + e.getMessage());
+        }
+
+        try {
+            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(region);
+            System.out.println("BEZREALITKY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + bezrealitky.size());
+            all.addAll(bezrealitky);
+        } catch (Exception e) {
+            System.out.println("Bezrealitky parser failed: " + e.getMessage());
+        }
+
+        try {
+            List<ListingDto> bazos = bazosParser.fetchListings(region);
+            System.out.println("BAZOS LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + bazos.size());
+            all.addAll(bazos);
+        } catch (Exception e) {
+            System.out.println("Bazos parser failed: " + e.getMessage());
+        }
+
+        all = dedupeByLink(all);
+        all = dedupeBySignature(all);
+
+        System.out.println("ALL LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + all.size());
+
+        return all;
     }
 
     public List<ListingDto> fetchAllListingsOnce() throws IOException {
@@ -242,14 +290,14 @@ public class ParserService {
         if (regionTitle == null || regionTitle.isBlank()) return true;
         if (locality == null || locality.isBlank()) return false;
 
-        String lowerLocality = normalizeLocality(locality);
-        String lowerRegion = normalizeLocality(regionTitle);
+        String loc = normalizeLocality(locality);
+        String reg = normalizeLocality(regionTitle);
 
-        if (lowerRegion.equals("praha")) {
+        if (reg.equals("praha")) {
             return isPrahaListing(locality);
         }
 
-        return lowerLocality.contains(lowerRegion);
+        return loc.contains(reg);
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {

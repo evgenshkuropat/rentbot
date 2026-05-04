@@ -35,7 +35,19 @@ public class IdnesParser {
             "Liberec", "Zlín", "Zlin", "Kolín", "Kolin", "Kutná Hora", "Kutna Hora",
             "Ústí nad Labem", "Usti nad Labem", "Hradec Králové", "Hradec Kralove",
             "Jihlava", "Karlovy Vary", "České Budějovice", "Ceske Budejovice",
-            "Mladá Boleslav", "Mlada Boleslav"
+            "Mladá Boleslav", "Mlada Boleslav",
+
+            "Beroun", "Břeclav", "Breclav", "Česká Lípa", "Ceska Lipa",
+            "Cheb", "Chomutov", "Chrudim", "Děčín", "Decin", "Domažlice", "Domazlice",
+            "Frýdek-Místek", "Frydek-Mistek", "Havlíčkův Brod", "Havlickuv Brod",
+            "Hodonín", "Hodonin", "Jablonec nad Nisou", "Jindřichův Hradec", "Jindrichuv Hradec",
+            "Karviná", "Karvina", "Kladno", "Kroměříž", "Kromeriz", "Mělník", "Melnik",
+            "Most", "Náchod", "Nachod", "Nový Jičín", "Novy Jicin", "Nymburk",
+            "Opava", "Písek", "Pisek", "Poděbrady", "Podebrady", "Přerov", "Prerov",
+            "Prostějov", "Prostejov", "Rakovník", "Rakovnik", "Sokolov",
+            "Strakonice", "Šumperk", "Sumperk", "Svitavy", "Tábor", "Tabor",
+            "Teplice", "Třebíč", "Trebic", "Trutnov", "Uherské Hradiště", "Uherske Hradiste",
+            "Vsetín", "Vsetin", "Vyškov", "Vyskov", "Znojmo"
     };
 
     public List<ListingDto> fetchListings(Region region, RegionGroup regionGroup) throws IOException {
@@ -147,7 +159,12 @@ public class IdnesParser {
     }
 
     private String regionCodeToIdnesSlug(String code) {
-        return switch (code) {
+        if (code == null || code.isBlank()) {
+            return "";
+        }
+
+        return switch (code.toUpperCase(Locale.ROOT)) {
+            case "PRAHA" -> "praha";
             case "BRNO" -> "brno";
             case "OSTRAVA" -> "ostrava";
             case "PLZEN" -> "plzen";
@@ -163,7 +180,8 @@ public class IdnesParser {
             case "MLADA_BOLESLAV" -> "mlada-boleslav";
             case "KOLIN" -> "kolin";
             case "KUTNA_HORA" -> "kutna-hora";
-            default -> "";
+
+            default -> code.toLowerCase(Locale.ROOT).replace("_", "-");
         };
     }
 

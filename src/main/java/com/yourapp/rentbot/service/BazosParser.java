@@ -33,7 +33,19 @@ public class BazosParser {
             "Kutná Hora", "Kutna Hora", "Ústí nad Labem", "Usti nad Labem",
             "Hradec Králové", "Hradec Kralove", "Jihlava", "Karlovy Vary",
             "Mladá Boleslav", "Mlada Boleslav", "České Budějovice", "Ceske Budejovice",
-            "Český Brod", "Cesky Brod", "Nymburk", "Poděbrady", "Podebrady"
+            "Český Brod", "Cesky Brod", "Nymburk", "Poděbrady", "Podebrady",
+
+            "Beroun", "Břeclav", "Breclav", "Česká Lípa", "Ceska Lipa",
+            "Cheb", "Chomutov", "Chrudim", "Děčín", "Decin", "Domažlice", "Domazlice",
+            "Frýdek-Místek", "Frydek-Mistek", "Havlíčkův Brod", "Havlickuv Brod",
+            "Hodonín", "Hodonin", "Jablonec nad Nisou", "Jindřichův Hradec", "Jindrichuv Hradec",
+            "Karviná", "Karvina", "Kroměříž", "Kromeriz", "Mělník", "Melnik",
+            "Náchod", "Nachod", "Nový Jičín", "Novy Jicin", "Opava",
+            "Písek", "Pisek", "Přerov", "Prerov", "Prostějov", "Prostejov",
+            "Rakovník", "Rakovnik", "Sokolov", "Strakonice", "Šumperk", "Sumperk",
+            "Svitavy", "Tábor", "Tabor", "Teplice", "Třebíč", "Trebic",
+            "Trutnov", "Uherské Hradiště", "Uherske Hradiste", "Vsetín", "Vsetin",
+            "Vyškov", "Vyskov", "Znojmo"
     };
 
     public List<ListingDto> fetchListings(Region region) throws IOException {

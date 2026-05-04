@@ -279,38 +279,28 @@ public class BezrealitkyParser {
     }
 
     private String mapRegionToSlug(Region region) {
-
         if (region == null || region.getCode() == null) {
             return "praha";
         }
 
         return switch (region.getCode().toUpperCase()) {
-
             case "PRAHA" -> "praha";
-
-            case "KOLIN" -> "okres-kolin";
-            case "KUTNA_HORA" -> "okres-kutna-hora";
-
             case "BRNO" -> "brno";
             case "OSTRAVA" -> "ostrava";
             case "PLZEN" -> "plzen";
             case "OLOMOUC" -> "olomouc";
-
             case "PARDUBICE" -> "pardubice";
             case "LIBEREC" -> "liberec";
             case "ZLIN" -> "zlin";
-
             case "CESKE_BUDEJOVICE" -> "ceske-budejovice";
-
             case "USTI_NAD_LABEM" -> "usti-nad-labem";
-
             case "HRADEC_KRALOVE" -> "hradec-kralove";
-
             case "KARLOVY_VARY" -> "karlovy-vary";
-
             case "JIHLAVA" -> "jihlava";
 
-            default -> null;
+            default -> "okres-" + region.getCode()
+                    .toLowerCase()
+                    .replace("_", "-");
         };
     }
 }

@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,7 +22,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.time.LocalDateTime;
 
 @Service
 public class SrealityParser {
@@ -30,6 +30,9 @@ public class SrealityParser {
 
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
+
+    private static final int MAX_PAGES = 10;
+    private static final int PER_PAGE = 20;
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -40,12 +43,17 @@ public class SrealityParser {
     public List<ListingDto> fetchListings(Integer srealityRegionId) throws IOException {
         String runId = UUID.randomUUID().toString().substring(0, 8);
 
+        if (srealityRegionId == null) {
+            log.info("Sreality run={} skipped: srealityRegionId is null", runId);
+            return List.of();
+        }
+
         try {
             List<ListingDto> result = new ArrayList<>();
 
             log.info("Sreality run={} started, regionId={}", runId, srealityRegionId);
 
-            for (int page = 1; page <= 10; page++) {
+            for (int page = 1; page <= MAX_PAGES; page++) {
                 String apiUrl = buildApiUrl(srealityRegionId, page);
 
                 log.debug("Sreality run={} page={} url={}", runId, page, apiUrl);
@@ -136,15 +144,14 @@ public class SrealityParser {
     private String buildApiUrl(Integer srealityRegionId, int page) {
         long tms = System.currentTimeMillis();
 
-        StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
+        return new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
-                .append("&locality_region_id=").append(srealityRegionId == null ? 10 : srealityRegionId)
+                .append("&locality_region_id=").append(srealityRegionId)
                 .append("&page=").append(page)
-                .append("&per_page=20")
-                .append("&tms=").append(tms);
-
-        return url.toString();
+                .append("&per_page=").append(PER_PAGE)
+                .append("&tms=").append(tms)
+                .toString();
     }
 
     private int extractPrice(JsonNode estate) {
@@ -240,8 +247,7 @@ public class SrealityParser {
             JsonNode images = links.path("images");
 
             if (images.isArray() && !images.isEmpty()) {
-                JsonNode first = images.get(0);
-                String href = first.path("href").asText("");
+                String href = images.get(0).path("href").asText("");
 
                 if (!href.isBlank()) {
                     return href;
@@ -255,8 +261,7 @@ public class SrealityParser {
             JsonNode images = embedded.path("images");
 
             if (images.isArray() && !images.isEmpty()) {
-                JsonNode first = images.get(0);
-                String href = first.path("href").asText("");
+                String href = images.get(0).path("href").asText("");
 
                 if (!href.isBlank()) {
                     return href;
