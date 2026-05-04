@@ -88,44 +88,53 @@ public class NotificationService {
                     String msg = e.getMessage();
 
                     if (isBlockedByUser(msg)) {
-                        user.setActive(false);
-                        userFilterRepo.save(user);
-                        System.out.println("User blocked bot, subscription disabled: " + chatId);
+                        deactivateUser(user, chatId);
                         return;
                     }
 
-                    System.out.println("SendPhoto failed in NotificationService for link=" + listing.link()
-                            + " photo=" + listing.photoUrl());
-                    e.printStackTrace();
+                    System.out.println("SendPhoto failed, fallback to text. link=" + listing.link());
                 } catch (Exception e) {
-                    System.out.println("Unexpected SendPhoto failure in NotificationService for link=" + listing.link()
-                            + " photo=" + listing.photoUrl());
-                    e.printStackTrace();
+                    System.out.println("Unexpected SendPhoto failure, fallback to text. link=" + listing.link());
                 }
             }
 
-            telegramClient.execute(
-                    SendMessage.builder()
-                            .chatId(chatId)
-                            .text(caption)
-                            .replyMarkup(Keyboards.listingKeyboard(token, link, lang))
-                            .build()
-            );
-
+            sendTextFallback(chatId, caption, token, link, lang);
             saveSent(chatId, key);
 
         } catch (TelegramApiException e) {
             String msg = e.getMessage();
 
             if (isBlockedByUser(msg)) {
-                user.setActive(false);
-                userFilterRepo.save(user);
-                System.out.println("User blocked bot, subscription disabled: " + chatId);
+                deactivateUser(user, chatId);
                 return;
             }
 
-            e.printStackTrace();
+            System.out.println("SendMessage failed in NotificationService for link=" + listing.link()
+                    + ", error=" + msg);
+        } catch (Exception e) {
+            System.out.println("Unexpected notification failure for link=" + listing.link()
+                    + ", error=" + e.getMessage());
         }
+    }
+
+    private void sendTextFallback(Long chatId,
+                                  String caption,
+                                  String token,
+                                  String link,
+                                  Language lang) throws TelegramApiException {
+        telegramClient.execute(
+                SendMessage.builder()
+                        .chatId(chatId)
+                        .text(caption)
+                        .replyMarkup(Keyboards.listingKeyboard(token, link, lang))
+                        .build()
+        );
+    }
+
+    private void deactivateUser(UserFilter user, Long chatId) {
+        user.setActive(false);
+        userFilterRepo.save(user);
+        System.out.println("User blocked bot, subscription disabled: " + chatId);
     }
 
     private boolean hasUsablePhotoUrl(String photoUrl) {
