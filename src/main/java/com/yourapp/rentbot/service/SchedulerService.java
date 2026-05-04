@@ -75,22 +75,19 @@ public class SchedulerService {
                 usersWithMatches++;
                 totalCandidates += listings.size();
 
-                int processedCount = 0;
-
                 for (ListingDto listing : listings) {
                     try {
                         notificationService.sendIfNotSent(user, listing);
-                        processedCount++;
                         totalSendAttempts++;
                     } catch (Exception e) {
                         log.error("Error sending listing to user {} link={}", userId, listing.link(), e);
                     }
                 }
 
-                log.info("User {}: processed {} listings", userId, processedCount);
+                log.info("User {}: processed {} listings", userId, listings.size());
 
             } catch (Exception e) {
-                log.error("Scheduler error for user {}", userId, e);
+                log.error("Error processing user {}", userId, e);
             }
         }
 
