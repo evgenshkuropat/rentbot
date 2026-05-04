@@ -1,5 +1,7 @@
 package com.yourapp.rentbot.service.dto;
 
+import java.time.LocalDateTime;
+
 public record ListingDto(
         String title,
         int priceCzk,
@@ -7,6 +9,7 @@ public record ListingDto(
         String layout,
         String locality,
         String photoUrl,
-        String source
+        String source,
+        LocalDateTime foundAt
 ) {
 }

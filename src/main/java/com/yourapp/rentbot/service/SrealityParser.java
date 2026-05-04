@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.time.LocalDateTime;
 
 @Service
 public class SrealityParser {
@@ -114,7 +115,8 @@ public class SrealityParser {
                             layout,
                             locality,
                             photoUrl,
-                            "Sreality"
+                            "Sreality",
+                            LocalDateTime.now()
                     ));
                 }
             }

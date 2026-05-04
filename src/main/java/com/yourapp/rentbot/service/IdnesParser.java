@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.time.LocalDateTime;
 
 @Service
 public class IdnesParser {
@@ -112,7 +113,8 @@ public class IdnesParser {
                     layout,
                     locality,
                     photoUrl,
-                    "iDNES"
+                    "iDNES",
+                    LocalDateTime.now()
             ));
         }
 

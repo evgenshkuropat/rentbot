@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.time.LocalDateTime;
 
 @Service
 public class BazosParser {
@@ -104,7 +105,8 @@ public class BazosParser {
                         layout,
                         locality,
                         photoUrl,
-                        "Bazoš"
+                        "Bazoš",
+                        LocalDateTime.now()
                 ));
             }
         }

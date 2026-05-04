@@ -60,11 +60,19 @@ public class NotificationService {
             default -> "Локація";
         };
 
+        String addedLabel = switch (lang) {
+            case RU -> "Добавлено";
+            case CZ -> "Přidáno";
+            case EN -> "Added";
+            default -> "Додано";
+        };
+
         String caption =
                 "🏠 " + nvl(listing.title()) + "\n" +
                         "🏷 " + sourceLabel + ": " + nvl(listing.source()) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
-                        "📍 " + locationLabel + ": " + nvl(listing.locality());
+                        "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
+                        "🕒 " + addedLabel + ": " + formatAddedAt(listing.foundAt(), lang);
 
         String token = listingCacheService.put(listing);
         String link = safeUrl(listing.link());
@@ -185,5 +193,16 @@ public class NotificationService {
 
     public long countSent() {
         return sentLogRepo.count();
+    }
+
+    private String formatAddedAt(java.time.LocalDateTime time, Language lang) {
+        if (time == null) {
+            return "—";
+        }
+
+        java.time.format.DateTimeFormatter formatter =
+                java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+        return time.format(formatter);
     }
 }
