@@ -52,8 +52,10 @@ public class SrealityParser {
                 HttpRequest req = HttpRequest.newBuilder()
                         .uri(URI.create(apiUrl))
                         .timeout(Duration.ofSeconds(20))
-                        .header("User-Agent", "Mozilla/5.0")
-                        .header("Accept", "application/json")
+                        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
+                        .header("Accept", "application/json, text/plain, */*")
+                        .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8")
+                        .header("Referer", "https://www.sreality.cz/")
                         .GET()
                         .build();
 
@@ -130,15 +132,15 @@ public class SrealityParser {
     }
 
     private String buildApiUrl(Integer srealityRegionId, int page) {
+        long tms = System.currentTimeMillis();
+
         StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
+                .append("&locality_region_id=").append(srealityRegionId == null ? 10 : srealityRegionId)
+                .append("&page=").append(page)
                 .append("&per_page=20")
-                .append("&page=").append(page);
-
-        if (srealityRegionId != null) {
-            url.append("&locality_region_id=").append(srealityRegionId);
-        }
+                .append("&tms=").append(tms);
 
         return url.toString();
     }
