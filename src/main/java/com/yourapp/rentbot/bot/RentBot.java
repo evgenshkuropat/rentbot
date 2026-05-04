@@ -442,8 +442,7 @@ Bazoš: %d
 
             flowService.reset(userId);
 
-            List<Region> regions = regionRepo.findAll();
-            send(chatId, msg(userId, "filter.start"), Keyboards.regionsKeyboard(regions));
+            sendRegionsEntry(chatId, userId, msg(userId, "filter.start"));
             return;
         }
 
@@ -560,6 +559,18 @@ Bazoš: %d
 
             if ("OTHER".equals(code)) {
                 List<Region> otherRegions = regionRepo.findByPopularFalseOrderByTitleAsc();
+
+                if (otherRegions == null || otherRegions.isEmpty()) {
+                    send(chatId,
+                            "❌ Other cities list is empty. Check DB: popular=false is missing.",
+                            Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+
+                System.out.println("OTHER REGIONS SIZE = " + otherRegions.size());
+                otherRegions.forEach(r ->
+                        System.out.println("OTHER: " + r.getTitle() + " popular=" + r.isPopular())
+                );
 
                 send(chatId,
                         switch (lang) {
@@ -775,8 +786,16 @@ Bazoš: %d
         List<Region> popularRegions = regionRepo.findByPopularTrueOrderByTitleAsc();
 
         if (popularRegions == null || popularRegions.isEmpty()) {
-            popularRegions = regionRepo.findAll();
+            send(chatId,
+                    "❌ No popular regions in DB. Check regions.popular=true.",
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
         }
+
+        System.out.println("POPULAR REGIONS SIZE = " + popularRegions.size());
+        popularRegions.forEach(r ->
+                System.out.println("POPULAR: " + r.getTitle() + " popular=" + r.isPopular())
+        );
 
         send(chatId, text, Keyboards.regionsEntryKeyboard(popularRegions, lang));
     }
