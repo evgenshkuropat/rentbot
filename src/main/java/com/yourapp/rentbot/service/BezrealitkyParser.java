@@ -143,6 +143,8 @@ public class BezrealitkyParser {
             Element el = article.selectFirst(selector);
             if (el != null) {
                 String text = normalizeWhitespace(el.text());
+                text = normalizeBezrealitkyTitle(text);
+
                 if (!text.isBlank()) {
                     return text;
                 }
@@ -150,6 +152,17 @@ public class BezrealitkyParser {
         }
 
         return "";
+    }
+
+    private String normalizeBezrealitkyTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return "";
+        }
+
+        return title
+                .replaceAll("(?i)(Pronájem bytu)(\\S)", "$1 $2")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private String extractPhoto(Element article) {

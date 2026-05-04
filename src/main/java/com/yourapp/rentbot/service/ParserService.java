@@ -174,22 +174,6 @@ public class ParserService {
                 .sorted(Comparator.comparingInt((ListingDto x) -> listingScore(x, filter)).reversed())
                 .toList();
 
-        // 🔍 DEBUG TOP-3 для конкретного фильтра
-        for (int i = 0; i < Math.min(3, filteredBase.size()); i++) {
-            ListingDto dto = filteredBase.get(i);
-
-            System.out.println(
-                    "TOP filter=" + regionTitle + "/" + needLayout + "/" + maxPrice + "/" + groupCode
-                            + " rank=" + (i + 1)
-                            + " score=" + listingScore(dto, filter)
-                            + " source=" + dto.source()
-                            + " price=" + dto.priceCzk()
-                            + " layout=" + dto.layout()
-                            + " locality=" + dto.locality()
-                            + " title=" + dto.title()
-            );
-        }
-
         int filteredBaseTotal = filteredBase.size();
 
         int filteredBaseSreality = 0;
