@@ -92,6 +92,10 @@ public class BazosParser {
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
+                if (locality.isBlank() && region != null && region.getTitle() != null) {
+                    locality = region.getTitle();
+                }
+
                 if (!matchesSelectedRegion(locality, region)) {
                     continue;
                 }
@@ -148,6 +152,7 @@ public class BazosParser {
             case "LIBEREC" -> BASE_URL + "/pronajmu/byt/?hlokalita=46001&humkreis=20";
             case "KOLIN" -> BASE_URL + "/pronajmu/byt/?hlokalita=28002&humkreis=20";
             case "KUTNA_HORA" -> BASE_URL + "/pronajmu/byt/?hlokalita=28401&humkreis=20";
+            case "TRUTNOV" -> BASE_URL + "/pronajmu/byt/?hlokalita=54101&humkreis=20";
             default -> BASE_URL + "/pronajmu/byt/";
         };
 
@@ -161,6 +166,7 @@ public class BazosParser {
             case "LIBEREC" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=46001&humkreis=20";
             case "KOLIN" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28002&humkreis=20";
             case "KUTNA_HORA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28401&humkreis=20";
+            case "TRUTNOV" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=54101&humkreis=20";
             default -> BASE_URL + "/pronajmu/podnajem/";
         };
 
