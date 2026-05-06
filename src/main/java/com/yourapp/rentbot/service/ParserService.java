@@ -62,52 +62,92 @@ public class ParserService {
     }
 
     public List<ListingDto> fetchListingsForFilter(UserFilter filter) throws IOException {
+
         Region region = filter != null ? filter.getRegion() : null;
         RegionGroup group = filter != null ? filter.getRegionGroup() : null;
 
-        Integer srealityRegionId = null;
+        Integer srealityDistrictId = null;
 
-        if (region == null) {
-            srealityRegionId = 10;
-        } else if (region.getSrealityRegionId() != null) {
-            srealityRegionId = region.getSrealityRegionId();
+        if (region != null && region.getCode() != null) {
+            srealityDistrictId = SrealityParser.getDistrictId(region.getCode());
         }
 
         List<ListingDto> all = new ArrayList<>();
 
         try {
-            if (srealityRegionId != null) {
 
-                List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
-                System.out.println("SREALITY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + sreality.size());
+            if (srealityDistrictId != null) {
+
+                List<ListingDto> sreality =
+                        srealityParser.fetchListings(srealityDistrictId);
+
+                System.out.println(
+                        "SREALITY LISTINGS FOR "
+                                + (region != null ? region.getTitle() : "default")
+                                + " = "
+                                + sreality.size()
+                );
+
                 all.addAll(sreality);
+
             } else {
-                System.out.println("SREALITY SKIPPED FOR " + region.getTitle() + " because sreality_region_id is null");
+
+                System.out.println(
+                        "SREALITY SKIPPED FOR "
+                                + (region != null ? region.getTitle() : "default")
+                                + " because district id is null"
+                );
             }
+
         } catch (Exception e) {
             System.out.println("Sreality parser failed: " + e.getMessage());
         }
 
         try {
             List<ListingDto> idnes = idnesParser.fetchListings(region, group);
-            System.out.println("IDNES LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + idnes.size());
+
+            System.out.println(
+                    "IDNES LISTINGS FOR "
+                            + (region != null ? region.getTitle() : "default")
+                            + " = "
+                            + idnes.size()
+            );
+
             all.addAll(idnes);
+
         } catch (Exception e) {
             System.out.println("Idnes parser failed: " + e.getMessage());
         }
 
         try {
-            List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(region);
-            System.out.println("BEZREALITKY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + bezrealitky.size());
+            List<ListingDto> bezrealitky =
+                    bezrealitkyParser.fetchListings(region);
+
+            System.out.println(
+                    "BEZREALITKY LISTINGS FOR "
+                            + (region != null ? region.getTitle() : "default")
+                            + " = "
+                            + bezrealitky.size()
+            );
+
             all.addAll(bezrealitky);
+
         } catch (Exception e) {
             System.out.println("Bezrealitky parser failed: " + e.getMessage());
         }
 
         try {
             List<ListingDto> bazos = bazosParser.fetchListings(region);
-            System.out.println("BAZOS LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + bazos.size());
+
+            System.out.println(
+                    "BAZOS LISTINGS FOR "
+                            + (region != null ? region.getTitle() : "default")
+                            + " = "
+                            + bazos.size()
+            );
+
             all.addAll(bazos);
+
         } catch (Exception e) {
             System.out.println("Bazos parser failed: " + e.getMessage());
         }
@@ -115,7 +155,12 @@ public class ParserService {
         all = dedupeByLink(all);
         all = dedupeBySignature(all);
 
-        System.out.println("ALL LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + all.size());
+        System.out.println(
+                "ALL LISTINGS FOR "
+                        + (region != null ? region.getTitle() : "default")
+                        + " = "
+                        + all.size()
+        );
 
         return all;
     }

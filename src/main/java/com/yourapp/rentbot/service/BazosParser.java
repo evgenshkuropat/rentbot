@@ -92,10 +92,6 @@ public class BazosParser {
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
-                if (locality.isBlank() && region != null && region.getTitle() != null) {
-                    locality = region.getTitle();
-                }
-
                 if (!matchesSelectedRegion(locality, region)) {
                     continue;
                 }

@@ -40,21 +40,29 @@ public class SrealityParser {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public List<ListingDto> fetchListings(Integer srealityRegionId) throws IOException {
+    public static Integer getDistrictId(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+
+        return SREALITY_DISTRICT_IDS.get(regionCode.toUpperCase());
+    }
+
+    public List<ListingDto> fetchListings(Integer srealityDistrictId) throws IOException {
         String runId = UUID.randomUUID().toString().substring(0, 8);
 
-        if (srealityRegionId == null) {
-            log.info("Sreality run={} skipped: srealityRegionId is null", runId);
+        if (srealityDistrictId == null) {
+            log.info("Sreality run={} skipped: srealityDistrictId is null", runId);
             return List.of();
         }
 
         try {
             List<ListingDto> result = new ArrayList<>();
 
-            log.info("Sreality run={} started, regionId={}", runId, srealityRegionId);
+            log.info("Sreality run={} started, districtId={}", runId, srealityDistrictId);
 
             for (int page = 1; page <= MAX_PAGES; page++) {
-                String apiUrl = buildApiUrl(srealityRegionId, page);
+                String apiUrl = buildApiUrl(srealityDistrictId, page);
 
                 log.debug("Sreality run={} page={} url={}", runId, page, apiUrl);
 
@@ -70,16 +78,14 @@ public class SrealityParser {
 
                 HttpResponse<byte[]> resp = http.send(req, HttpResponse.BodyHandlers.ofByteArray());
 
-                int status = resp.statusCode();
-
-                if (status != 200) {
+                if (resp.statusCode() != 200) {
                     String body = resp.body() == null ? "" : new String(resp.body(), StandardCharsets.UTF_8);
 
                     log.warn(
                             "Sreality run={} page={} non-200 status={}, body={}",
                             runId,
                             page,
-                            status,
+                            resp.statusCode(),
                             body.substring(0, Math.min(300, body.length()))
                     );
 
@@ -99,7 +105,7 @@ public class SrealityParser {
 
                 if (estates.isEmpty()) {
                     if (page == 1) {
-                        log.warn("Sreality run={} first page empty, regionId={}", runId, srealityRegionId);
+                        log.warn("Sreality run={} first page empty, districtId={}", runId, srealityDistrictId);
                     }
                     break;
                 }
@@ -141,13 +147,13 @@ public class SrealityParser {
         }
     }
 
-    private String buildApiUrl(Integer srealityRegionId, int page) {
+    private String buildApiUrl(Integer srealityDistrictId, int page) {
         long tms = System.currentTimeMillis();
 
         return new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
-                .append("&locality_region_id=").append(srealityRegionId)
+                .append("&locality_district_id=").append(srealityDistrictId)
                 .append("&page=").append(page)
                 .append("&per_page=").append(PER_PAGE)
                 .append("&tms=").append(tms)
@@ -271,4 +277,95 @@ public class SrealityParser {
 
         return null;
     }
+
+    private static final Map<String, Integer> SREALITY_DISTRICT_IDS = Map.ofEntries(
+            Map.entry("BENESOV", 48),
+            Map.entry("BEROUN", 49),
+            Map.entry("BLANSKO", 71),
+            Map.entry("BRNO", 72),
+            Map.entry("BRNO_VENKOV", 73),
+            Map.entry("BRUNTAL", 60),
+            Map.entry("BRECLAV", 74),
+            Map.entry("CESKA_LIPA", 18),
+            Map.entry("CESKE_BUDEJOVICE", 1),
+            Map.entry("CESKY_KRUMLOV", 2),
+            Map.entry("DECIN", 19),
+            Map.entry("DOMAZLICE", 8),
+            Map.entry("FRYDEK_MISTEK", 61),
+            Map.entry("HAVLICKUV_BROD", 66),
+            Map.entry("HODONIN", 75),
+            Map.entry("HRADEC_KRALOVE", 28),
+            Map.entry("CHEB", 9),
+            Map.entry("CHOMUTOV", 20),
+            Map.entry("CHRUDIM", 29),
+            Map.entry("JABLONEC_NAD_NISOU", 21),
+            Map.entry("JABLONEC", 21),
+            Map.entry("JESENIK", 46),
+            Map.entry("JICIN", 30),
+            Map.entry("JIHLAVA", 67),
+            Map.entry("JINDRICHUV_HRADEC", 3),
+            Map.entry("KARLOVY_VARY", 10),
+            Map.entry("KARVINA", 62),
+            Map.entry("KLADNO", 50),
+            Map.entry("KLATOVY", 11),
+            Map.entry("KOLIN", 51),
+            Map.entry("KROMERIZ", 39),
+            Map.entry("KUTNA_HORA", 52),
+            Map.entry("LIBEREC", 22),
+            Map.entry("LITOMERICE", 23),
+            Map.entry("LOUNY", 24),
+            Map.entry("MELNIK", 54),
+            Map.entry("MLADA_BOLESLAV", 53),
+            Map.entry("MOST", 25),
+            Map.entry("NACHOD", 31),
+            Map.entry("NOVY_JICIN", 63),
+            Map.entry("NYMBURK", 55),
+            Map.entry("OLOMOUC", 42),
+            Map.entry("OPAVA", 64),
+            Map.entry("OSTRAVA", 65),
+            Map.entry("PARDUBICE", 32),
+            Map.entry("PELHRIMOV", 68),
+            Map.entry("PISEK", 4),
+            Map.entry("PLZEN", 12),
+            Map.entry("PLZEN_JIH", 13),
+            Map.entry("PLZEN_SEVER", 14),
+            Map.entry("PRAHA", 10),
+            Map.entry("PRAHA_1", 5001),
+            Map.entry("PRAHA_2", 5002),
+            Map.entry("PRAHA_3", 5003),
+            Map.entry("PRAHA_4", 5004),
+            Map.entry("PRAHA_5", 5005),
+            Map.entry("PRAHA_6", 5006),
+            Map.entry("PRAHA_7", 5007),
+            Map.entry("PRAHA_8", 5008),
+            Map.entry("PRAHA_9", 5009),
+            Map.entry("PRAHA_10", 5010),
+            Map.entry("PRAHA_VYCHOD", 56),
+            Map.entry("PRAHA_ZAPAD", 57),
+            Map.entry("PRACHATICE", 5),
+            Map.entry("PROSTEJOV", 40),
+            Map.entry("PREROV", 43),
+            Map.entry("PRIBRAM", 58),
+            Map.entry("RAKOVNIK", 59),
+            Map.entry("ROKYCANY", 15),
+            Map.entry("RYCHNOV_NAD_KNEZNOU", 33),
+            Map.entry("SEMILY", 34),
+            Map.entry("SOKOLOV", 16),
+            Map.entry("STRAKONICE", 6),
+            Map.entry("SVITAVY", 35),
+            Map.entry("SUMPERK", 44),
+            Map.entry("TABOR", 7),
+            Map.entry("TACHOV", 17),
+            Map.entry("TEPLICE", 26),
+            Map.entry("TRUTNOV", 36),
+            Map.entry("TREBIC", 69),
+            Map.entry("UHERSKE_HRADISTE", 41),
+            Map.entry("USTI_NAD_LABEM", 27),
+            Map.entry("USTI_NAD_ORLICI", 37),
+            Map.entry("VSETIN", 45),
+            Map.entry("VYSKOV", 76),
+            Map.entry("ZLIN", 38),
+            Map.entry("ZNOJMO", 77),
+            Map.entry("ZDAR_NAD_SAZAVOU", 70)
+    );
 }
