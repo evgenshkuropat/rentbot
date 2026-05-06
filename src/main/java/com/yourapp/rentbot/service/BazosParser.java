@@ -93,6 +93,16 @@ public class BazosParser {
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
                 if (!matchesSelectedRegion(locality, region)) {
+                    System.out.println(
+                            "BAZOS SKIP REGION title='"
+                                    + title
+                                    + "' locality='"
+                                    + locality
+                                    + "' region='"
+                                    + (region != null ? region.getTitle() : "null")
+                                    + "' link="
+                                    + link
+                    );
                     continue;
                 }
 
