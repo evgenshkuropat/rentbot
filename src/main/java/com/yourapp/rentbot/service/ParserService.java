@@ -70,9 +70,14 @@ public class ParserService {
         List<ListingDto> all = new ArrayList<>();
 
         try {
-            List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
-            System.out.println("SREALITY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + sreality.size());
-            all.addAll(sreality);
+            if (srealityRegionId != null) {
+
+                List<ListingDto> sreality = srealityParser.fetchListings(srealityRegionId);
+                System.out.println("SREALITY LISTINGS FOR " + (region != null ? region.getTitle() : "default") + " = " + sreality.size());
+                all.addAll(sreality);
+            } else {
+                System.out.println("SREALITY SKIPPED FOR " + region.getTitle() + " because sreality_region_id is null");
+            }
         } catch (Exception e) {
             System.out.println("Sreality parser failed: " + e.getMessage());
         }
