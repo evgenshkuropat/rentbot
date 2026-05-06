@@ -92,7 +92,7 @@ public class BazosParser {
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
-                if (!matchesSelectedRegion(locality, region)) {
+                // if (!matchesSelectedRegion(locality, region)) {
                     System.out.println(
                             "BAZOS SKIP REGION title='"
                                     + title
@@ -103,8 +103,8 @@ public class BazosParser {
                                     + "' link="
                                     + link
                     );
-                    continue;
-                }
+                //     continue;
+                //  }
 
                 String photoUrl = extractPhoto(container);
 
@@ -116,9 +116,9 @@ public class BazosParser {
                     continue;
                 }
 
-                if (locality == null || locality.isBlank() || locality.length() > 80) {
-                    continue;
-                }
+            //  if (locality == null || locality.isBlank() || locality.length() > 80) {
+            //         continue;
+            //    }
 
                 result.add(new ListingDto(
                         title,
