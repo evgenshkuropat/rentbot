@@ -54,22 +54,6 @@ public class SchedulerService {
 
         log.info("Scheduler: checking {} users", users.size());
 
-        List<ListingDto> allListings;
-
-        try {
-            allListings = parserService.fetchAllListingsOnce();
-        } catch (Exception e) {
-            log.error("Scheduler: parser run failed", e);
-            return;
-        }
-
-        if (allListings == null || allListings.isEmpty()) {
-            log.info("Scheduler: no listings from parsers");
-            return;
-        }
-
-        log.info("Scheduler: fetched {} unique listings", allListings.size());
-
         int usersProcessed = 0;
         int usersWithMatches = 0;
         int totalCandidates = 0;
@@ -81,7 +65,7 @@ public class SchedulerService {
             try {
                 usersProcessed++;
 
-                List<ListingDto> listings = parserService.filterForUser(allListings, user);
+                List<ListingDto> listings = parserService.findNewListings(userId);
 
                 if (listings == null || listings.isEmpty()) {
                     log.debug("User {}: no matching listings", userId);
@@ -113,4 +97,6 @@ public class SchedulerService {
                 totalSendAttempts
         );
     }
+
+
 }
