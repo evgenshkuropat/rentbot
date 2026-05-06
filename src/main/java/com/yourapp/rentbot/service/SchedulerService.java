@@ -1,5 +1,7 @@
 package com.yourapp.rentbot.service;
 
+import com.yourapp.rentbot.domain.Region;
+import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -8,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -54,10 +58,13 @@ public class SchedulerService {
 
         log.info("Scheduler: checking {} users", users.size());
 
+        Map<String, List<ListingDto>> listingsCache = new HashMap<>();
+
         int usersProcessed = 0;
         int usersWithMatches = 0;
         int totalCandidates = 0;
         int totalSendAttempts = 0;
+        int parserRuns = 0;
 
         for (UserFilter user : users) {
             Long userId = user.getTelegramUserId();
@@ -65,7 +72,23 @@ public class SchedulerService {
             try {
                 usersProcessed++;
 
-                List<ListingDto> listings = parserService.findNewListings(userId);
+                String cacheKey = cacheKey(user);
+
+                List<ListingDto> allListings = listingsCache.get(cacheKey);
+
+                if (allListings == null) {
+                    allListings = parserService.fetchListingsForFilter(user);
+                    listingsCache.put(cacheKey, allListings);
+                    parserRuns++;
+
+                    log.info(
+                            "Scheduler: parsed key={} listings={}",
+                            cacheKey,
+                            allListings != null ? allListings.size() : 0
+                    );
+                }
+
+                List<ListingDto> listings = parserService.filterForUser(allListings, user);
 
                 if (listings == null || listings.isEmpty()) {
                     log.debug("User {}: no matching listings", userId);
@@ -90,13 +113,27 @@ public class SchedulerService {
         }
 
         log.info(
-                "Scheduler finished: usersProcessed={}, usersWithMatches={}, totalCandidates={}, totalSendAttempts={}",
+                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}",
                 usersProcessed,
                 usersWithMatches,
+                parserRuns,
                 totalCandidates,
                 totalSendAttempts
         );
     }
 
+    private String cacheKey(UserFilter user) {
+        Region region = user.getRegion();
+        RegionGroup group = user.getRegionGroup();
 
+        String regionCode = region == null || region.getCode() == null
+                ? "DEFAULT"
+                : region.getCode();
+
+        String groupCode = group == null || group.getCode() == null
+                ? "NO_GROUP"
+                : group.getCode();
+
+        return regionCode + "|" + groupCode;
+    }
 }
