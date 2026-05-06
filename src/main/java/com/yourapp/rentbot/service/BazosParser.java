@@ -92,20 +92,6 @@ public class BazosParser {
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
-                // if (!matchesSelectedRegion(locality, region)) {
-                    System.out.println(
-                            "BAZOS SKIP REGION title='"
-                                    + title
-                                    + "' locality='"
-                                    + locality
-                                    + "' region='"
-                                    + (region != null ? region.getTitle() : "null")
-                                    + "' link="
-                                    + link
-                    );
-                //     continue;
-                //  }
-
                 String photoUrl = extractPhoto(container);
 
                 if (price <= 0 || price > 60000) {
@@ -115,10 +101,6 @@ public class BazosParser {
                 if (layout == null) {
                     continue;
                 }
-
-            //  if (locality == null || locality.isBlank() || locality.length() > 80) {
-            //         continue;
-            //    }
 
                 result.add(new ListingDto(
                         title,
@@ -560,21 +542,6 @@ public class BazosParser {
         s = s.replaceAll("(?i)\\b(\\w+)\\s+\\1\\b", "$1");
 
         return s;
-    }
-
-    private boolean matchesSelectedRegion(String locality, Region region) {
-        if (region == null || region.getTitle() == null || region.getTitle().isBlank()) {
-            return true;
-        }
-
-        if (locality == null || locality.isBlank()) {
-            return false;
-        }
-
-        String loc = normalizeLocality(locality);
-        String reg = normalizeLocality(region.getTitle());
-
-        return loc != null && reg != null && loc.contains(reg);
     }
 
     private String normalizeLocality(String s) {
