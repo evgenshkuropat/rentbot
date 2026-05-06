@@ -131,56 +131,49 @@ public class BazosParser {
     }
 
     private List<String> buildUrls(Region region) {
-        String flatUrl;
-        String roomUrl;
 
         if (region == null || region.getCode() == null) {
-            flatUrl = BASE_URL + "/pronajmu/byt/";
-            roomUrl = BASE_URL + "/pronajmu/podnajem/";
-            return List.of(flatUrl, roomUrl);
+            return List.of();
         }
 
         String code = region.getCode().toUpperCase();
 
-        flatUrl = switch (code) {
-            case "PRAHA" -> BASE_URL + "/pronajmu/byt/?hlokalita=10000&humkreis=25";
-            case "BRNO" -> BASE_URL + "/pronajmu/byt/?hlokalita=60200&humkreis=20";
-            case "OSTRAVA" -> BASE_URL + "/pronajmu/byt/?hlokalita=70030&humkreis=20";
-            case "PLZEN" -> BASE_URL + "/pronajmu/byt/?hlokalita=30100&humkreis=20";
-            case "PARDUBICE" -> BASE_URL + "/pronajmu/byt/?hlokalita=53002&humkreis=20";
-            case "OLOMOUC" -> BASE_URL + "/pronajmu/byt/?hlokalita=77900&humkreis=20";
-            case "LIBEREC" -> BASE_URL + "/pronajmu/byt/?hlokalita=46001&humkreis=20";
-            case "KOLIN" -> BASE_URL + "/pronajmu/byt/?hlokalita=28002&humkreis=20";
-            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/byt/?hlokalita=28401&humkreis=20";
-            case "TRUTNOV" -> BASE_URL + "/pronajmu/byt/?hlokalita=54101&humkreis=20";
-            default -> BASE_URL + "/pronajmu/byt/";
-        };
+        List<String> zipCodes = REGION_ZIPCODES.get(code);
 
-        roomUrl = switch (code) {
-            case "PRAHA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=10000&humkreis=25";
-            case "BRNO" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=60200&humkreis=20";
-            case "OSTRAVA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=70030&humkreis=20";
-            case "PLZEN" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=30100&humkreis=20";
-            case "PARDUBICE" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=53002&humkreis=20";
-            case "OLOMOUC" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=77900&humkreis=20";
-            case "LIBEREC" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=46001&humkreis=20";
-            case "KOLIN" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28002&humkreis=20";
-            case "KUTNA_HORA" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=28401&humkreis=20";
-            case "TRUTNOV" -> BASE_URL + "/pronajmu/podnajem/?hlokalita=54101&humkreis=20";
-            default -> BASE_URL + "/pronajmu/podnajem/";
-        };
+        if (zipCodes == null || zipCodes.isEmpty()) {
+            return List.of();
+        }
 
-        return List.of(flatUrl, roomUrl);
+        List<String> urls = new ArrayList<>();
+
+        for (String zip : zipCodes) {
+
+            urls.add(
+                    BASE_URL + "/pronajmu/byt/?hlokalita="
+                            + zip
+                            + "&humkreis=15"
+            );
+
+            urls.add(
+                    BASE_URL + "/pronajmu/podnajem/?hlokalita="
+                            + zip
+                            + "&humkreis=15"
+            );
+        }
+
+        return urls;
     }
 
     private Element findReasonableContainer(Element linkEl) {
         Element current = linkEl;
+
         for (int i = 0; i < 6 && current != null; i++) {
             if (current.text() != null && current.text().length() > 60) {
                 return current;
             }
             current = current.parent();
         }
+
         return linkEl.parent();
     }
 
@@ -190,6 +183,7 @@ public class BazosParser {
         }
 
         String href = linkEl.attr("href");
+
         if (href == null || href.isBlank()) {
             return "";
         }
@@ -197,9 +191,11 @@ public class BazosParser {
         if (href.startsWith("http")) {
             return href;
         }
+
         if (href.startsWith("/")) {
             return BASE_URL + href;
         }
+
         return BASE_URL + "/" + href;
     }
 
@@ -599,4 +595,218 @@ public class BazosParser {
                 .replaceAll("\\s+", " ")
                 .trim();
     }
+
+    private static final Map<String, List<String>> REGION_ZIPCODES = Map.ofEntries(
+
+            Map.entry("PRAHA", List.of(
+                    "10000", "11000", "13000", "14000", "15000",
+                    "15500", "16000", "17000", "18000", "19000"
+            )),
+
+            Map.entry("BRNO", List.of(
+                    "60200", "60300", "61200", "61300", "61600",
+                    "61900", "62100", "62500", "62800"
+            )),
+
+            Map.entry("OSTRAVA", List.of(
+                    "70030", "70200", "70800", "70900", "71000",
+                    "71700", "72000", "72400", "72525"
+            )),
+
+            Map.entry("PLZEN", List.of(
+                    "30100", "31200", "31800", "32100", "32300"
+            )),
+
+            Map.entry("LIBEREC", List.of(
+                    "46001", "46005", "46311"
+            )),
+
+            Map.entry("PARDUBICE", List.of(
+                    "53002", "53003", "53341"
+            )),
+
+            Map.entry("OLOMOUC", List.of(
+                    "77900", "77911", "78301"
+            )),
+
+            Map.entry("KOLIN", List.of(
+                    "28002", "28003", "28144"
+            )),
+
+            Map.entry("KUTNA_HORA", List.of(
+                    "28401", "28522"
+            )),
+
+            Map.entry("TRUTNOV", List.of(
+                    "54101", "54232", "54223"
+            )),
+
+            Map.entry("JIHLAVA", List.of(
+                    "58601", "58811"
+            )),
+
+            Map.entry("KARLOVY_VARY", List.of(
+                    "36001", "36225"
+            )),
+
+            Map.entry("MLADA_BOLESLAV", List.of(
+                    "29301", "29421"
+            )),
+
+            Map.entry("CESKE_BUDEJOVICE", List.of(
+                    "37001", "37005"
+            )),
+
+            Map.entry("CESKY_BROD", List.of(
+                    "28201"
+            )),
+
+            Map.entry("NYMBURK", List.of(
+                    "28802", "28922"
+            )),
+
+            Map.entry("PODEBRADY", List.of(
+                    "29001"
+            )),
+
+            Map.entry("BEROUN", List.of(
+                    "26601", "26727"
+            )),
+
+            Map.entry("BRECLAV", List.of(
+                    "69002", "69141"
+            )),
+
+            Map.entry("CESKA_LIPA", List.of(
+                    "47001"
+            )),
+
+            Map.entry("CHEB", List.of(
+                    "35002"
+            )),
+
+            Map.entry("CHOMUTOV", List.of(
+                    "43001", "43111"
+            )),
+
+            Map.entry("CHRUDIM", List.of(
+                    "53701"
+            )),
+
+            Map.entry("DECIN", List.of(
+                    "40501"
+            )),
+
+            Map.entry("DOMAZLICE", List.of(
+                    "34401"
+            )),
+
+            Map.entry("FRYDEK_MISTEK", List.of(
+                    "73801", "73911"
+            )),
+
+            Map.entry("HAVLICKUV_BROD", List.of(
+                    "58001"
+            )),
+
+            Map.entry("HODONIN", List.of(
+                    "69501"
+            )),
+
+            Map.entry("JABLONEC", List.of(
+                    "46601"
+            )),
+
+            Map.entry("JINDRICHUV_HRADEC", List.of(
+                    "37701"
+            )),
+
+            Map.entry("KARVINA", List.of(
+                    "73301", "73401"
+            )),
+
+            Map.entry("KROMERIZ", List.of(
+                    "76701"
+            )),
+
+            Map.entry("MELNIK", List.of(
+                    "27601"
+            )),
+
+            Map.entry("NACHOD", List.of(
+                    "54701"
+            )),
+
+            Map.entry("NOVY_JICIN", List.of(
+                    "74101"
+            )),
+
+            Map.entry("OPAVA", List.of(
+                    "74601"
+            )),
+
+            Map.entry("PISEK", List.of(
+                    "39701"
+            )),
+
+            Map.entry("PREROV", List.of(
+                    "75002"
+            )),
+
+            Map.entry("PROSTEJOV", List.of(
+                    "79601"
+            )),
+
+            Map.entry("RAKOVNIK", List.of(
+                    "26901"
+            )),
+
+            Map.entry("SOKOLOV", List.of(
+                    "35601"
+            )),
+
+            Map.entry("STRAKONICE", List.of(
+                    "38601"
+            )),
+
+            Map.entry("SUMPERK", List.of(
+                    "78701"
+            )),
+
+            Map.entry("SVITAVY", List.of(
+                    "56802"
+            )),
+
+            Map.entry("TABOR", List.of(
+                    "39001"
+            )),
+
+            Map.entry("TEPLICE", List.of(
+                    "41501"
+            )),
+
+            Map.entry("TREBIC", List.of(
+                    "67401"
+            )),
+
+            Map.entry("UHERSKE_HRADISTE", List.of(
+                    "68601"
+            )),
+
+            Map.entry("VSETIN", List.of(
+                    "75501"
+            )),
+
+            Map.entry("VYSKOV", List.of(
+                    "68201"
+            )),
+
+            Map.entry("ZNOJMO", List.of(
+                    "66902"
+            )),
+
+            Map.entry("ZLIN", List.of(
+                    "76001", "76302"
+            ))
+    );
 }
