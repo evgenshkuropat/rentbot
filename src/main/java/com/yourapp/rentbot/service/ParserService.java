@@ -65,7 +65,13 @@ public class ParserService {
         Region region = filter != null ? filter.getRegion() : null;
         RegionGroup group = filter != null ? filter.getRegionGroup() : null;
 
-        Integer srealityRegionId = region != null ? region.getSrealityRegionId() : 10;
+        Integer srealityRegionId = null;
+
+        if (region == null) {
+            srealityRegionId = 10;
+        } else if (region.getSrealityRegionId() != null) {
+            srealityRegionId = region.getSrealityRegionId();
+        }
 
         List<ListingDto> all = new ArrayList<>();
 
