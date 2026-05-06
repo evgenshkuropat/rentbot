@@ -92,8 +92,8 @@ public class BazosParser {
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
 
-                if (locality.isBlank() && region != null && region.getTitle() != null) {
-                    locality = region.getTitle();
+                if (!matchesSelectedRegion(locality, region)) {
+                    continue;
                 }
 
                 String photoUrl = extractPhoto(container);
@@ -552,5 +552,45 @@ public class BazosParser {
         s = s.replaceAll("(?i)\\b(\\w+)\\s+\\1\\b", "$1");
 
         return s;
+    }
+
+    private boolean matchesSelectedRegion(String locality, Region region) {
+        if (region == null || region.getTitle() == null || region.getTitle().isBlank()) {
+            return true;
+        }
+
+        if (locality == null || locality.isBlank()) {
+            return false;
+        }
+
+        String loc = normalizeLocality(locality);
+        String reg = normalizeLocality(region.getTitle());
+
+        return loc != null && reg != null && loc.contains(reg);
+    }
+
+    private String normalizeLocality(String s) {
+        if (s == null || s.isBlank()) {
+            return null;
+        }
+
+        return s.toLowerCase()
+                .replace('ě', 'e')
+                .replace('š', 's')
+                .replace('č', 'c')
+                .replace('ř', 'r')
+                .replace('ž', 'z')
+                .replace('ý', 'y')
+                .replace('á', 'a')
+                .replace('í', 'i')
+                .replace('é', 'e')
+                .replace('ů', 'u')
+                .replace('ú', 'u')
+                .replace('ň', 'n')
+                .replace('ď', 'd')
+                .replace('ť', 't')
+                .replaceAll("[^a-z0-9\\s,-]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }
