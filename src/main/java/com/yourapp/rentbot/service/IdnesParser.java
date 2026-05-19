@@ -7,6 +7,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -21,6 +23,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class IdnesParser {
+
+    private static final Logger log = LoggerFactory.getLogger(IdnesParser.class);
 
     private static final String BASE_URL = "https://reality.idnes.cz";
 
@@ -68,10 +72,17 @@ public class IdnesParser {
         List<ListingDto> result = new ArrayList<>();
 
         Elements links = doc.select("a[href*='/detail/'], a[href*='/s/detail/'], a[href*='/s/pronajem/']");
+        int candidateLinks = links.size();
+        int skippedBlankHref = 0;
+        int skippedNoCard = 0;
+        int skippedBlankText = 0;
+        int skippedBlankTitle = 0;
+        int skippedNotApartment = 0;
 
         for (Element linkEl : links) {
             String href = linkEl.attr("href");
             if (href == null || href.isBlank()) {
+                skippedBlankHref++;
                 continue;
             }
 
@@ -79,11 +90,13 @@ public class IdnesParser {
 
             Element card = findCardContainer(linkEl);
             if (card == null) {
+                skippedNoCard++;
                 continue;
             }
 
             String wholeText = card.text();
             if (wholeText == null || wholeText.isBlank()) {
+                skippedBlankText++;
                 continue;
             }
 
@@ -103,6 +116,7 @@ public class IdnesParser {
             String photoUrl = extractPhoto(card);
 
             if (title == null || title.isBlank()) {
+                skippedBlankTitle++;
                 continue;
             }
 
@@ -115,6 +129,7 @@ public class IdnesParser {
                     || lowerWholeText.contains("spolubydleni");
 
             if (!lowerTitle.contains("byt") && !isRoom) {
+                skippedNotApartment++;
                 continue;
             }
 
@@ -130,7 +145,24 @@ public class IdnesParser {
             ));
         }
 
-        return dedupeByLink(result);
+        List<ListingDto> deduped = dedupeByLink(result);
+
+        log.info(
+                "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={}",
+                region != null ? region.getTitle() : "default",
+                url,
+                response.statusCode(),
+                candidateLinks,
+                result.size(),
+                deduped.size(),
+                skippedBlankHref,
+                skippedNoCard,
+                skippedBlankText,
+                skippedBlankTitle,
+                skippedNotApartment
+        );
+
+        return deduped;
     }
 
     private String buildSearchUrl(Region region, RegionGroup regionGroup) {

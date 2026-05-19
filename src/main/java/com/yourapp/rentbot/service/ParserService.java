@@ -6,6 +6,8 @@ import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class ParserService {
+
+    private static final Logger log = LoggerFactory.getLogger(ParserService.class);
 
     private static final long CACHE_TTL_MILLIS = 55_000;
 
@@ -86,43 +90,29 @@ public class ParserService {
                         srealityParser.fetchListings(srealityDistrictId);
                 srealityRaw = sreality.size();
 
-                System.out.println(
-                        "SREALITY LISTINGS FOR "
-                                + (region != null ? region.getTitle() : "default")
-                                + " = "
-                                + sreality.size()
-                );
+                log.info("Sreality listings region={} count={}", regionTitle(region), sreality.size());
 
                 all.addAll(sreality);
 
             } else {
 
-                System.out.println(
-                        "SREALITY SKIPPED FOR "
-                                + (region != null ? region.getTitle() : "default")
-                                + " because district id is null"
-                );
+                log.info("Sreality skipped region={} reason=district_id_is_null", regionTitle(region));
             }
 
         } catch (Exception e) {
-            System.out.println("Sreality parser failed: " + e.getMessage());
+            log.warn("Sreality parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         try {
             List<ListingDto> idnes = idnesParser.fetchListings(region, null);
             idnesRaw = idnes.size();
 
-            System.out.println(
-                    "IDNES LISTINGS FOR "
-                            + (region != null ? region.getTitle() : "default")
-                            + " = "
-                            + idnes.size()
-            );
+            log.info("iDNES listings region={} count={}", regionTitle(region), idnes.size());
 
             all.addAll(idnes);
 
         } catch (Exception e) {
-            System.out.println("Idnes parser failed: " + e.getMessage());
+            log.warn("iDNES parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         try {
@@ -130,34 +120,24 @@ public class ParserService {
                     bezrealitkyParser.fetchListings(region);
             bezrealitkyRaw = bezrealitky.size();
 
-            System.out.println(
-                    "BEZREALITKY LISTINGS FOR "
-                            + (region != null ? region.getTitle() : "default")
-                            + " = "
-                            + bezrealitky.size()
-            );
+            log.info("Bezrealitky listings region={} count={}", regionTitle(region), bezrealitky.size());
 
             all.addAll(bezrealitky);
 
         } catch (Exception e) {
-            System.out.println("Bezrealitky parser failed: " + e.getMessage());
+            log.warn("Bezrealitky parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         try {
             List<ListingDto> bazos = bazosParser.fetchListings(region);
             bazosRaw = bazos.size();
 
-            System.out.println(
-                    "BAZOS LISTINGS FOR "
-                            + (region != null ? region.getTitle() : "default")
-                            + " = "
-                            + bazos.size()
-            );
+            log.info("Bazos listings region={} count={}", regionTitle(region), bazos.size());
 
             all.addAll(bazos);
 
         } catch (Exception e) {
-            System.out.println("Bazos parser failed: " + e.getMessage());
+            log.warn("Bazos parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         all = dedupeByLink(all);
@@ -177,12 +157,7 @@ public class ParserService {
                 0, 0, 0, 0, 0
         ));
 
-        System.out.println(
-                "ALL LISTINGS FOR "
-                        + (region != null ? region.getTitle() : "default")
-                        + " = "
-                        + all.size()
-        );
+        log.info("All listings region={} count={}", regionTitle(region), all.size());
 
         return all;
     }
@@ -191,7 +166,7 @@ public class ParserService {
         long now = System.currentTimeMillis();
 
         if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
-            System.out.println("USING CACHED LISTINGS = " + cachedListings.size());
+            log.info("Using cached listings count={}", cachedListings.size());
             return cachedListings;
         }
 
@@ -199,7 +174,7 @@ public class ParserService {
             now = System.currentTimeMillis();
 
             if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
-                System.out.println("USING CACHED LISTINGS = " + cachedListings.size());
+                log.info("Using cached listings count={}", cachedListings.size());
                 return cachedListings;
             }
 
@@ -217,48 +192,48 @@ public class ParserService {
             try {
                 List<ListingDto> sreality = srealityParser.fetchListings(defaultSrealityRegionId);
                 srealityRaw = sreality.size();
-                System.out.println("SREALITY LISTINGS = " + srealityRaw);
+                log.info("Sreality listings count={}", srealityRaw);
                 all.addAll(sreality);
             } catch (Exception e) {
-                System.out.println("Sreality parser failed: " + e.getMessage());
+                log.warn("Sreality parser failed error={}", e.getMessage());
             }
 
             try {
                 List<ListingDto> idnes = idnesParser.fetchListings(defaultRegion, defaultGroup);
                 idnesRaw = idnes.size();
-                System.out.println("IDNES LISTINGS = " + idnesRaw);
+                log.info("iDNES listings count={}", idnesRaw);
                 all.addAll(idnes);
             } catch (Exception e) {
-                System.out.println("Idnes parser failed: " + e.getMessage());
+                log.warn("iDNES parser failed error={}", e.getMessage());
             }
 
             try {
                 List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(defaultRegion);
                 bezrealitkyRaw = bezrealitky.size();
-                System.out.println("BEZREALITKY LISTINGS = " + bezrealitkyRaw);
+                log.info("Bezrealitky listings count={}", bezrealitkyRaw);
                 all.addAll(bezrealitky);
             } catch (Exception e) {
-                System.out.println("Bezrealitky parser failed: " + e.getMessage());
+                log.warn("Bezrealitky parser failed error={}", e.getMessage());
             }
 
             try {
                 List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
                 bazosRaw = bazos.size();
-                System.out.println("BAZOS LISTINGS = " + bazosRaw);
+                log.info("Bazos listings count={}", bazosRaw);
                 all.addAll(bazos);
             } catch (Exception e) {
-                System.out.println("Bazos parser failed: " + e.getMessage());
+                log.warn("Bazos parser failed error={}", e.getMessage());
             }
 
             all = dedupeByLink(all);
             int afterDedupeByLink = all.size();
-            System.out.println("AFTER DEDUPE BY LINK = " + afterDedupeByLink);
+            log.info("After dedupe by link count={}", afterDedupeByLink);
 
             all = dedupeBySignature(all);
             int afterDedupeBySignature = all.size();
-            System.out.println("AFTER DEDUPE BY SIGNATURE = " + afterDedupeBySignature);
+            log.info("After dedupe by signature count={}", afterDedupeBySignature);
 
-            System.out.println("ALL LISTINGS FROM ALL PARSERS = " + all.size());
+            log.info("All listings from all parsers count={}", all.size());
 
             lastRunStats.set(new ParserRunStats(
                     srealityRaw,
@@ -376,6 +351,10 @@ public class ParserService {
         }
 
         return loc.contains(reg);
+    }
+
+    private String regionTitle(Region region) {
+        return region != null ? region.getTitle() : "default";
     }
 
     private List<ListingDto> dedupeByLink(List<ListingDto> input) {
