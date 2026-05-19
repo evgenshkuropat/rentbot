@@ -33,7 +33,10 @@ public class SchedulerService {
         this.notificationService = notificationService;
     }
 
-    @Scheduled(fixedDelayString = "${rentbot.polling.delay-ms:180000}")
+    @Scheduled(
+            fixedDelayString = "${rentbot.polling.delay-ms:180000}",
+            initialDelayString = "${rentbot.polling.initial-delay-ms:60000}"
+    )
     public void tick() {
         if (!running.compareAndSet(false, true)) {
             log.warn("Scheduler already running, skipping...");
