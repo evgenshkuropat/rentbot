@@ -49,6 +49,8 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
 
     long countByStep(FlowStep step);
 
+    long countByStepAndActiveTrue(FlowStep step);
+
     long countByUpdatedAtAfter(Instant instant);
 
     @Query("select avg(uf.maxPrice) from UserFilter uf where uf.maxPrice is not null")

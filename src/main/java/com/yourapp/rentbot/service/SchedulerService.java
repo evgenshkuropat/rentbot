@@ -124,11 +124,13 @@ public class SchedulerService {
 
     private String cacheKey(UserFilter user) {
         Region region = user.getRegion();
+        RegionGroup group = user.getRegionGroup();
 
         if (region == null || region.getCode() == null) {
             return "DEFAULT";
         }
 
-        return region.getCode();
+        String groupCode = group == null || group.getCode() == null ? "ALL" : group.getCode();
+        return region.getCode() + ":" + groupCode;
     }
 }

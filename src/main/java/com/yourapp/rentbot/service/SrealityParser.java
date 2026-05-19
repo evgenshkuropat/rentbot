@@ -31,7 +31,7 @@ public class SrealityParser {
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
-    private static final int MAX_PAGES = 10;
+    private static final int MAX_PAGES = 30;
     private static final int PER_PAGE = 20;
 
     private final HttpClient http = HttpClient.newBuilder()
@@ -132,6 +132,10 @@ public class SrealityParser {
                             "Sreality",
                             LocalDateTime.now()
                     ));
+                }
+
+                if (estates.size() < PER_PAGE) {
+                    break;
                 }
             }
 

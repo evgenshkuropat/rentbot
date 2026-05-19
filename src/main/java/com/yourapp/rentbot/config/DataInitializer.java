@@ -21,25 +21,26 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (regionRepo.findByCode("PRAHA").isPresent()) {
+            ensurePopularRegions();
             return;
         }
 
-        Region praha = saveRegion("PRAHA", "Praha", true, 10);
-        saveRegion("BRNO", "Brno", false, 14);
-        saveRegion("OSTRAVA", "Ostrava", false, 78);
-        saveRegion("PLZEN", "Plzeň", false, 43);
-        saveRegion("LIBEREC", "Liberec", false, 51);
-        saveRegion("OLOMOUC", "Olomouc", false, 71);
-        saveRegion("HRADEC_KRALOVE", "Hradec Králové", false, 60);
-        saveRegion("PARDUBICE", "Pardubice", false, 86);
-        saveRegion("CESKE_BUDEJOVICE", "České Budějovice", false, 27);
-        saveRegion("ZLIN", "Zlín", false, 99);
-        saveRegion("JIHLAVA", "Jihlava", false, 53);
-        saveRegion("USTI_NAD_LABEM", "Ústí nad Labem", false, 94);
-        saveRegion("KARLOVY_VARY", "Karlovy Vary", false, 39);
-        saveRegion("MLADA_BOLESLAV", "Mladá Boleslav", false, 57);
-        saveRegion("KOLIN", "Kolín", false, 64);
-        saveRegion("KUTNA_HORA", "Kutná Hora", false, 67);
+        Region praha = saveRegion("PRAHA", "Praha", true, true, 10);
+        saveRegion("BRNO", "Brno", false, true, 14);
+        saveRegion("OSTRAVA", "Ostrava", false, true, 78);
+        saveRegion("PLZEN", "Plzeň", false, true, 43);
+        saveRegion("LIBEREC", "Liberec", false, true, 51);
+        saveRegion("OLOMOUC", "Olomouc", false, true, 71);
+        saveRegion("HRADEC_KRALOVE", "Hradec Králové", false, false, 60);
+        saveRegion("PARDUBICE", "Pardubice", false, false, 86);
+        saveRegion("CESKE_BUDEJOVICE", "České Budějovice", false, false, 27);
+        saveRegion("ZLIN", "Zlín", false, false, 99);
+        saveRegion("JIHLAVA", "Jihlava", false, false, 53);
+        saveRegion("USTI_NAD_LABEM", "Ústí nad Labem", false, false, 94);
+        saveRegion("KARLOVY_VARY", "Karlovy Vary", false, false, 39);
+        saveRegion("MLADA_BOLESLAV", "Mladá Boleslav", false, false, 57);
+        saveRegion("KOLIN", "Kolín", false, false, 64);
+        saveRegion("KUTNA_HORA", "Kutná Hora", false, false, 67);
 
         saveGroup(praha, "PRAHA_ALL", "Всі райони");
         saveGroup(praha, "PRAHA_1_3", "Praha 1-3");
@@ -50,13 +51,32 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("✅ Regions and Praha groups initialized");
     }
 
-    private Region saveRegion(String code, String title, boolean hasDistricts, Integer srealityRegionId) {
+    private Region saveRegion(String code, String title, boolean hasDistricts, boolean popular, Integer srealityRegionId) {
         Region region = new Region();
         region.setCode(code);
         region.setTitle(title);
         region.setHasDistricts(hasDistricts);
+        region.setPopular(popular);
         region.setSrealityRegionId(srealityRegionId);
         return regionRepo.save(region);
+    }
+
+    private void ensurePopularRegions() {
+        markPopular("PRAHA");
+        markPopular("BRNO");
+        markPopular("OSTRAVA");
+        markPopular("PLZEN");
+        markPopular("LIBEREC");
+        markPopular("OLOMOUC");
+    }
+
+    private void markPopular(String code) {
+        regionRepo.findByCode(code).ifPresent(region -> {
+            if (!region.isPopular()) {
+                region.setPopular(true);
+                regionRepo.save(region);
+            }
+        });
     }
 
     private void saveGroup(Region region, String code, String title) {

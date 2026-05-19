@@ -56,9 +56,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final String token;
 
     private static final long ADMIN_ID = 1246486851L;
+    private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
+    private final Map<Integer, Long> favoriteLinkCacheAt = new HashMap<>();
     private final Map<Long, List<ListingDto>> searchCache = new HashMap<>();
+    private final Map<Long, Long> searchCacheAt = new HashMap<>();
     private final Map<Long, Integer> searchOffset = new HashMap<>();
     private final Map<Long, Integer> searchCurrentIndex = new HashMap<>();
     private static final int PAGE_SIZE = 10;
@@ -118,6 +121,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         Language lang = getUserLanguage(userId);
 
         if (text.equalsIgnoreCase("/admin")) {
+            cleanupExpiredInteractionCaches();
+
             if (chatId != ADMIN_ID) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
@@ -146,7 +151,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long districtStep = userFilterRepo.countByStep(FlowStep.DISTRICT_GROUP);
             long layoutStep = userFilterRepo.countByStep(FlowStep.LAYOUT);
             long priceStep = userFilterRepo.countByStep(FlowStep.MAX_PRICE);
-            long confirmStep = userFilterRepo.countByStep(FlowStep.CONFIRM);
+            long confirmActiveStep = userFilterRepo.countByStepAndActiveTrue(FlowStep.CONFIRM);
+            long confirmStep = userFilterRepo.countByStep(FlowStep.CONFIRM) - confirmActiveStep;
+            long doneStep = userFilterRepo.countByStep(FlowStep.DONE) + confirmActiveStep;
 
             long favorites = favoriteService.countAll();
             long sent = notificationService.countSent();
@@ -157,7 +164,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     .mapToInt(List::size)
                     .sum();
 
-            int pagingUsers = searchOffset.size();
+            int pagingUsers = searchCurrentIndex.size();
             int favoriteCacheSize = favoriteLinkCache.size();
 
             ParserRunStats runStats = parserService.getLastRunStats();
@@ -194,6 +201,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 🧭 STEP LAYOUT: %d
 🧭 STEP MAX_PRICE: %d
 🧭 STEP CONFIRM: %d
+🧭 STEP DONE: %d
 
 ⭐ Усього в обраному: %d
 📩 Надіслано повідомлень: %d
@@ -252,6 +260,7 @@ Bazoš: %d
                             layoutStep,
                             priceStep,
                             confirmStep,
+                            doneStep,
                             favorites,
                             sent,
                             updated24h,
@@ -755,6 +764,7 @@ Bazoš: %d
 
         if (data.startsWith("CONFIRM:SUBSCRIBE")) {
             f.setActive(true);
+            f.setStep(FlowStep.DONE);
             flowService.save(f);
 
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -817,7 +827,9 @@ Bazoš: %d
     }
 
     private void startPagedSearch(long chatId, long userId, List<ListingDto> listings) throws TelegramApiException {
+        cleanupExpiredInteractionCaches();
         searchCache.put(userId, listings);
+        searchCacheAt.put(userId, System.currentTimeMillis());
         searchCurrentIndex.put(userId, 0);
         sendCurrentListing(chatId, userId);
     }
@@ -967,6 +979,7 @@ Bazoš: %d
 
         int key = fav.getLink().hashCode();
         favoriteLinkCache.put(key, fav.getLink());
+        favoriteLinkCacheAt.put(key, System.currentTimeMillis());
         String link = safeUrl(fav.getLink());
 
         if (hasUsablePhotoUrl(fav.getPhotoUrl())) {
@@ -1083,6 +1096,31 @@ Bazoš: %d
             return "https://t.me/zhytloCZ_bot";
         }
         return url;
+    }
+
+    private void cleanupExpiredInteractionCaches() {
+        long cutoff = System.currentTimeMillis() - INTERACTION_CACHE_TTL_MILLIS;
+
+        searchCacheAt.entrySet().removeIf(entry -> {
+            if (entry.getValue() >= cutoff) {
+                return false;
+            }
+
+            Long cachedUserId = entry.getKey();
+            searchCache.remove(cachedUserId);
+            searchOffset.remove(cachedUserId);
+            searchCurrentIndex.remove(cachedUserId);
+            return true;
+        });
+
+        favoriteLinkCacheAt.entrySet().removeIf(entry -> {
+            if (entry.getValue() >= cutoff) {
+                return false;
+            }
+
+            favoriteLinkCache.remove(entry.getKey());
+            return true;
+        });
     }
 
     private void sendListingCard(long chatId, long userId, ListingDto l, int index, int total) throws TelegramApiException {

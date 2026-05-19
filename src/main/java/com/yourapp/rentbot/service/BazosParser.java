@@ -6,6 +6,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 
@@ -20,6 +22,8 @@ import java.time.LocalDateTime;
 
 @Service
 public class BazosParser {
+
+    private static final Logger log = LoggerFactory.getLogger(BazosParser.class);
 
     private static final String BASE_URL = "https://reality.bazos.cz";
 
@@ -50,6 +54,11 @@ public class BazosParser {
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
         List<ListingDto> result = new ArrayList<>();
+        int candidateLinks = 0;
+        int skippedBlankTitle = 0;
+        int skippedBlankLink = 0;
+        int skippedPrice = 0;
+        int skippedLayout = 0;
 
         for (String url : buildUrls(region)) {
 
@@ -68,11 +77,13 @@ public class BazosParser {
             );
 
             Elements links = doc.select("a[href*='/inzerat/']");
+            candidateLinks += links.size();
 
             for (Element linkEl : links) {
                 String title = linkEl.text().trim();
 
                 if (title.isBlank()) {
+                    skippedBlankTitle++;
                     continue;
                 }
 
@@ -84,6 +95,7 @@ public class BazosParser {
                 String link = extractLink(linkEl);
 
                 if (link.isBlank()) {
+                    skippedBlankLink++;
                     continue;
                 }
 
@@ -95,10 +107,12 @@ public class BazosParser {
                 String photoUrl = extractPhoto(container);
 
                 if (price <= 0 || price > 60000) {
+                    skippedPrice++;
                     continue;
                 }
 
                 if (layout == null) {
+                    skippedLayout++;
                     continue;
                 }
 
@@ -114,6 +128,17 @@ public class BazosParser {
                 ));
             }
         }
+
+        log.info(
+                "Bazos summary region={} candidateLinks={} accepted={} skippedBlankTitle={} skippedBlankLink={} skippedPrice={} skippedLayout={}",
+                region != null ? region.getTitle() : "default",
+                candidateLinks,
+                result.size(),
+                skippedBlankTitle,
+                skippedBlankLink,
+                skippedPrice,
+                skippedLayout
+        );
 
         return dedupeByLink(result);
     }

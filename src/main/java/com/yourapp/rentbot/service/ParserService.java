@@ -73,6 +73,10 @@ public class ParserService {
         }
 
         List<ListingDto> all = new ArrayList<>();
+        int srealityRaw = 0;
+        int idnesRaw = 0;
+        int bezrealitkyRaw = 0;
+        int bazosRaw = 0;
 
         try {
 
@@ -80,6 +84,7 @@ public class ParserService {
 
                 List<ListingDto> sreality =
                         srealityParser.fetchListings(srealityDistrictId);
+                srealityRaw = sreality.size();
 
                 System.out.println(
                         "SREALITY LISTINGS FOR "
@@ -105,6 +110,7 @@ public class ParserService {
 
         try {
             List<ListingDto> idnes = idnesParser.fetchListings(region, group);
+            idnesRaw = idnes.size();
 
             System.out.println(
                     "IDNES LISTINGS FOR "
@@ -122,6 +128,7 @@ public class ParserService {
         try {
             List<ListingDto> bezrealitky =
                     bezrealitkyParser.fetchListings(region);
+            bezrealitkyRaw = bezrealitky.size();
 
             System.out.println(
                     "BEZREALITKY LISTINGS FOR "
@@ -138,6 +145,7 @@ public class ParserService {
 
         try {
             List<ListingDto> bazos = bazosParser.fetchListings(region);
+            bazosRaw = bazos.size();
 
             System.out.println(
                     "BAZOS LISTINGS FOR "
@@ -153,7 +161,21 @@ public class ParserService {
         }
 
         all = dedupeByLink(all);
+        int afterDedupeByLink = all.size();
+
         all = dedupeBySignature(all);
+        int afterDedupeBySignature = all.size();
+
+        lastRunStats.set(new ParserRunStats(
+                srealityRaw,
+                idnesRaw,
+                bezrealitkyRaw,
+                bazosRaw,
+                afterDedupeByLink,
+                afterDedupeBySignature,
+                0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0
+        ));
 
         System.out.println(
                 "ALL LISTINGS FOR "
@@ -322,17 +344,17 @@ public class ParserService {
                 previous.afterDedupeByLink(),
                 previous.afterDedupeBySignature(),
 
-                previous.filteredBaseTotal() + filteredBaseTotal,
-                previous.filteredBaseSreality() + filteredBaseSreality,
-                previous.filteredBaseIdnes() + filteredBaseIdnes,
-                previous.filteredBaseBezrealitky() + filteredBaseBezrealitky,
-                previous.filteredBaseBazos() + filteredBaseBazos,
+                filteredBaseTotal,
+                filteredBaseSreality,
+                filteredBaseIdnes,
+                filteredBaseBezrealitky,
+                filteredBaseBazos,
 
-                previous.finalFiltered() + finalFiltered,
-                previous.finalSreality() + finalSreality,
-                previous.finalIdnes() + finalIdnes,
-                previous.finalBezrealitky() + finalBezrealitky,
-                previous.finalBazos() + finalBazos
+                finalFiltered,
+                finalSreality,
+                finalIdnes,
+                finalBezrealitky,
+                finalBazos
         ));
 
         if (filtered.isEmpty()) {
