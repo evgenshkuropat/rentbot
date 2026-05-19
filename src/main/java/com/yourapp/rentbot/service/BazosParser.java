@@ -59,25 +59,44 @@ public class BazosParser {
         int skippedBlankLink = 0;
         int skippedPrice = 0;
         int skippedLayout = 0;
+        int pagesWithoutLinks = 0;
+        int diagnosticSamples = 0;
 
         for (String url : buildUrls(region)) {
 
-            System.out.println("BAZOS URL = " + url);
+            log.debug("Bazos URL = {}", url);
 
-            byte[] bytes = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0")
+            var response = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
+                    .referrer("https://www.google.com/")
                     .timeout(15000)
                     .ignoreHttpErrors(true)
-                    .execute()
-                    .bodyAsBytes();
+                    .execute();
+
+            byte[] bytes = response.bodyAsBytes();
 
             Document doc = Jsoup.parse(
                     new String(bytes, StandardCharsets.UTF_8),
                     url
             );
 
-            Elements links = doc.select("a[href*='/inzerat/']");
+            Elements links = doc.select("a[href*='inzerat']");
             candidateLinks += links.size();
+
+            if (links.isEmpty()) {
+                pagesWithoutLinks++;
+
+                if (diagnosticSamples < 3) {
+                    diagnosticSamples++;
+                    log.warn(
+                            "Bazos page has no listing links: status={} finalUrl={} title={} bodySample={}",
+                            response.statusCode(),
+                            response.url(),
+                            normalizeLogSample(doc.title(), 120),
+                            normalizeLogSample(doc.body() != null ? doc.body().text() : "", 250)
+                    );
+                }
+            }
 
             for (Element linkEl : links) {
                 String title = linkEl.text().trim();
@@ -130,8 +149,9 @@ public class BazosParser {
         }
 
         log.info(
-                "Bazos summary region={} candidateLinks={} accepted={} skippedBlankTitle={} skippedBlankLink={} skippedPrice={} skippedLayout={}",
+                "Bazos summary region={} pagesWithoutLinks={} candidateLinks={} accepted={} skippedBlankTitle={} skippedBlankLink={} skippedPrice={} skippedLayout={}",
                 region != null ? region.getTitle() : "default",
+                pagesWithoutLinks,
                 candidateLinks,
                 result.size(),
                 skippedBlankTitle,
@@ -141,6 +161,22 @@ public class BazosParser {
         );
 
         return dedupeByLink(result);
+    }
+
+    private String normalizeLogSample(String text, int maxLength) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+
+        String normalized = text.replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        if (normalized.length() <= maxLength) {
+            return normalized;
+        }
+
+        return normalized.substring(0, maxLength) + "...";
     }
 
     private List<String> buildUrls(Region region) {
