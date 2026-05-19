@@ -1,7 +1,6 @@
 package com.yourapp.rentbot.service;
 
 import com.yourapp.rentbot.domain.Region;
-import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -124,13 +123,11 @@ public class SchedulerService {
 
     private String cacheKey(UserFilter user) {
         Region region = user.getRegion();
-        RegionGroup group = user.getRegionGroup();
 
         if (region == null || region.getCode() == null) {
             return "DEFAULT";
         }
 
-        String groupCode = group == null || group.getCode() == null ? "ALL" : group.getCode();
-        return region.getCode() + ":" + groupCode;
+        return region.getCode();
     }
 }

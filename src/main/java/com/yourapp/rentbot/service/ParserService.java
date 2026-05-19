@@ -109,7 +109,7 @@ public class ParserService {
         }
 
         try {
-            List<ListingDto> idnes = idnesParser.fetchListings(region, group);
+            List<ListingDto> idnes = idnesParser.fetchListings(region, null);
             idnesRaw = idnes.size();
 
             System.out.println(
