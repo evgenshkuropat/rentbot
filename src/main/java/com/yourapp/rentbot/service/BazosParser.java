@@ -53,6 +53,16 @@ public class BazosParser {
     };
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
+        List<String> urls = buildUrls(region);
+
+        if (urls.isEmpty()) {
+            log.info(
+                    "Bazos skipped region={} reason=no_zipcodes",
+                    region != null ? region.getTitle() : "default"
+            );
+            return List.of();
+        }
+
         List<ListingDto> result = new ArrayList<>();
         int candidateLinks = 0;
         int skippedBlankTitle = 0;
@@ -62,7 +72,7 @@ public class BazosParser {
         int pagesWithoutLinks = 0;
         int diagnosticSamples = 0;
 
-        for (String url : buildUrls(region)) {
+        for (String url : urls) {
 
             log.debug("Bazos URL = {}", url);
 
@@ -72,6 +82,15 @@ public class BazosParser {
                     .timeout(15000)
                     .ignoreHttpErrors(true)
                     .execute();
+
+            if (response.statusCode() == 429) {
+                log.warn(
+                        "Bazos rate limited region={} finalUrl={}. Skipping remaining Bazos URLs for this region.",
+                        region != null ? region.getTitle() : "default",
+                        response.url()
+                );
+                break;
+            }
 
             byte[] bytes = response.bodyAsBytes();
 
@@ -632,21 +651,7 @@ public class BazosParser {
 
     private static final Map<String, List<String>> REGION_ZIPCODES = Map.ofEntries(
 
-            Map.entry("PRAHA", List.of(
-                    "10000", "10100", "10200", "10900",
-                    "11000", "11800",
-                    "12000", "12800",
-                    "13000", "13011",
-                    "14000", "14100", "14200", "14300",
-                    "14700",
-                    "15000", "15200", "15300", "15400", "15500",
-                    "15600", "15700", "15800", "15900",
-                    "16000", "16100", "16200", "16300", "16400",
-                    "16500",
-                    "17000", "17100",
-                    "18000", "18100", "18200", "18400",
-                    "19000", "19011", "19012", "19014", "19016"
-            )),
+            Map.entry("PRAHA", List.of("11000", "12000", "13000", "14000", "15000", "16000", "17000", "18000", "19000")),
 
             Map.entry("BRNO", List.of(
                     "60200", "60300", "60400",
@@ -686,6 +691,8 @@ public class BazosParser {
                     "53341", "53345", "53351", "53352"
             )),
 
+            Map.entry("HRADEC_KRALOVE", List.of("50002", "50003", "50006", "50008")),
+
             Map.entry("OLOMOUC", List.of(
                     "77900", "77911", "77941",
                     "78301", "78335", "78371"
@@ -722,6 +729,8 @@ public class BazosParser {
                     "29301", "29305", "29421",
                     "29471", "29473"
             )),
+
+            Map.entry("KLADNO", List.of("27201", "27203", "27204")),
 
             Map.entry("CESKE_BUDEJOVICE", List.of(
                     "37001", "37004", "37005",
