@@ -64,7 +64,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final Map<Long, Long> searchCacheAt = new HashMap<>();
     private final Map<Long, Integer> searchOffset = new HashMap<>();
     private final Map<Long, Integer> searchCurrentIndex = new HashMap<>();
+    private final Map<Long, String> filterEditMode = new HashMap<>();
     private static final int PAGE_SIZE = 10;
+    private static final String EDIT_CITY = "CITY";
+    private static final String EDIT_DISTRICT = "DISTRICT";
+    private static final String EDIT_LAYOUT = "LAYOUT";
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
@@ -322,6 +326,7 @@ Bazoš: %d
         }
 
         if (text.equals(msg(userId, "menu.new.search"))) {
+            filterEditMode.remove(userId);
             flowService.reset(userId);
 
             sendRegionsEntry(chatId, userId, msg(userId, "search.new"));
@@ -331,7 +336,7 @@ Bazoš: %d
         if (text.equals(msg(userId, "menu.my.filter"))) {
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
-            send(chatId, flowService.pretty(f, lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, flowService.pretty(f, lang), Keyboards.editFilterKeyboard(hasDistricts(f), lang));
             return;
         }
 
@@ -341,6 +346,7 @@ Bazoš: %d
         }
 
         if (text.equals(msg(userId, "menu.stop.search"))) {
+            filterEditMode.remove(userId);
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
 
@@ -613,6 +619,7 @@ Bazoš: %d
 
             switch (action) {
                 case "NEW" -> {
+                    filterEditMode.remove(userId);
                     try {
                         List<ListingDto> listings = parserService.findNewListings(userId);
 
@@ -640,12 +647,13 @@ Bazoš: %d
                 case "FILTER" -> {
                     UserFilter fullFilter = userFilterRepo.findFullById(userId)
                             .orElseGet(() -> f);
-                    send(chatId, flowService.pretty(fullFilter, lang), Keyboards.mainMenuKeyboard(lang));
+                    send(chatId, flowService.pretty(fullFilter, lang), Keyboards.editFilterKeyboard(hasDistricts(fullFilter), lang));
                 }
 
                 case "FAVORITES" -> showFavorites(chatId, userId);
 
                 case "STOP" -> {
+                    filterEditMode.remove(userId);
                     if (!f.isActive()) {
                         send(chatId, msg(userId, "search.stopped.already"), Keyboards.mainMenuKeyboard(lang));
                         return;
@@ -663,6 +671,70 @@ Bazoš: %d
                 }
 
                 default -> send(chatId, msg(userId, "menu.unknown.action"), Keyboards.mainMenuKeyboard(lang));
+            }
+
+            return;
+        }
+
+        if (data.startsWith("EDIT:")) {
+            String action = data.substring("EDIT:".length());
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+
+            switch (action) {
+                case "FILTER" -> send(chatId,
+                        flowService.pretty(fullFilter, lang),
+                        Keyboards.editFilterKeyboard(hasDistricts(fullFilter), lang));
+
+                case EDIT_CITY -> {
+                    filterEditMode.put(userId, EDIT_CITY);
+                    fullFilter.setActive(false);
+                    fullFilter.setStep(FlowStep.CITY);
+                    flowService.save(fullFilter);
+                    sendRegionsEntry(chatId, userId, editPrompt(lang, EDIT_CITY));
+                }
+
+                case EDIT_DISTRICT -> {
+                    if (!hasDistricts(fullFilter)) {
+                        send(chatId,
+                                editUnavailable(lang),
+                                Keyboards.editFilterKeyboard(false, lang));
+                        return;
+                    }
+
+                    filterEditMode.put(userId, EDIT_DISTRICT);
+                    fullFilter.setActive(false);
+                    fullFilter.setStep(FlowStep.DISTRICT_GROUP);
+                    flowService.save(fullFilter);
+
+                    List<RegionGroup> groups = regionGroupRepo.findByRegionId(fullFilter.getRegion().getId());
+                    send(chatId, msg(userId, "district.choose"), Keyboards.regionGroupsKeyboard(groups));
+                }
+
+                case EDIT_LAYOUT -> {
+                    filterEditMode.put(userId, EDIT_LAYOUT);
+                    fullFilter.setActive(false);
+                    fullFilter.setStep(FlowStep.LAYOUT);
+                    flowService.save(fullFilter);
+                    send(chatId, msg(userId, "layout.choose"), Keyboards.layoutKeyboard(lang));
+                }
+
+                case "PRICE" -> {
+                    filterEditMode.remove(userId);
+                    fullFilter.setActive(false);
+                    if (fullFilter.getLayout() == null || fullFilter.getLayout().isBlank()) {
+                        fullFilter.setStep(FlowStep.LAYOUT);
+                        flowService.save(fullFilter);
+                        send(chatId, msg(userId, "layout.choose"), Keyboards.layoutKeyboard(lang));
+                        return;
+                    }
+
+                    fullFilter.setStep(FlowStep.MAX_PRICE);
+                    flowService.save(fullFilter);
+                    send(chatId, msg(userId, "price.choose"), Keyboards.priceKeyboard(lang));
+                }
+
+                default -> send(chatId, msg(userId, "callback.unknown") + data, null);
             }
 
             return;
@@ -730,6 +802,22 @@ Bazoš: %d
                     .orElseThrow(() -> new IllegalArgumentException("RegionGroup not found by code=" + groupCode));
 
             f.setRegionGroup(group);
+            f.setActive(false);
+
+            if (EDIT_DISTRICT.equals(filterEditMode.remove(userId))
+                    && f.getLayout() != null
+                    && f.getMaxPrice() != null) {
+                f.setStep(FlowStep.CONFIRM);
+                flowService.save(f);
+
+                UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                        .orElseGet(() -> f);
+                send(chatId,
+                        msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
+                        Keyboards.confirmKeyboard(lang));
+                return;
+            }
+
             f.setStep(FlowStep.LAYOUT);
             flowService.save(f);
 
@@ -741,6 +829,21 @@ Bazoš: %d
             String layout = data.substring("LAYOUT:".length());
 
             f.setLayout(layout);
+            f.setActive(false);
+
+            if (EDIT_LAYOUT.equals(filterEditMode.remove(userId))
+                    && f.getMaxPrice() != null) {
+                f.setStep(FlowStep.CONFIRM);
+                flowService.save(f);
+
+                UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                        .orElseGet(() -> f);
+                send(chatId,
+                        msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
+                        Keyboards.confirmKeyboard(lang));
+                return;
+            }
+
             f.setStep(FlowStep.MAX_PRICE);
             flowService.save(f);
 
@@ -751,7 +854,9 @@ Bazoš: %d
         if (data.startsWith("PRICE:")) {
             int price = Integer.parseInt(data.substring("PRICE:".length()));
 
+            filterEditMode.remove(userId);
             f.setMaxPrice(price);
+            f.setActive(false);
             f.setStep(FlowStep.CONFIRM);
             flowService.save(f);
 
@@ -763,6 +868,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("CONFIRM:SUBSCRIBE")) {
+            filterEditMode.remove(userId);
             f.setActive(true);
             flowService.save(f);
 
@@ -802,6 +908,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("CONFIRM:STOP")) {
+            filterEditMode.remove(userId);
             f.setActive(false);
             flowService.save(f);
 
@@ -810,6 +917,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("CONFIRM:RESET")) {
+            filterEditMode.remove(userId);
             flowService.reset(userId);
             sendRegionsEntry(chatId, userId, msg(userId, "filter.reset"));
             return;
@@ -818,7 +926,7 @@ Bazoš: %d
         if (data.startsWith("CONFIRM:SHOW")) {
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> f);
-            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.confirmKeyboard(lang));
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.editFilterKeyboard(hasDistricts(fullFilter), lang));
             return;
         }
 
@@ -831,6 +939,36 @@ Bazoš: %d
         searchCacheAt.put(userId, System.currentTimeMillis());
         searchCurrentIndex.put(userId, 0);
         sendCurrentListing(chatId, userId);
+    }
+
+    private boolean hasDistricts(UserFilter filter) {
+        return filter != null && filter.getRegion() != null && filter.getRegion().isHasDistricts();
+    }
+
+    private String editPrompt(Language lang, String target) {
+        return switch (target) {
+            case EDIT_CITY -> switch (lang) {
+                case RU -> "Выберите новый город:";
+                case CZ -> "Vyberte nové mesto:";
+                case EN -> "Choose a new city:";
+                default -> "Оберіть нове місто:";
+            };
+            default -> switch (lang) {
+                case RU -> "Выберите новое значение:";
+                case CZ -> "Vyberte novou hodnotu:";
+                case EN -> "Choose a new value:";
+                default -> "Оберіть нове значення:";
+            };
+        };
+    }
+
+    private String editUnavailable(Language lang) {
+        return switch (lang) {
+            case RU -> "У этого города нет выбора районов. Можно изменить город, тип квартиры или цену.";
+            case CZ -> "Toto město nemá výběr oblastí. Můžete změnit město, typ bytu nebo cenu.";
+            case EN -> "This city has no district selector. You can change city, apartment type, or price.";
+            default -> "У цьому місті немає вибору районів. Можна змінити місто, тип квартири або ціну.";
+        };
     }
 
     private void sendCurrentListing(long chatId, long userId) throws TelegramApiException {

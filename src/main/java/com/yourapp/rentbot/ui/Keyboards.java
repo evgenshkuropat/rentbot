@@ -219,7 +219,7 @@ public class Keyboards {
                     case CZ -> "🔄 Změnit";
                     case EN -> "🔄 Change";
                     default -> "🔄 Змінити";
-                }, "CONFIRM:RESET")
+                }, "EDIT:FILTER")
         ));
 
         rows.add(new InlineKeyboardRow(
@@ -333,6 +333,59 @@ public class Keyboards {
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row1, row2))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup editFilterKeyboard(boolean hasDistricts, Language lang) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+
+        rows.add(new InlineKeyboardRow(
+                button(switch (lang) {
+                    case RU -> "Город";
+                    case CZ -> "Město";
+                    case EN -> "City";
+                    default -> "Місто";
+                }, "EDIT:CITY"),
+                button(switch (lang) {
+                    case RU -> "Район";
+                    case CZ -> "Oblast";
+                    case EN -> "District";
+                    default -> "Район";
+                }, "EDIT:DISTRICT")
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                button(switch (lang) {
+                    case RU -> "Тип";
+                    case CZ -> "Typ";
+                    case EN -> "Type";
+                    default -> "Тип";
+                }, "EDIT:LAYOUT"),
+                button(switch (lang) {
+                    case RU -> "Цена";
+                    case CZ -> "Cena";
+                    case EN -> "Price";
+                    default -> "Ціна";
+                }, "EDIT:PRICE")
+        ));
+
+        rows.add(new InlineKeyboardRow(
+                button(switch (lang) {
+                    case RU -> "Новый поиск";
+                    case CZ -> "Nové hledání";
+                    case EN -> "New search";
+                    default -> "Новий пошук";
+                }, "CONFIRM:RESET"),
+                button(switch (lang) {
+                    case RU -> "Остановить";
+                    case CZ -> "Zastavit";
+                    case EN -> "Stop";
+                    default -> "Зупинити";
+                }, "MENU:STOP")
+        ));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(rows)
                 .build();
     }
 
@@ -516,7 +569,7 @@ public class Keyboards {
             case CZ -> "🔄 Změnit";
             case EN -> "🔄 Change";
             default -> "🔄 Змінити";
-        }, "CONFIRM:RESET"));
+        }, "EDIT:FILTER"));
 
         row3.add(button(switch (lang) {
             case RU -> "⛔ Остановить";
