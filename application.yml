@@ -15,3 +15,7 @@ telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN}
     username: ${TELEGRAM_BOT_USERNAME}
+
+rentbot:
+  notifications:
+    max-per-user-per-cycle: ${RENTBOT_NOTIFICATIONS_MAX_PER_USER_PER_CYCLE:5}

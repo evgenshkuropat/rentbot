@@ -6,6 +6,7 @@ import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -24,13 +25,16 @@ public class SchedulerService {
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
     private final NotificationService notificationService;
+    private final int maxNotificationsPerUserPerCycle;
 
     public SchedulerService(UserFilterRepo userFilterRepo,
                             ParserService parserService,
-                            NotificationService notificationService) {
+                            NotificationService notificationService,
+                            @Value("${rentbot.notifications.max-per-user-per-cycle:5}") int maxNotificationsPerUserPerCycle) {
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
+        this.maxNotificationsPerUserPerCycle = Math.max(1, maxNotificationsPerUserPerCycle);
     }
 
     @Scheduled(
@@ -66,6 +70,8 @@ public class SchedulerService {
         int usersWithMatches = 0;
         int totalCandidates = 0;
         int totalSendAttempts = 0;
+        int totalSent = 0;
+        int totalSkippedByLimit = 0;
         int parserRuns = 0;
 
         for (UserFilter user : users) {
@@ -100,10 +106,20 @@ public class SchedulerService {
                 usersWithMatches++;
                 totalCandidates += listings.size();
 
+                int sentForUser = 0;
+
                 for (ListingDto listing : listings) {
+                    if (sentForUser >= maxNotificationsPerUserPerCycle) {
+                        totalSkippedByLimit++;
+                        continue;
+                    }
+
                     try {
-                        notificationService.sendIfNotSent(user, listing);
                         totalSendAttempts++;
+                        if (notificationService.sendIfNotSent(user, listing)) {
+                            sentForUser++;
+                            totalSent++;
+                        }
                     } catch (Exception e) {
                         log.error("Error sending listing to user {} link={}", userId, listing.link(), e);
                     }
@@ -115,12 +131,15 @@ public class SchedulerService {
         }
 
         log.info(
-                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}",
+                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, maxNotificationsPerUserPerCycle={}",
                 usersProcessed,
                 usersWithMatches,
                 parserRuns,
                 totalCandidates,
-                totalSendAttempts
+                totalSendAttempts,
+                totalSent,
+                totalSkippedByLimit,
+                maxNotificationsPerUserPerCycle
         );
     }
 

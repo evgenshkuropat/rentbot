@@ -32,16 +32,16 @@ public class NotificationService {
         this.listingCacheService = listingCacheService;
     }
 
-    public void sendIfNotSent(UserFilter user, ListingDto listing) {
+    public boolean sendIfNotSent(UserFilter user, ListingDto listing) {
         Long chatId = user.getTelegramUserId();
         String key = listing.link();
 
         if (key == null || key.isBlank()) {
-            return;
+            return false;
         }
 
         if (sentLogRepo.existsByTelegramUserIdAndListingKey(chatId, key)) {
-            return;
+            return false;
         }
 
         Language lang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
@@ -83,14 +83,14 @@ public class NotificationService {
                     );
 
                     saveSent(chatId, key);
-                    return;
+                    return true;
 
                 } catch (TelegramApiException e) {
                     String msg = e.getMessage();
 
                     if (isBlockedByUser(msg)) {
                         deactivateUser(user, chatId);
-                        return;
+                        return false;
                     }
 
                     System.out.println("SendPhoto failed, fallback to text. link=" + listing.link());
@@ -101,13 +101,14 @@ public class NotificationService {
 
             sendTextFallback(chatId, caption, token, link, lang);
             saveSent(chatId, key);
+            return true;
 
         } catch (TelegramApiException e) {
             String msg = e.getMessage();
 
             if (isBlockedByUser(msg)) {
                 deactivateUser(user, chatId);
-                return;
+                return false;
             }
 
             System.out.println("SendMessage failed in NotificationService for link=" + listing.link()
@@ -116,6 +117,8 @@ public class NotificationService {
             System.out.println("Unexpected notification failure for link=" + listing.link()
                     + ", error=" + e.getMessage());
         }
+
+        return false;
     }
 
     private void sendTextFallback(Long chatId,
