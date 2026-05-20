@@ -153,7 +153,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long priceStep = userFilterRepo.countByStep(FlowStep.MAX_PRICE);
             long confirmActiveStep = userFilterRepo.countByStepAndActiveTrue(FlowStep.CONFIRM);
             long confirmStep = userFilterRepo.countByStep(FlowStep.CONFIRM) - confirmActiveStep;
-            long doneStep = userFilterRepo.countByStep(FlowStep.DONE) + confirmActiveStep;
+            long doneStep = confirmActiveStep;
 
             long favorites = favoriteService.countAll();
             long sent = notificationService.countSent();
@@ -764,7 +764,6 @@ Bazoš: %d
 
         if (data.startsWith("CONFIRM:SUBSCRIBE")) {
             f.setActive(true);
-            f.setStep(FlowStep.DONE);
             flowService.save(f);
 
             UserFilter fullFilter = userFilterRepo.findFullById(userId)

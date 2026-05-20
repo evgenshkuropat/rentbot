@@ -5,6 +5,5 @@ public enum FlowStep {
     DISTRICT_GROUP,
     LAYOUT,
     MAX_PRICE,
-    CONFIRM,
-    DONE
+    CONFIRM
 }
