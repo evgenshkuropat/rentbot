@@ -129,12 +129,16 @@ public class ParserService {
         }
 
         try {
-            List<ListingDto> bazos = bazosParser.fetchListings(region);
-            bazosRaw = bazos.size();
+            if (bazosParser.isRateLimitedForCurrentCycle()) {
+                log.info("Bazos skipped region={} reason=rate_limited_current_cycle", regionTitle(region));
+            } else {
+                List<ListingDto> bazos = bazosParser.fetchListings(region);
+                bazosRaw = bazos.size();
 
-            log.info("Bazos listings region={} count={}", regionTitle(region), bazos.size());
+                log.info("Bazos listings region={} count={}", regionTitle(region), bazos.size());
 
-            all.addAll(bazos);
+                all.addAll(bazos);
+            }
 
         } catch (Exception e) {
             log.warn("Bazos parser failed region={} error={}", regionTitle(region), e.getMessage());
@@ -217,10 +221,14 @@ public class ParserService {
             }
 
             try {
-                List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
-                bazosRaw = bazos.size();
-                log.info("Bazos listings count={}", bazosRaw);
-                all.addAll(bazos);
+                if (bazosParser.isRateLimitedForCurrentCycle()) {
+                    log.info("Bazos skipped reason=rate_limited_current_cycle");
+                } else {
+                    List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
+                    bazosRaw = bazos.size();
+                    log.info("Bazos listings count={}", bazosRaw);
+                    all.addAll(bazos);
+                }
             } catch (Exception e) {
                 log.warn("Bazos parser failed error={}", e.getMessage());
             }
@@ -351,6 +359,10 @@ public class ParserService {
         }
 
         return loc.contains(reg);
+    }
+
+    public void resetBazosRateLimitCycle() {
+        bazosParser.resetRateLimitCycle();
     }
 
     private String regionTitle(Region region) {

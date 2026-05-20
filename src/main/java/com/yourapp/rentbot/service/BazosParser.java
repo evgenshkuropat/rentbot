@@ -26,6 +26,7 @@ public class BazosParser {
     private static final Logger log = LoggerFactory.getLogger(BazosParser.class);
 
     private static final String BASE_URL = "https://reality.bazos.cz";
+    private volatile boolean rateLimitedForCurrentCycle = false;
 
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
@@ -53,6 +54,14 @@ public class BazosParser {
     };
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
+        if (rateLimitedForCurrentCycle) {
+            log.info(
+                    "Bazos skipped region={} reason=rate_limited_current_cycle",
+                    region != null ? region.getTitle() : "default"
+            );
+            return List.of();
+        }
+
         List<String> urls = buildUrls(region);
 
         if (urls.isEmpty()) {
@@ -84,8 +93,9 @@ public class BazosParser {
                     .execute();
 
             if (response.statusCode() == 429) {
+                rateLimitedForCurrentCycle = true;
                 log.warn(
-                        "Bazos rate limited region={} finalUrl={}. Skipping remaining Bazos URLs for this region.",
+                        "Bazos rate limited region={} finalUrl={}. Skipping remaining Bazos URLs for this scheduler cycle.",
                         region != null ? region.getTitle() : "default",
                         response.url()
                 );
@@ -180,6 +190,14 @@ public class BazosParser {
         );
 
         return dedupeByLink(result);
+    }
+
+    public void resetRateLimitCycle() {
+        rateLimitedForCurrentCycle = false;
+    }
+
+    public boolean isRateLimitedForCurrentCycle() {
+        return rateLimitedForCurrentCycle;
     }
 
     private String normalizeLogSample(String text, int maxLength) {
