@@ -27,8 +27,8 @@ public class MessageService {
                 Map.entry("filter.start", "Супер, почнемо 🔍\nОбери місто:"),
 
                 Map.entry("subscribe.not.enabled",
-                        "🔔 Підписка ще не увімкнена\n\nНатисни «Підписатися», щоб активувати пошук квартир автоматично."),
-                Map.entry("subscribe.enabled", "🔔 Сповіщення увімкнено!"),
+                        "🔎 Пошук ще не запущено\n\nНатисни «Почати пошук», щоб отримувати нові квартири автоматично."),
+                Map.entry("subscribe.enabled", "🔎 Пошук запущено! Я надішлю нові квартири, коли знайду відповідні."),
                 Map.entry("notifications.disabled", "⛔ Сповіщення вимкнено"),
 
                 Map.entry("search.stopped", "⛔ Пошук зупинено"),
@@ -88,7 +88,7 @@ public class MessageService {
 
                 Map.entry("price.unlimited", "Без ліміту"),
 
-                Map.entry("confirm.subscribe", "✅ Підписатися"),
+                Map.entry("confirm.subscribe", "✅ Почати пошук"),
                 Map.entry("confirm.stop", "⛔ Зупинити"),
                 Map.entry("confirm.reset", "🔄 Змінити фільтр"),
                 Map.entry("confirm.show", "📋 Мій фільтр"),
@@ -113,8 +113,8 @@ public class MessageService {
                 Map.entry("filter.start", "Отлично, начнём 🔍\nВыберите город:"),
 
                 Map.entry("subscribe.not.enabled",
-                        "🔔 Подписка ещё не включена\n\nНажмите «Подписаться», чтобы получать новые квартиры автоматически."),
-                Map.entry("subscribe.enabled", "🔔 Уведомления включены!"),
+                        "🔎 Поиск ещё не запущен\n\nНажмите «Начать поиск», чтобы получать новые квартиры автоматически."),
+                Map.entry("subscribe.enabled", "🔎 Поиск запущен! Я пришлю новые квартиры, когда найду подходящие."),
                 Map.entry("notifications.disabled", "⛔ Уведомления отключены"),
 
                 Map.entry("search.stopped", "⛔ Поиск остановлен"),
@@ -174,7 +174,7 @@ public class MessageService {
 
                 Map.entry("price.unlimited", "Без лимита"),
 
-                Map.entry("confirm.subscribe", "✅ Подписаться"),
+                Map.entry("confirm.subscribe", "✅ Начать поиск"),
                 Map.entry("confirm.stop", "⛔ Остановить"),
                 Map.entry("confirm.reset", "🔄 Изменить фильтр"),
                 Map.entry("confirm.show", "📋 Мой фильтр"),
@@ -199,8 +199,8 @@ public class MessageService {
                 Map.entry("filter.start", "Super, začneme 🔍\nVyber město:"),
 
                 Map.entry("subscribe.not.enabled",
-                        "🔔 Odběr ještě není aktivní\n\nKlikni na „Odebírat“, aby ses dozvěděl o nových bytech automaticky."),
-                Map.entry("subscribe.enabled", "🔔 Odběr zapnut!"),
+                        "🔎 Hledání ještě není spuštěné\n\nKlikni na „Začít hledání“, abys dostával nové byty automaticky."),
+                Map.entry("subscribe.enabled", "🔎 Hledání spuštěno! Pošlu nové byty, až najdu vhodné."),
                 Map.entry("notifications.disabled", "⛔ Upozornění vypnuta"),
 
                 Map.entry("search.stopped", "⛔ Hledání zastaveno"),
@@ -260,7 +260,7 @@ public class MessageService {
 
                 Map.entry("price.unlimited", "Bez limitu"),
 
-                Map.entry("confirm.subscribe", "✅ Odebírat"),
+                Map.entry("confirm.subscribe", "✅ Začít hledání"),
                 Map.entry("confirm.stop", "⛔ Zastavit"),
                 Map.entry("confirm.reset", "🔄 Změnit filtr"),
                 Map.entry("confirm.show", "📋 Můj filtr"),
@@ -285,8 +285,8 @@ public class MessageService {
                 Map.entry("filter.start", "Great, let's start 🔍\nChoose city:"),
 
                 Map.entry("subscribe.not.enabled",
-                        "🔔 Subscription is not enabled yet\n\nClick Subscribe to receive new listings automatically."),
-                Map.entry("subscribe.enabled", "🔔 Notifications enabled!"),
+                        "🔎 Search is not started yet\n\nClick Start search to receive new listings automatically."),
+                Map.entry("subscribe.enabled", "🔎 Search started! I will send new apartments when I find matching ones."),
                 Map.entry("notifications.disabled", "⛔ Notifications disabled"),
 
                 Map.entry("search.stopped", "⛔ Search stopped"),
@@ -346,7 +346,7 @@ public class MessageService {
 
                 Map.entry("price.unlimited", "No limit"),
 
-                Map.entry("confirm.subscribe", "✅ Subscribe"),
+                Map.entry("confirm.subscribe", "✅ Start search"),
                 Map.entry("confirm.stop", "⛔ Stop"),
                 Map.entry("confirm.reset", "🔄 Change filter"),
                 Map.entry("confirm.show", "📋 My filter"),

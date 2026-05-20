@@ -200,10 +200,10 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "✅ Подписаться";
-                    case CZ -> "✅ Odebírat";
-                    case EN -> "✅ Subscribe";
-                    default -> "✅ Підписатися";
+                    case RU -> "✅ Начать поиск";
+                    case CZ -> "✅ Začít hledání";
+                    case EN -> "✅ Start search";
+                    default -> "✅ Почати пошук";
                 }, "CONFIRM:SUBSCRIBE")
         ));
 
