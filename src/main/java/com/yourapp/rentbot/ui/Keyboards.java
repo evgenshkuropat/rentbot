@@ -341,51 +341,80 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "Город";
-                    case CZ -> "Město";
-                    case EN -> "City";
-                    default -> "Місто";
+                    case RU -> "🏙 Город";
+                    case CZ -> "🏙 Město";
+                    case EN -> "🏙 City";
+                    default -> "🏙 Місто";
                 }, "EDIT:CITY"),
                 button(switch (lang) {
-                    case RU -> "Район";
-                    case CZ -> "Oblast";
-                    case EN -> "District";
-                    default -> "Район";
+                    case RU -> "📍 Район";
+                    case CZ -> "📍 Oblast";
+                    case EN -> "📍 District";
+                    default -> "📍 Район";
                 }, "EDIT:DISTRICT")
         ));
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "Тип";
-                    case CZ -> "Typ";
-                    case EN -> "Type";
-                    default -> "Тип";
+                    case RU -> "🏠 Тип";
+                    case CZ -> "🏠 Typ";
+                    case EN -> "🏠 Type";
+                    default -> "🏠 Тип";
                 }, "EDIT:LAYOUT"),
                 button(switch (lang) {
-                    case RU -> "Цена";
-                    case CZ -> "Cena";
-                    case EN -> "Price";
-                    default -> "Ціна";
+                    case RU -> "💰 Цена";
+                    case CZ -> "💰 Cena";
+                    case EN -> "💰 Price";
+                    default -> "💰 Ціна";
                 }, "EDIT:PRICE")
         ));
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "Новый поиск";
-                    case CZ -> "Nové hledání";
-                    case EN -> "New search";
-                    default -> "Новий пошук";
+                    case RU -> "🔄 Новый поиск";
+                    case CZ -> "🔄 Nové hledání";
+                    case EN -> "🔄 New search";
+                    default -> "🔄 Новий пошук";
                 }, "CONFIRM:RESET"),
                 button(switch (lang) {
-                    case RU -> "Остановить";
-                    case CZ -> "Zastavit";
-                    case EN -> "Stop";
-                    default -> "Зупинити";
+                    case RU -> "⛔ Остановить";
+                    case CZ -> "⛔ Zastavit";
+                    case EN -> "⛔ Stop";
+                    default -> "⛔ Зупинити";
                 }, "MENU:STOP")
         ));
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(rows)
+                .build();
+    }
+
+    public static InlineKeyboardMarkup filterActionsKeyboard(Language lang) {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(button(switch (lang) {
+            case RU -> "🔄 Новый поиск";
+            case CZ -> "🔄 Nové hledání";
+            case EN -> "🔄 New search";
+            default -> "🔄 Новий пошук";
+        }, "CONFIRM:RESET"));
+
+        row1.add(button(switch (lang) {
+            case RU -> "⛔ Остановить";
+            case CZ -> "⛔ Zastavit";
+            case EN -> "⛔ Stop";
+            default -> "⛔ Зупинити";
+        }, "MENU:STOP"));
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(button(switch (lang) {
+            case RU -> "⚙️ Изменить";
+            case CZ -> "⚙️ Změnit";
+            case EN -> "⚙️ Change";
+            default -> "⚙️ Змінити";
+        }, "EDIT:FILTER"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
                 .build();
     }
 

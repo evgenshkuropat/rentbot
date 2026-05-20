@@ -336,7 +336,7 @@ Bazoš: %d
         if (text.equals(msg(userId, "menu.my.filter"))) {
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
-            send(chatId, flowService.pretty(f, lang), Keyboards.editFilterKeyboard(hasDistricts(f), lang));
+            send(chatId, flowService.pretty(f, lang), Keyboards.filterActionsKeyboard(lang));
             return;
         }
 
@@ -647,7 +647,7 @@ Bazoš: %d
                 case "FILTER" -> {
                     UserFilter fullFilter = userFilterRepo.findFullById(userId)
                             .orElseGet(() -> f);
-                    send(chatId, flowService.pretty(fullFilter, lang), Keyboards.editFilterKeyboard(hasDistricts(fullFilter), lang));
+                    send(chatId, flowService.pretty(fullFilter, lang), Keyboards.filterActionsKeyboard(lang));
                 }
 
                 case "FAVORITES" -> showFavorites(chatId, userId);
@@ -926,7 +926,7 @@ Bazoš: %d
         if (data.startsWith("CONFIRM:SHOW")) {
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> f);
-            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.editFilterKeyboard(hasDistricts(fullFilter), lang));
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.filterActionsKeyboard(lang));
             return;
         }
 
