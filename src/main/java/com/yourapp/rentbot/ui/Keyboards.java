@@ -553,8 +553,19 @@ public class Keyboards {
                 .url("https://t.me/CarRadarCZ_bot")
                 .build());
 
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "💬 Связаться с автором";
+                    case CZ -> "💬 Kontaktovat autora";
+                    case EN -> "💬 Contact the author";
+                    default -> "💬 Зв'язатися з автором";
+                })
+                .url("https://t.me/evzen_cz")
+                .build());
+
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1))
+                .keyboard(List.of(row1, row2))
                 .build();
     }
 
