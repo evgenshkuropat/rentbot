@@ -984,32 +984,44 @@ Bazoš: %d
     private String noAgentSearchInfo(Language lang) {
         return switch (lang) {
             case RU -> """
-🏠 Поиск без риелтора
+🏠 Без риелтора
 
-Идея: получать больше объявлений от собственников и меньше вариантов с комиссией агентству.
+Планируем отдельный режим поиска:
+⚡ быстрые уведомления
+🔎 больше объявлений
+🏠 приоритет вариантов от собственников
 
-Это будет отдельная небольшая подписка для тех, кто хочет искать жильё без риелтора. Если интересно или есть вопросы, напишите автору.
+Сервис в разработке. Если интересно — напишите автору.
 """;
             case CZ -> """
-🏠 Hledání bez realitky
+🏠 Bez realitky
 
-Cíl: dostávat více nabídek od majitelů a méně inzerátů s provizí realitní kanceláři.
+Plánujeme samostatný režim hledání:
+⚡ rychlá upozornění
+🔎 více nabídek
+🏠 priorita nabídek od majitelů
 
-Bude to malý samostatný tarif pro ty, kteří chtějí hledat bydlení bez realitky. Pokud máte zájem nebo otázky, napište autorovi.
+Služba je ve vývoji. Pokud máte zájem, napište autorovi.
 """;
             case EN -> """
-🏠 No-agent search
+🏠 No agent
 
-Goal: receive more owner listings and fewer offers with agency commission.
+We are planning a separate search mode:
+⚡ fast notifications
+🔎 more listings
+🏠 priority for owner listings
 
-This will be a small separate subscription for people who want to search without an agent. If you are interested or have questions, contact the author.
+This service is in development. If you are interested, contact the author.
 """;
             default -> """
-🏠 Пошук без рієлтора
+🏠 Без рієлтора
 
-Ідея: отримувати більше оголошень від власників і менше варіантів з комісією агентству.
+Плануємо окремий режим пошуку:
+⚡ швидкі сповіщення
+🔎 більше оголошень
+🏠 пріоритет варіантів від власників
 
-Це буде окрема невелика підписка для тих, хто хоче шукати житло без рієлтора. Якщо цікаво або є питання, напишіть автору.
+Сервіс у розробці. Якщо цікаво — напишіть автору.
 """;
         };
     }

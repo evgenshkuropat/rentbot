@@ -555,10 +555,10 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(button(switch (lang) {
-            case RU -> "🏠 Поиск без риелтора";
-            case CZ -> "🏠 Hledání bez realitky";
-            case EN -> "🏠 No-agent search";
-            default -> "🏠 Пошук без рієлтора";
+            case RU -> "🏠 Без риелтора";
+            case CZ -> "🏠 Bez realitky";
+            case EN -> "🏠 No agent";
+            default -> "🏠 Без рієлтора";
         }, "SERVICE:NO_AGENT"));
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
