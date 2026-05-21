@@ -554,7 +554,15 @@ public class Keyboards {
                 .build());
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
-        row2.add(InlineKeyboardButton.builder()
+        row2.add(button(switch (lang) {
+            case RU -> "🏠 Поиск без риелтора";
+            case CZ -> "🏠 Hledání bez realitky";
+            case EN -> "🏠 No-agent search";
+            default -> "🏠 Пошук без рієлтора";
+        }, "SERVICE:NO_AGENT"));
+
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "💬 Связаться с автором";
                     case CZ -> "💬 Kontaktovat autora";
@@ -565,7 +573,24 @@ public class Keyboards {
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2))
+                .keyboard(List.of(row1, row2, row3))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup authorContactKeyboard(Language lang) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "💬 Связаться с автором";
+                    case CZ -> "💬 Kontaktovat autora";
+                    case EN -> "💬 Contact the author";
+                    default -> "💬 Зв'язатися з автором";
+                })
+                .url("https://t.me/evzen_cz")
+                .build());
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
                 .build();
     }
 

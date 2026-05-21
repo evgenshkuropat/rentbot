@@ -676,6 +676,11 @@ Bazoš: %d
             return;
         }
 
+        if (data.startsWith("SERVICE:NO_AGENT")) {
+            send(chatId, noAgentSearchInfo(lang), Keyboards.authorContactKeyboard(lang));
+            return;
+        }
+
         if (data.startsWith("EDIT:")) {
             String action = data.substring("EDIT:".length());
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -968,6 +973,39 @@ Bazoš: %d
             case CZ -> "Toto město nemá výběr oblastí. Můžete změnit město, typ bytu nebo cenu.";
             case EN -> "This city has no district selector. You can change city, apartment type, or price.";
             default -> "У цьому місті немає вибору районів. Можна змінити місто, тип квартири або ціну.";
+        };
+    }
+
+    private String noAgentSearchInfo(Language lang) {
+        return switch (lang) {
+            case RU -> """
+🏠 Поиск без риелтора
+
+Идея: получать больше объявлений от собственников и меньше вариантов с комиссией агентству.
+
+Это будет отдельная небольшая подписка для тех, кто хочет искать жильё без риелтора. Если интересно или есть вопросы, напишите автору.
+""";
+            case CZ -> """
+🏠 Hledání bez realitky
+
+Cíl: dostávat více nabídek od majitelů a méně inzerátů s provizí realitní kanceláři.
+
+Bude to malý samostatný tarif pro ty, kteří chtějí hledat bydlení bez realitky. Pokud máte zájem nebo otázky, napište autorovi.
+""";
+            case EN -> """
+🏠 No-agent search
+
+Goal: receive more owner listings and fewer offers with agency commission.
+
+This will be a small separate subscription for people who want to search without an agent. If you are interested or have questions, contact the author.
+""";
+            default -> """
+🏠 Пошук без рієлтора
+
+Ідея: отримувати більше оголошень від власників і менше варіантів з комісією агентству.
+
+Це буде окрема невелика підписка для тих, хто хоче шукати житло без рієлтора. Якщо цікаво або є питання, напишіть автору.
+""";
         };
     }
 
