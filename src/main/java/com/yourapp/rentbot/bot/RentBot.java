@@ -681,6 +681,11 @@ Bazoš: %d
             return;
         }
 
+        if (data.startsWith("SERVICE:REAL_ESTATE")) {
+            send(chatId, realEstateSearchInfo(lang), Keyboards.authorContactKeyboard(lang));
+            return;
+        }
+
         if (data.startsWith("EDIT:")) {
             String action = data.substring("EDIT:".length());
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -1005,6 +1010,39 @@ This will be a small separate subscription for people who want to search without
 Ідея: отримувати більше оголошень від власників і менше варіантів з комісією агентству.
 
 Це буде окрема невелика підписка для тих, хто хоче шукати житло без рієлтора. Якщо цікаво або є питання, напишіть автору.
+""";
+        };
+    }
+
+    private String realEstateSearchInfo(Language lang) {
+        return switch (lang) {
+            case RU -> """
+🏘 Поиск недвижимости
+
+Сервис в разработке.
+
+План: поиск квартир, домов и других объектов недвижимости в Чехии в одном месте. Если хотите предложить идею или первыми протестировать сервис, напишите автору.
+""";
+            case CZ -> """
+🏘 Hledání nemovitostí
+
+Služba je ve vývoji.
+
+Plán: hledání bytů, domů a dalších nemovitostí v Česku na jednom místě. Pokud máte nápad nebo chcete službu vyzkoušet mezi prvními, napište autorovi.
+""";
+            case EN -> """
+🏘 Real estate search
+
+This service is in development.
+
+Plan: search apartments, houses, and other real estate in Czechia in one place. If you have an idea or want to test it early, contact the author.
+""";
+            default -> """
+🏘 Пошук нерухомості
+
+Сервіс у розробці.
+
+План: пошук квартир, будинків та інших об'єктів нерухомості в Чехії в одному місці. Якщо маєте ідею або хочете протестувати сервіс першими, напишіть автору.
 """;
         };
     }

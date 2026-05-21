@@ -562,7 +562,15 @@ public class Keyboards {
         }, "SERVICE:NO_AGENT"));
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
-        row3.add(InlineKeyboardButton.builder()
+        row3.add(button(switch (lang) {
+            case RU -> "🏘 Поиск недвижимости";
+            case CZ -> "🏘 Hledání nemovitostí";
+            case EN -> "🏘 Real estate search";
+            default -> "🏘 Пошук нерухомості";
+        }, "SERVICE:REAL_ESTATE"));
+
+        InlineKeyboardRow row4 = new InlineKeyboardRow();
+        row4.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "💬 Связаться с автором";
                     case CZ -> "💬 Kontaktovat autora";
@@ -573,7 +581,7 @@ public class Keyboards {
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3))
+                .keyboard(List.of(row1, row2, row3, row4))
                 .build();
     }
 
