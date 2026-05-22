@@ -81,10 +81,10 @@ public class MessageService {
                 Map.entry("menu.support.project", "💙 Підтримати проєкт"),
                 Map.entry("menu.language", "🌐 Мова / Language"),
 
-                Map.entry("layout.1", "1 кімната"),
-                Map.entry("layout.2", "2 кімнати"),
-                Map.entry("layout.3", "3 кімнати"),
-                Map.entry("layout.4", "4+"),
+                Map.entry("layout.1", "1+kk / 1+1"),
+                Map.entry("layout.2", "2+kk / 2+1"),
+                Map.entry("layout.3", "3+kk / 3+1"),
+                Map.entry("layout.4", "4+ і більше"),
 
                 Map.entry("price.unlimited", "Без ліміту"),
 
@@ -167,10 +167,10 @@ public class MessageService {
                 Map.entry("menu.support.project", "💙 Поддержать проект"),
                 Map.entry("menu.language", "🌐 Язык / Language"),
 
-                Map.entry("layout.1", "1 комната"),
-                Map.entry("layout.2", "2 комнаты"),
-                Map.entry("layout.3", "3 комнаты"),
-                Map.entry("layout.4", "4+"),
+                Map.entry("layout.1", "1+kk / 1+1"),
+                Map.entry("layout.2", "2+kk / 2+1"),
+                Map.entry("layout.3", "3+kk / 3+1"),
+                Map.entry("layout.4", "4+ и больше"),
 
                 Map.entry("price.unlimited", "Без лимита"),
 
@@ -253,10 +253,10 @@ public class MessageService {
                 Map.entry("menu.support.project", "💙 Podpořit projekt"),
                 Map.entry("menu.language", "🌐 Jazyk / Language"),
 
-                Map.entry("layout.1", "1 pokoj"),
-                Map.entry("layout.2", "2 pokoje"),
-                Map.entry("layout.3", "3 pokoje"),
-                Map.entry("layout.4", "4+"),
+                Map.entry("layout.1", "1+kk / 1+1"),
+                Map.entry("layout.2", "2+kk / 2+1"),
+                Map.entry("layout.3", "3+kk / 3+1"),
+                Map.entry("layout.4", "4+ a více"),
 
                 Map.entry("price.unlimited", "Bez limitu"),
 
@@ -339,10 +339,10 @@ public class MessageService {
                 Map.entry("menu.support.project", "💙 Support project"),
                 Map.entry("menu.language", "🌐 Language"),
 
-                Map.entry("layout.1", "1 room"),
-                Map.entry("layout.2", "2 rooms"),
-                Map.entry("layout.3", "3 rooms"),
-                Map.entry("layout.4", "4+"),
+                Map.entry("layout.1", "1+kk / 1+1"),
+                Map.entry("layout.2", "2+kk / 2+1"),
+                Map.entry("layout.3", "3+kk / 3+1"),
+                Map.entry("layout.4", "4+ and more"),
 
                 Map.entry("price.unlimited", "No limit"),
 

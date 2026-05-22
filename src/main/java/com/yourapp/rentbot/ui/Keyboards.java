@@ -136,27 +136,32 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "🏠 1 комната";
-                    case CZ -> "🏠 1 pokoj";
-                    case EN -> "🏠 1 room";
-                    default -> "🏠 1 кімната";
+                    case RU -> "🏠 1+kk / 1+1";
+                    case CZ -> "🏠 1+kk / 1+1";
+                    case EN -> "🏠 1+kk / 1+1";
+                    default -> "🏠 1+kk / 1+1";
                 }, "LAYOUT:1"),
                 button(switch (lang) {
-                    case RU -> "🏠 2 комнаты";
-                    case CZ -> "🏠 2 pokoje";
-                    case EN -> "🏠 2 rooms";
-                    default -> "🏠 2 кімнати";
+                    case RU -> "🏠 2+kk / 2+1";
+                    case CZ -> "🏠 2+kk / 2+1";
+                    case EN -> "🏠 2+kk / 2+1";
+                    default -> "🏠 2+kk / 2+1";
                 }, "LAYOUT:2")
         ));
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "🏠 3 комнаты";
-                    case CZ -> "🏠 3 pokoje";
-                    case EN -> "🏠 3 rooms";
-                    default -> "🏠 3 кімнати";
+                    case RU -> "🏠 3+kk / 3+1";
+                    case CZ -> "🏠 3+kk / 3+1";
+                    case EN -> "🏠 3+kk / 3+1";
+                    default -> "🏠 3+kk / 3+1";
                 }, "LAYOUT:3"),
-                button("🏠 4+", "LAYOUT:4")
+                button(switch (lang) {
+                    case RU -> "🏠 4+ и больше";
+                    case CZ -> "🏠 4+ a více";
+                    case EN -> "🏠 4+ and more";
+                    default -> "🏠 4+ і більше";
+                }, "LAYOUT:4")
         ));
 
         return InlineKeyboardMarkup.builder()
