@@ -17,6 +17,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -25,6 +26,14 @@ public class ParserService {
     private static final Logger log = LoggerFactory.getLogger(ParserService.class);
 
     private static final long CACHE_TTL_MILLIS = 55_000;
+    private static final Set<String> ADDRESS_STOP_WORDS = Set.of(
+            "www", "http", "https", "cz", "detail", "reality", "sreality", "idnes",
+            "pronajem", "pronajmu", "nabidka", "byt", "bytu", "m2", "kc", "mesic", "mesicne",
+            "okres", "kraj", "ulice", "ul", "cena", "dispozice", "plocha",
+            "kolin", "praha", "brno", "ostrava", "plzen", "liberec", "olomouc", "zlin",
+            "pardubice", "jihlava", "kladno", "nymburk", "tabor", "cheb", "most",
+            "iv", "iii", "ii", "i"
+    );
 
     private final Object fetchLock = new Object();
     private volatile List<ListingDto> cachedListings = List.of();
@@ -627,7 +636,7 @@ public class ParserService {
     }
 
     private String extractAddressCore(ListingDto dto) {
-        String raw = firstNonBlank(dto.locality(), dto.title(), dto.link());
+        String raw = combineAddressInputs(dto);
         if (raw == null || raw.isBlank()) return null;
 
         String normalized = normalizeLocality(raw);
@@ -642,6 +651,10 @@ public class ParserService {
                 .replaceAll("\\bkc\\b", " ")
                 .replaceAll("\\bmesic\\b", " ")
                 .replaceAll("\\bmesicne\\b", " ")
+                .replaceAll("\\bdetail\\b", " ")
+                .replaceAll("\\breality\\b", " ")
+                .replaceAll("\\bidnes\\b", " ")
+                .replaceAll("\\bsreality\\b", " ")
                 .replaceAll("\\bpronajem\\b", " ")
                 .replaceAll("\\bnove\\b", " ")
                 .replaceAll("\\bnovy\\b", " ");
@@ -669,12 +682,77 @@ public class ParserService {
 
         String[] parts = normalized.split(",");
 
-        if (parts.length > 0) {
-            String first = parts[0].trim();
-            if (!first.isBlank()) return first;
+        for (String part : parts) {
+            String candidate = cleanupAddressCandidate(part);
+            if (isStrongAddressCandidate(candidate)) {
+                return candidate;
+            }
         }
 
-        return normalized;
+        String candidate = cleanupAddressCandidate(normalized);
+        if (isStrongAddressCandidate(candidate)) {
+            return candidate;
+        }
+
+        return null;
+    }
+
+    private String combineAddressInputs(ListingDto dto) {
+        if (dto == null) return null;
+
+        StringBuilder sb = new StringBuilder();
+        appendAddressInput(sb, dto.locality());
+        appendAddressInput(sb, dto.title());
+        appendAddressInput(sb, dto.link());
+
+        return sb.toString();
+    }
+
+    private void appendAddressInput(StringBuilder sb, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+
+        if (!sb.isEmpty()) {
+            sb.append(", ");
+        }
+        sb.append(value);
+    }
+
+    private String cleanupAddressCandidate(String value) {
+        if (value == null || value.isBlank()) return "";
+
+        String normalized = value
+                .replace('-', ' ')
+                .replace('/', ' ')
+                .replaceAll("\\b[a-f0-9]{12,}\\b", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        List<String> tokens = new ArrayList<>();
+        for (String token : normalized.split("\\s+")) {
+            if (token.isBlank()) continue;
+            if (ADDRESS_STOP_WORDS.contains(token)) continue;
+            if (token.length() <= 1) continue;
+            tokens.add(token);
+        }
+
+        return String.join(" ", tokens).trim();
+    }
+
+    private boolean isStrongAddressCandidate(String candidate) {
+        if (candidate == null || candidate.isBlank()) return false;
+
+        String[] tokens = candidate.split("\\s+");
+        if (tokens.length == 0 || tokens.length > 4) return false;
+
+        for (String token : tokens) {
+            if (token.length() >= 4) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private ListingDto pickBetterListing(ListingDto a, ListingDto b) {
