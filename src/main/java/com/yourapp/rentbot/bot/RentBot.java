@@ -491,9 +491,13 @@ Bazoš: %d
         String data = update.getCallbackQuery().getData();
         String callbackId = update.getCallbackQuery().getId();
 
-        answerCallback(callbackId);
+        boolean favoriteAddCallback = data.startsWith("FAV:ADD:");
 
-        if (!data.startsWith("LISTING:")) {
+        if (!favoriteAddCallback) {
+            answerCallback(callbackId);
+        }
+
+        if (!data.startsWith("LISTING:") && !favoriteAddCallback) {
             disableInlineKeyboard(update);
         }
 
@@ -540,16 +544,16 @@ Bazoš: %d
             ListingDto dto = listingCacheService.get(tokenValue);
 
             if (dto == null) {
-                send(chatId, msg(userId, "favorites.add.failed"), Keyboards.mainMenuKeyboard(lang));
+                answerCallback(callbackId, msg(userId, "favorites.add.failed"));
                 return;
             }
 
             boolean added = favoriteService.addFavorite(userId, dto);
 
             if (added) {
-                send(chatId, msg(userId, "favorites.added"), Keyboards.mainMenuKeyboard(lang));
+                answerCallback(callbackId, msg(userId, "favorites.added"));
             } else {
-                send(chatId, msg(userId, "favorites.already.exists"), Keyboards.mainMenuKeyboard(lang));
+                answerCallback(callbackId, msg(userId, "favorites.already.exists"));
             }
             return;
         }
@@ -1124,6 +1128,16 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         );
     }
 
+    private void answerCallback(String callbackQueryId, String text) throws TelegramApiException {
+        telegramClient.execute(
+                AnswerCallbackQuery.builder()
+                        .callbackQueryId(callbackQueryId)
+                        .text(text)
+                        .showAlert(false)
+                        .build()
+        );
+    }
+
     private void sendRegionsEntry(long chatId, long userId, String text) throws TelegramApiException {
         Language lang = getUserLanguage(userId);
         List<Region> popularRegions = regionRepo.findByPopularTrueOrderByTitleAsc();
@@ -1355,7 +1369,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                 "🏠 " + nvl(l.title()) + "\n\n" +
                         "💰 " + formatPrice(l.priceCzk()) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
-                        freshnessIcon(l.foundAt()) + " " + addedLabel(lang) + ": " + formatTimeAgo(l.foundAt(), lang) + "\n\n" +
+                        freshnessIcon(l.foundAt()) + " " + addedLabel(lang) + ": " + formatTimeAgo(l.foundAt(), lang) + "\n" +
                         "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n\n" +
                         "📄 " + listingLabel(lang) + " " + (index + 1) + " / " + total;
 
