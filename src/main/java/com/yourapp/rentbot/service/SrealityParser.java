@@ -3,6 +3,10 @@ package com.yourapp.rentbot.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yourapp.rentbot.service.dto.ListingDto;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,9 +34,13 @@ public class SrealityParser {
 
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PRICE_FROM_TEXT_PATTERN =
+            Pattern.compile("(\\d[\\d\\s.]{2,})\\s*K\\s*\\p{L}*", Pattern.CASE_INSENSITIVE);
 
     private static final int MAX_PAGES = 30;
+    private static final int HTML_FALLBACK_MAX_PAGES = 3;
     private static final int PER_PAGE = 20;
+    private static final String SREALITY_BASE_URL = "https://www.sreality.cz";
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -104,6 +112,15 @@ public class SrealityParser {
                             apiUrl,
                             body.substring(0, Math.min(300, body.length()))
                     );
+
+                    if (page == 1) {
+                        List<ListingDto> fallback = fetchListingsFromHtml(regionCode, runId);
+                        if (!fallback.isEmpty()) {
+                            log.info("Sreality run={} finished via html fallback, raw={}, deduped={}",
+                                    runId, fallback.size(), fallback.size());
+                            return fallback;
+                        }
+                    }
 
                     break;
                 }
@@ -178,6 +195,224 @@ public class SrealityParser {
                 .append("&per_page=").append(PER_PAGE)
                 .append("&tms=").append(tms)
                 .toString();
+    }
+
+    private List<ListingDto> fetchListingsFromHtml(String regionCode, String runId) {
+        String slug = SREALITY_SLUGS.get(regionCode == null ? "" : regionCode.toUpperCase());
+        if (slug == null || slug.isBlank()) {
+            log.warn("Sreality run={} html fallback skipped: no slug for regionCode={}", runId, regionCode);
+            return List.of();
+        }
+
+        List<ListingDto> result = new ArrayList<>();
+
+        for (int page = 1; page <= HTML_FALLBACK_MAX_PAGES; page++) {
+            String pageUrl = buildHtmlSearchUrl(slug, page);
+
+            try {
+                Document doc = Jsoup.connect(pageUrl)
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
+                        .referrer("https://www.sreality.cz/")
+                        .timeout(20_000)
+                        .get();
+
+                List<ListingDto> pageListings = parseHtmlListings(doc);
+                log.info("Sreality run={} html fallback page={} parsed={} listings", runId, page, pageListings.size());
+
+                if (pageListings.isEmpty()) {
+                    break;
+                }
+
+                result.addAll(pageListings);
+
+                if (pageListings.size() < PER_PAGE) {
+                    break;
+                }
+            } catch (IOException e) {
+                log.warn("Sreality run={} html fallback failed url={}: {}", runId, pageUrl, e.toString());
+                break;
+            }
+        }
+
+        return dedupeByLink(result);
+    }
+
+    private String buildHtmlSearchUrl(String slug, int page) {
+        String baseUrl = SREALITY_BASE_URL + "/hledani/pronajem/byty/" + slug;
+        if (page <= 1) {
+            return baseUrl;
+        }
+
+        return baseUrl + "?strana=" + page;
+    }
+
+    private List<ListingDto> parseHtmlListings(Document doc) {
+        Map<String, ListingDto> listings = new LinkedHashMap<>();
+        Elements links = doc.select("a[href*=/detail/pronajem/byt/]");
+
+        for (Element linkElement : links) {
+            String link = normalizeDetailLink(linkElement.attr("href"));
+            if (link.isBlank() || listings.containsKey(link)) {
+                continue;
+            }
+
+            String cardText = extractCardText(linkElement);
+            String title = extractHtmlTitle(cardText, link);
+            int price = extractHtmlPrice(cardText);
+            String layout = extractLayout(title + " " + cardText);
+            String locality = extractHtmlLocality(cardText, title, link);
+            String photoUrl = extractHtmlPhotoUrl(linkElement);
+
+            listings.put(link, new ListingDto(
+                    title,
+                    price,
+                    link,
+                    layout,
+                    locality,
+                    photoUrl,
+                    "Sreality",
+                    LocalDateTime.now()
+            ));
+        }
+
+        return new ArrayList<>(listings.values());
+    }
+
+    private String normalizeDetailLink(String href) {
+        if (href == null || href.isBlank()) {
+            return "";
+        }
+
+        String link = href.trim();
+        if (link.startsWith("//")) {
+            link = "https:" + link;
+        } else if (link.startsWith("/")) {
+            link = SREALITY_BASE_URL + link;
+        }
+
+        int queryIndex = link.indexOf('?');
+        if (queryIndex >= 0) {
+            link = link.substring(0, queryIndex);
+        }
+
+        int hashIndex = link.indexOf('#');
+        if (hashIndex >= 0) {
+            link = link.substring(0, hashIndex);
+        }
+
+        return link;
+    }
+
+    private String extractCardText(Element linkElement) {
+        Element current = linkElement;
+        while (current != null) {
+            String text = current.text();
+            int detailLinks = current.select("a[href*=/detail/pronajem/byt/]").size();
+            if (text != null && text.length() >= 25 && detailLinks <= 3) {
+                return text;
+            }
+            current = current.parent();
+        }
+
+        return linkElement.text();
+    }
+
+    private String extractHtmlTitle(String cardText, String link) {
+        if (cardText != null && !cardText.isBlank()) {
+            String normalized = cardText.replaceAll("\\s+", " ").trim();
+            Matcher priceMatcher = PRICE_FROM_TEXT_PATTERN.matcher(normalized);
+            if (priceMatcher.find()) {
+                normalized = normalized.substring(0, priceMatcher.start()).trim();
+            }
+            if (!normalized.isBlank()) {
+                return normalized;
+            }
+        }
+
+        String layout = extractLayout(link);
+        if (layout == null || layout.isBlank()) {
+            return "Pronajem bytu";
+        }
+
+        return "Pronajem bytu " + layout;
+    }
+
+    private int extractHtmlPrice(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+
+        Matcher matcher = PRICE_FROM_TEXT_PATTERN.matcher(text);
+        if (!matcher.find()) {
+            return 0;
+        }
+
+        String digits = matcher.group(1).replaceAll("\\D+", "");
+        if (digits.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return Integer.parseInt(digits);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private String extractHtmlLocality(String cardText, String title, String link) {
+        if (cardText != null && title != null) {
+            String normalized = cardText.replaceAll("\\s+", " ").trim();
+            String withoutTitle = normalized.startsWith(title)
+                    ? normalized.substring(title.length()).trim()
+                    : normalized;
+            Matcher priceMatcher = PRICE_FROM_TEXT_PATTERN.matcher(withoutTitle);
+            if (priceMatcher.find()) {
+                withoutTitle = withoutTitle.substring(priceMatcher.end()).trim();
+            }
+            if (!withoutTitle.isBlank() && withoutTitle.length() <= 80) {
+                return withoutTitle;
+            }
+        }
+
+        return localityFromDetailLink(link);
+    }
+
+    private String localityFromDetailLink(String link) {
+        if (link == null || link.isBlank()) {
+            return "";
+        }
+
+        String[] parts = link.split("/");
+        if (parts.length < 2) {
+            return "";
+        }
+
+        String locality = parts[parts.length - 2]
+                .replace('-', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        if (locality.matches("\\d+\\+.*")) {
+            return "";
+        }
+
+        return locality;
+    }
+
+    private String extractHtmlPhotoUrl(Element linkElement) {
+        Element current = linkElement;
+        while (current != null) {
+            Element img = current.selectFirst("img[src], img[data-src]");
+            if (img != null) {
+                String src = img.hasAttr("src") ? img.absUrl("src") : img.absUrl("data-src");
+                if (src != null && !src.isBlank()) {
+                    return src;
+                }
+            }
+            current = current.parent();
+        }
+
+        return null;
     }
 
     private int extractPrice(JsonNode estate) {
@@ -297,6 +532,97 @@ public class SrealityParser {
 
         return null;
     }
+
+    private static final Map<String, String> SREALITY_SLUGS = Map.ofEntries(
+            Map.entry("BENESOV", "benesov"),
+            Map.entry("BEROUN", "beroun"),
+            Map.entry("BLANSKO", "blansko"),
+            Map.entry("BRNO", "brno"),
+            Map.entry("BRNO_VENKOV", "brno-venkov"),
+            Map.entry("BRUNTAL", "bruntal"),
+            Map.entry("BRECLAV", "breclav"),
+            Map.entry("CESKA_LIPA", "ceska-lipa"),
+            Map.entry("CESKE_BUDEJOVICE", "ceske-budejovice"),
+            Map.entry("CESKY_KRUMLOV", "cesky-krumlov"),
+            Map.entry("DECIN", "decin"),
+            Map.entry("DOMAZLICE", "domazlice"),
+            Map.entry("FRYDEK_MISTEK", "frydek-mistek"),
+            Map.entry("HAVLICKUV_BROD", "havlickuv-brod"),
+            Map.entry("HODONIN", "hodonin"),
+            Map.entry("HRADEC_KRALOVE", "hradec-kralove"),
+            Map.entry("CHEB", "cheb"),
+            Map.entry("CHOMUTOV", "chomutov"),
+            Map.entry("CHRUDIM", "chrudim"),
+            Map.entry("JABLONEC_NAD_NISOU", "jablonec-nad-nisou"),
+            Map.entry("JABLONEC", "jablonec-nad-nisou"),
+            Map.entry("JESENIK", "jesenik"),
+            Map.entry("JICIN", "jicin"),
+            Map.entry("JIHLAVA", "jihlava"),
+            Map.entry("JINDRICHUV_HRADEC", "jindrichuv-hradec"),
+            Map.entry("KARLOVY_VARY", "karlovy-vary"),
+            Map.entry("KARVINA", "karvina"),
+            Map.entry("KLADNO", "kladno"),
+            Map.entry("KLATOVY", "klatovy"),
+            Map.entry("KOLIN", "kolin"),
+            Map.entry("KROMERIZ", "kromeriz"),
+            Map.entry("KUTNA_HORA", "kutna-hora"),
+            Map.entry("LIBEREC", "liberec"),
+            Map.entry("LITOMERICE", "litomerice"),
+            Map.entry("LOUNY", "louny"),
+            Map.entry("MELNIK", "melnik"),
+            Map.entry("MLADA_BOLESLAV", "mlada-boleslav"),
+            Map.entry("MOST", "most"),
+            Map.entry("NACHOD", "nachod"),
+            Map.entry("NOVY_JICIN", "novy-jicin"),
+            Map.entry("NYMBURK", "nymburk"),
+            Map.entry("OLOMOUC", "olomouc"),
+            Map.entry("OPAVA", "opava"),
+            Map.entry("OSTRAVA", "ostrava"),
+            Map.entry("PARDUBICE", "pardubice"),
+            Map.entry("PELHRIMOV", "pelhrimov"),
+            Map.entry("PISEK", "pisek"),
+            Map.entry("PLZEN", "plzen"),
+            Map.entry("PLZEN_JIH", "plzen-jih"),
+            Map.entry("PLZEN_SEVER", "plzen-sever"),
+            Map.entry("PRAHA", "praha"),
+            Map.entry("PRAHA_1", "praha-1"),
+            Map.entry("PRAHA_2", "praha-2"),
+            Map.entry("PRAHA_3", "praha-3"),
+            Map.entry("PRAHA_4", "praha-4"),
+            Map.entry("PRAHA_5", "praha-5"),
+            Map.entry("PRAHA_6", "praha-6"),
+            Map.entry("PRAHA_7", "praha-7"),
+            Map.entry("PRAHA_8", "praha-8"),
+            Map.entry("PRAHA_9", "praha-9"),
+            Map.entry("PRAHA_10", "praha-10"),
+            Map.entry("PRAHA_VYCHOD", "praha-vychod"),
+            Map.entry("PRAHA_ZAPAD", "praha-zapad"),
+            Map.entry("PRACHATICE", "prachatice"),
+            Map.entry("PROSTEJOV", "prostejov"),
+            Map.entry("PREROV", "prerov"),
+            Map.entry("PRIBRAM", "pribram"),
+            Map.entry("RAKOVNIK", "rakovnik"),
+            Map.entry("ROKYCANY", "rokycany"),
+            Map.entry("RYCHNOV_NAD_KNEZNOU", "rychnov-nad-kneznou"),
+            Map.entry("SEMILY", "semily"),
+            Map.entry("SOKOLOV", "sokolov"),
+            Map.entry("STRAKONICE", "strakonice"),
+            Map.entry("SVITAVY", "svitavy"),
+            Map.entry("SUMPERK", "sumperk"),
+            Map.entry("TABOR", "tabor"),
+            Map.entry("TACHOV", "tachov"),
+            Map.entry("TEPLICE", "teplice"),
+            Map.entry("TRUTNOV", "trutnov"),
+            Map.entry("TREBIC", "trebic"),
+            Map.entry("UHERSKE_HRADISTE", "uherske-hradiste"),
+            Map.entry("USTI_NAD_LABEM", "usti-nad-labem"),
+            Map.entry("USTI_NAD_ORLICI", "usti-nad-orlici"),
+            Map.entry("VSETIN", "vsetin"),
+            Map.entry("VYSKOV", "vyskov"),
+            Map.entry("ZLIN", "zlin"),
+            Map.entry("ZNOJMO", "znojmo"),
+            Map.entry("ZDAR_NAD_SAZAVOU", "zdar-nad-sazavou")
+    );
 
     private static final Map<String, Integer> SREALITY_REGION_IDS = Map.ofEntries(
             Map.entry("BENESOV", 11),
