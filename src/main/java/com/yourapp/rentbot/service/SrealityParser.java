@@ -172,7 +172,6 @@ public class SrealityParser {
         StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
-                .append("&locality_district_id=").append(srealityDistrictId)
                 .append("&locality_country_id=10001")
                 .append("&no_auction=1")
                 .append("&page=").append(page)
@@ -180,6 +179,8 @@ public class SrealityParser {
 
         if (srealityRegionId != null) {
             url.append("&locality_region_id=").append(srealityRegionId);
+        } else {
+            url.append("&locality_district_id=").append(srealityDistrictId);
         }
 
         return url.append("&tms=").append(tms)
