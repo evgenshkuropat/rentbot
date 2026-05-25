@@ -690,6 +690,11 @@ Bazoš: %d
             return;
         }
 
+        if (data.startsWith("SERVICE:IPC_DATES")) {
+            send(chatId, ipcDatesInfo(lang), Keyboards.authorContactKeyboard(lang));
+            return;
+        }
+
         if (data.startsWith("EDIT:")) {
             String action = data.substring("EDIT:".length());
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -1059,6 +1064,47 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
 Сервіс у розробці.
 
 План: пошук квартир, будинків та інших об'єктів нерухомості в Чехії в одному місці. Якщо маєте ідею або хочете протестувати сервіс першими, напишіть автору.
+""";
+        };
+    }
+
+    private String ipcDatesInfo(Language lang) {
+        return switch (lang) {
+            case RU -> """
+🗓 Даты IPC
+
+Тестовый режим.
+
+Помогаю отслеживать свободные даты на портале IPC / МВД Чехии. Если появляется подходящий слот, я сообщаю вам, а запись вы делаете самостоятельно в своем аккаунте IPC.
+
+Важно: я не бронирую дату вместо вас и не гарантирую запись. Свободные слоты могут быстро исчезать.
+""";
+            case CZ -> """
+🗓 Termíny IPC
+
+Testovací režim.
+
+Pomáhám sledovat volné termíny na portálu IPC / MVČR. Když se objeví vhodný termín, dám vám vědět a rezervaci provedete sami ve svém účtu IPC.
+
+Důležité: termín za vás nerezervuji a rezervaci negarantujeme. Volné termíny mohou rychle zmizet.
+""";
+            case EN -> """
+🗓 IPC dates
+
+Test mode.
+
+I can help monitor available dates on the IPC / Czech Ministry of Interior portal. When a suitable slot appears, I let you know and you book it yourself in your own IPC account.
+
+Important: I do not book the appointment for you and cannot guarantee a reservation. Free slots may disappear quickly.
+""";
+            default -> """
+🗓 Дати IPC
+
+Тестовий режим.
+
+Допомагаю відстежувати вільні дати на порталі IPC / МВС Чехії. Якщо з'являється відповідний слот, я повідомляю вам, а запис ви робите самостійно у своєму акаунті IPC.
+
+Важливо: я не бронюю дату замість вас і не гарантую запис. Вільні слоти можуть швидко зникати.
 """;
         };
     }

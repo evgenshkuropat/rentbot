@@ -575,7 +575,15 @@ public class Keyboards {
         }, "SERVICE:REAL_ESTATE"));
 
         InlineKeyboardRow row4 = new InlineKeyboardRow();
-        row4.add(InlineKeyboardButton.builder()
+        row4.add(button(switch (lang) {
+            case RU -> "🗓 Даты IPC";
+            case CZ -> "🗓 Termíny IPC";
+            case EN -> "🗓 IPC dates";
+            default -> "🗓 Дати IPC";
+        }, "SERVICE:IPC_DATES"));
+
+        InlineKeyboardRow row5 = new InlineKeyboardRow();
+        row5.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "💬 Связаться с автором";
                     case CZ -> "💬 Kontaktovat autora";
@@ -586,7 +594,7 @@ public class Keyboards {
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3, row4))
+                .keyboard(List.of(row1, row2, row3, row4, row5))
                 .build();
     }
 
