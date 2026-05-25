@@ -33,7 +33,6 @@ public class SrealityParser {
 
     private static final int MAX_PAGES = 30;
     private static final int PER_PAGE = 20;
-    private static final String APARTMENT_SUBTYPES = "2%7C3%7C4%7C5%7C6%7C7%7C8%7C9%7C10%7C11%7C12%7C16%7C47";
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -171,22 +170,13 @@ public class SrealityParser {
     private String buildApiUrl(Integer srealityDistrictId, Integer srealityRegionId, int page) {
         long tms = System.currentTimeMillis();
 
-        StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
+        return new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
-                .append("&category_sub_cb=").append(APARTMENT_SUBTYPES)
-                .append("&locality_country_id=10001")
+                .append("&locality_district_id=").append(srealityDistrictId)
                 .append("&page=").append(page)
                 .append("&per_page=").append(PER_PAGE)
-                .append("&sort=0");
-
-        if (srealityRegionId != null) {
-            url.append("&locality_region_id=").append(srealityRegionId);
-        } else {
-            url.append("&locality_district_id=").append(srealityDistrictId);
-        }
-
-        return url.append("&tms=").append(tms)
+                .append("&tms=").append(tms)
                 .toString();
     }
 
