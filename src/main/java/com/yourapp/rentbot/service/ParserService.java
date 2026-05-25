@@ -96,7 +96,7 @@ public class ParserService {
             if (srealityDistrictId != null) {
 
                 List<ListingDto> sreality =
-                        srealityParser.fetchListings(srealityDistrictId);
+                        srealityParser.fetchListings(region.getCode(), srealityDistrictId);
                 srealityRaw = sreality.size();
 
                 log.info("Sreality listings region={} count={}", regionTitle(region), sreality.size());

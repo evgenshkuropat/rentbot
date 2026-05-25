@@ -48,7 +48,19 @@ public class SrealityParser {
         return SREALITY_DISTRICT_IDS.get(regionCode.toUpperCase());
     }
 
+    public static Integer getRegionId(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return null;
+        }
+
+        return SREALITY_REGION_IDS.get(regionCode.toUpperCase());
+    }
+
     public List<ListingDto> fetchListings(Integer srealityDistrictId) throws IOException {
+        return fetchListings(null, srealityDistrictId);
+    }
+
+    public List<ListingDto> fetchListings(String regionCode, Integer srealityDistrictId) throws IOException {
         String runId = UUID.randomUUID().toString().substring(0, 8);
 
         if (srealityDistrictId == null) {
@@ -59,10 +71,13 @@ public class SrealityParser {
         try {
             List<ListingDto> result = new ArrayList<>();
 
-            log.info("Sreality run={} started, districtId={}", runId, srealityDistrictId);
+            Integer srealityRegionId = getRegionId(regionCode);
+
+            log.info("Sreality run={} started, regionCode={}, districtId={}, regionId={}",
+                    runId, regionCode, srealityDistrictId, srealityRegionId);
 
             for (int page = 1; page <= MAX_PAGES; page++) {
-                String apiUrl = buildApiUrl(srealityDistrictId, page);
+                String apiUrl = buildApiUrl(srealityDistrictId, srealityRegionId, page);
 
                 log.debug("Sreality run={} page={} url={}", runId, page, apiUrl);
 
@@ -151,16 +166,23 @@ public class SrealityParser {
         }
     }
 
-    private String buildApiUrl(Integer srealityDistrictId, int page) {
+    private String buildApiUrl(Integer srealityDistrictId, Integer srealityRegionId, int page) {
         long tms = System.currentTimeMillis();
 
-        return new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
+        StringBuilder url = new StringBuilder("https://www.sreality.cz/api/cs/v2/estates")
                 .append("?category_main_cb=1")
                 .append("&category_type_cb=2")
                 .append("&locality_district_id=").append(srealityDistrictId)
+                .append("&locality_country_id=10001")
+                .append("&no_auction=1")
                 .append("&page=").append(page)
-                .append("&per_page=").append(PER_PAGE)
-                .append("&tms=").append(tms)
+                .append("&per_page=").append(PER_PAGE);
+
+        if (srealityRegionId != null) {
+            url.append("&locality_region_id=").append(srealityRegionId);
+        }
+
+        return url.append("&tms=").append(tms)
                 .toString();
     }
 
@@ -281,6 +303,97 @@ public class SrealityParser {
 
         return null;
     }
+
+    private static final Map<String, Integer> SREALITY_REGION_IDS = Map.ofEntries(
+            Map.entry("BENESOV", 11),
+            Map.entry("BEROUN", 11),
+            Map.entry("BLANSKO", 1),
+            Map.entry("BRNO", 1),
+            Map.entry("BRNO_VENKOV", 1),
+            Map.entry("BRUNTAL", 7),
+            Map.entry("BRECLAV", 1),
+            Map.entry("CESKA_LIPA", 4),
+            Map.entry("CESKE_BUDEJOVICE", 13),
+            Map.entry("CESKY_KRUMLOV", 13),
+            Map.entry("DECIN", 9),
+            Map.entry("DOMAZLICE", 5),
+            Map.entry("FRYDEK_MISTEK", 7),
+            Map.entry("HAVLICKUV_BROD", 14),
+            Map.entry("HODONIN", 1),
+            Map.entry("HRADEC_KRALOVE", 3),
+            Map.entry("CHEB", 2),
+            Map.entry("CHOMUTOV", 9),
+            Map.entry("CHRUDIM", 6),
+            Map.entry("JABLONEC_NAD_NISOU", 4),
+            Map.entry("JABLONEC", 4),
+            Map.entry("JESENIK", 12),
+            Map.entry("JICIN", 3),
+            Map.entry("JIHLAVA", 14),
+            Map.entry("JINDRICHUV_HRADEC", 13),
+            Map.entry("KARLOVY_VARY", 2),
+            Map.entry("KARVINA", 7),
+            Map.entry("KLADNO", 11),
+            Map.entry("KLATOVY", 5),
+            Map.entry("KOLIN", 11),
+            Map.entry("KROMERIZ", 15),
+            Map.entry("KUTNA_HORA", 11),
+            Map.entry("LIBEREC", 4),
+            Map.entry("LITOMERICE", 9),
+            Map.entry("LOUNY", 9),
+            Map.entry("MELNIK", 11),
+            Map.entry("MLADA_BOLESLAV", 11),
+            Map.entry("MOST", 9),
+            Map.entry("NACHOD", 3),
+            Map.entry("NOVY_JICIN", 7),
+            Map.entry("NYMBURK", 11),
+            Map.entry("OLOMOUC", 12),
+            Map.entry("OPAVA", 7),
+            Map.entry("OSTRAVA", 7),
+            Map.entry("PARDUBICE", 6),
+            Map.entry("PELHRIMOV", 14),
+            Map.entry("PISEK", 13),
+            Map.entry("PLZEN", 5),
+            Map.entry("PLZEN_JIH", 5),
+            Map.entry("PLZEN_SEVER", 5),
+            Map.entry("PRAHA", 10),
+            Map.entry("PRAHA_1", 10),
+            Map.entry("PRAHA_2", 10),
+            Map.entry("PRAHA_3", 10),
+            Map.entry("PRAHA_4", 10),
+            Map.entry("PRAHA_5", 10),
+            Map.entry("PRAHA_6", 10),
+            Map.entry("PRAHA_7", 10),
+            Map.entry("PRAHA_8", 10),
+            Map.entry("PRAHA_9", 10),
+            Map.entry("PRAHA_10", 10),
+            Map.entry("PRAHA_VYCHOD", 11),
+            Map.entry("PRAHA_ZAPAD", 11),
+            Map.entry("PRACHATICE", 13),
+            Map.entry("PROSTEJOV", 12),
+            Map.entry("PREROV", 12),
+            Map.entry("PRIBRAM", 11),
+            Map.entry("RAKOVNIK", 11),
+            Map.entry("ROKYCANY", 5),
+            Map.entry("RYCHNOV_NAD_KNEZNOU", 3),
+            Map.entry("SEMILY", 4),
+            Map.entry("SOKOLOV", 2),
+            Map.entry("STRAKONICE", 13),
+            Map.entry("SVITAVY", 6),
+            Map.entry("SUMPERK", 12),
+            Map.entry("TABOR", 13),
+            Map.entry("TACHOV", 5),
+            Map.entry("TEPLICE", 9),
+            Map.entry("TRUTNOV", 3),
+            Map.entry("TREBIC", 14),
+            Map.entry("UHERSKE_HRADISTE", 15),
+            Map.entry("USTI_NAD_LABEM", 9),
+            Map.entry("USTI_NAD_ORLICI", 6),
+            Map.entry("VSETIN", 15),
+            Map.entry("VYSKOV", 1),
+            Map.entry("ZLIN", 15),
+            Map.entry("ZNOJMO", 1),
+            Map.entry("ZDAR_NAD_SAZAVOU", 14)
+    );
 
     private static final Map<String, Integer> SREALITY_DISTRICT_IDS = Map.ofEntries(
             Map.entry("BENESOV", 48),
