@@ -78,11 +78,24 @@ public class SrealityParser {
 
         try {
             List<ListingDto> result = new ArrayList<>();
+            boolean triedHtml = false;
 
             Integer srealityRegionId = getRegionId(regionCode);
 
             log.info("Sreality run={} started, regionCode={}, districtId={}, regionId={}",
                     runId, regionCode, srealityDistrictId, srealityRegionId);
+
+            if (hasHtmlSlug(regionCode)) {
+                triedHtml = true;
+                List<ListingDto> htmlListings = fetchListingsFromHtml(regionCode, runId);
+                if (!htmlListings.isEmpty()) {
+                    log.info("Sreality run={} finished via html, raw={}, deduped={}",
+                            runId, htmlListings.size(), htmlListings.size());
+                    return htmlListings;
+                }
+
+                log.info("Sreality run={} html returned no listings, trying api", runId);
+            }
 
             for (int page = 1; page <= MAX_PAGES; page++) {
                 String apiUrl = buildApiUrl(srealityDistrictId, srealityRegionId, page);
@@ -113,7 +126,7 @@ public class SrealityParser {
                             body.substring(0, Math.min(300, body.length()))
                     );
 
-                    if (page == 1) {
+                    if (page == 1 && !triedHtml) {
                         List<ListingDto> fallback = fetchListingsFromHtml(regionCode, runId);
                         if (!fallback.isEmpty()) {
                             log.info("Sreality run={} finished via html fallback, raw={}, deduped={}",
@@ -182,6 +195,15 @@ public class SrealityParser {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while fetching Sreality", e);
         }
+    }
+
+    private boolean hasHtmlSlug(String regionCode) {
+        if (regionCode == null || regionCode.isBlank()) {
+            return false;
+        }
+
+        String slug = SREALITY_SLUGS.get(regionCode.toUpperCase());
+        return slug != null && !slug.isBlank();
     }
 
     private String buildApiUrl(Integer srealityDistrictId, Integer srealityRegionId, int page) {
