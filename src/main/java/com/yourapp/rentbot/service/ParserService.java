@@ -447,11 +447,7 @@ public class ParserService {
                 firstRejectedRegionSample
         };
 
-        if (passed == 0) {
-            log.info(message, args);
-        } else {
-            log.debug(message, args);
-        }
+        log.debug(message, args);
     }
 
     private String listingLogSample(ListingDto dto) {
