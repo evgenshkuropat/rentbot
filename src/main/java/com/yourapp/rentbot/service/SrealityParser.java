@@ -41,6 +41,7 @@ public class SrealityParser {
     private static final int HTML_FALLBACK_MAX_PAGES = 3;
     private static final int PER_PAGE = 20;
     private static final String SREALITY_BASE_URL = "https://www.sreality.cz";
+    private volatile boolean temporarilyUnavailableForCurrentCycle = false;
 
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -71,6 +72,12 @@ public class SrealityParser {
     public List<ListingDto> fetchListings(String regionCode, Integer srealityDistrictId) throws IOException {
         String runId = UUID.randomUUID().toString().substring(0, 8);
 
+        if (temporarilyUnavailableForCurrentCycle) {
+            log.info("Sreality run={} skipped regionCode={} reason=temporarily_unavailable_current_cycle",
+                    runId, regionCode);
+            return List.of();
+        }
+
         if (srealityDistrictId == null) {
             log.info("Sreality run={} skipped: srealityDistrictId is null", runId);
             return List.of();
@@ -94,7 +101,8 @@ public class SrealityParser {
                     return htmlListings;
                 }
 
-                log.info("Sreality run={} html returned no listings, trying api", runId);
+                log.info("Sreality run={} html returned no listings, api fallback skipped for known slug", runId);
+                return List.of();
             }
 
             for (int page = 1; page <= MAX_PAGES; page++) {
@@ -197,6 +205,10 @@ public class SrealityParser {
         }
     }
 
+    public void resetTemporaryUnavailableCycle() {
+        temporarilyUnavailableForCurrentCycle = false;
+    }
+
     private boolean hasHtmlSlug(String regionCode) {
         if (regionCode == null || regionCode.isBlank()) {
             return false;
@@ -232,11 +244,29 @@ public class SrealityParser {
             String pageUrl = buildHtmlSearchUrl(slug, page);
 
             try {
-                Document doc = Jsoup.connect(pageUrl)
+                var response = Jsoup.connect(pageUrl)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
+                        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                        .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8")
                         .referrer("https://www.sreality.cz/")
                         .timeout(20_000)
-                        .get();
+                        .ignoreHttpErrors(true)
+                        .execute();
+
+                if (response.statusCode() != 200) {
+                    log.warn("Sreality run={} html page={} non-200 status={} url={}",
+                            runId, page, response.statusCode(), response.url());
+
+                    if (page == 1 && (response.statusCode() == 404 || response.statusCode() == 429)) {
+                        temporarilyUnavailableForCurrentCycle = true;
+                        log.warn("Sreality run={} marked temporarily unavailable for current scheduler cycle, status={}",
+                                runId, response.statusCode());
+                    }
+
+                    break;
+                }
+
+                Document doc = response.parse();
 
                 List<ListingDto> pageListings = parseHtmlListings(doc);
                 log.info("Sreality run={} html fallback page={} parsed={} listings", runId, page, pageListings.size());

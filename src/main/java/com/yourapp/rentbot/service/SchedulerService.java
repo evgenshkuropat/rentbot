@@ -56,6 +56,7 @@ public class SchedulerService {
 
     private void runScheduler() {
         parserService.resetBazosRateLimitCycle();
+        parserService.resetSrealityTemporaryUnavailableCycle();
 
         List<UserFilter> users = userFilterRepo.findAllActiveFull();
 

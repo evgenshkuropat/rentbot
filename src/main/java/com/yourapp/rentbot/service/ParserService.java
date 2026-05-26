@@ -488,6 +488,10 @@ public class ParserService {
         bazosParser.resetRateLimitCycle();
     }
 
+    public void resetSrealityTemporaryUnavailableCycle() {
+        srealityParser.resetTemporaryUnavailableCycle();
+    }
+
     private String regionTitle(Region region) {
         return region != null ? region.getTitle() : "default";
     }
