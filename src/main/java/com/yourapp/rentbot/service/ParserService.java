@@ -283,6 +283,8 @@ public class ParserService {
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
+        logSrealityFilterDiagnostics(all, filter, regionTitle, needLayout, maxPrice, groupCode);
+
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
@@ -354,6 +356,118 @@ public class ParserService {
         }
 
         return filtered;
+    }
+
+    private void logSrealityFilterDiagnostics(List<ListingDto> all,
+                                              UserFilter filter,
+                                              String regionTitle,
+                                              String needLayout,
+                                              Integer maxPrice,
+                                              String groupCode) {
+        int total = 0;
+        int passed = 0;
+        int rejectedLayout = 0;
+        int rejectedMaxPrice = 0;
+        int rejectedRegion = 0;
+        int rejectedRegionGroup = 0;
+        int rejectedMinPrice = 0;
+        int zeroPrice = 0;
+        int blankLocality = 0;
+        String firstRejectedRegionSample = "";
+
+        for (ListingDto x : all) {
+            String source = x.source() == null ? "" : x.source().toLowerCase();
+            if (!source.contains("sreality")) {
+                continue;
+            }
+
+            total++;
+
+            if (x.priceCzk() <= 0) {
+                zeroPrice++;
+            }
+            if (x.locality() == null || x.locality().isBlank()) {
+                blankLocality++;
+            }
+
+            if (needLayout != null && !layoutMatches(needLayout, x.layout())) {
+                rejectedLayout++;
+                continue;
+            }
+
+            if (maxPrice != null && maxPrice > 0 && (x.priceCzk() <= 0 || x.priceCzk() > maxPrice)) {
+                rejectedMaxPrice++;
+                continue;
+            }
+
+            if (!matchesRegion(x.locality(), regionTitle)) {
+                rejectedRegion++;
+                if (firstRejectedRegionSample.isBlank()) {
+                    firstRejectedRegionSample = listingLogSample(x);
+                }
+                continue;
+            }
+
+            if (!matchesRegionGroup(x.locality(), groupCode)) {
+                rejectedRegionGroup++;
+                continue;
+            }
+
+            if (x.priceCzk() > 0 && x.priceCzk() < 3000) {
+                rejectedMinPrice++;
+                continue;
+            }
+
+            passed++;
+        }
+
+        if (total == 0) {
+            return;
+        }
+
+        String message = "Sreality filter diagnostics user={} region={} group={} needLayout={} maxPrice={} "
+                + "total={} passed={} rejectedLayout={} rejectedMaxPrice={} rejectedRegion={} "
+                + "rejectedRegionGroup={} rejectedMinPrice={} zeroPrice={} blankLocality={} firstRejectedRegion={}";
+
+        Object[] args = {
+                filter.getTelegramUserId(),
+                regionTitle,
+                groupCode,
+                needLayout,
+                maxPrice,
+                total,
+                passed,
+                rejectedLayout,
+                rejectedMaxPrice,
+                rejectedRegion,
+                rejectedRegionGroup,
+                rejectedMinPrice,
+                zeroPrice,
+                blankLocality,
+                firstRejectedRegionSample
+        };
+
+        if (passed == 0) {
+            log.info(message, args);
+        } else {
+            log.debug(message, args);
+        }
+    }
+
+    private String listingLogSample(ListingDto dto) {
+        if (dto == null) {
+            return "";
+        }
+
+        String sample = "title=" + firstNonBlank(dto.title(), "")
+                + ", locality=" + firstNonBlank(dto.locality(), "")
+                + ", layout=" + firstNonBlank(dto.layout(), "")
+                + ", price=" + dto.priceCzk()
+                + ", link=" + firstNonBlank(dto.link(), "");
+
+        return sample.replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private boolean matchesRegion(String locality, String regionTitle) {
