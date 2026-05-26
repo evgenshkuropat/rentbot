@@ -412,6 +412,8 @@ public class SrealityParser {
     }
 
     private String extractHtmlLocality(String cardText, String title, String link) {
+        String fromTitle = localityFromTitle(title);
+
         if (cardText != null && title != null) {
             String normalized = cardText.replaceAll("\\s+", " ").trim();
             String withoutTitle = normalized.startsWith(title)
@@ -421,12 +423,64 @@ public class SrealityParser {
             if (priceMatcher.find()) {
                 withoutTitle = withoutTitle.substring(priceMatcher.end()).trim();
             }
-            if (!withoutTitle.isBlank() && withoutTitle.length() <= 80) {
+            if (isUsableLocality(withoutTitle)) {
                 return withoutTitle;
             }
         }
 
+        if (isUsableLocality(fromTitle)) {
+            return fromTitle;
+        }
+
         return localityFromDetailLink(link);
+    }
+
+    private String localityFromTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return "";
+        }
+
+        String normalized = title.replaceAll("\\s+", " ").trim();
+
+        int comma = normalized.lastIndexOf(',');
+        if (comma >= 0 && comma + 1 < normalized.length()) {
+            String locality = normalized.substring(comma + 1).trim();
+            if (isUsableLocality(locality)) {
+                return locality;
+            }
+        }
+
+        Matcher matcher = Pattern.compile("\\bm\\s*²\\s+(.+)$", Pattern.CASE_INSENSITIVE).matcher(normalized);
+        if (matcher.find()) {
+            String locality = matcher.group(1).trim();
+            if (isUsableLocality(locality)) {
+                return locality;
+            }
+        }
+
+        return "";
+    }
+
+    private boolean isUsableLocality(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return false;
+        }
+
+        String normalized = locality.replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        if (normalized.length() > 80) {
+            return false;
+        }
+
+        String lower = normalized.toLowerCase();
+        return !lower.equals("/měsíc")
+                && !lower.equals("/mesic")
+                && !lower.equals("měsíc")
+                && !lower.equals("mesic")
+                && !lower.equals("kč")
+                && !lower.equals("kc");
     }
 
     private String localityFromDetailLink(String link) {
