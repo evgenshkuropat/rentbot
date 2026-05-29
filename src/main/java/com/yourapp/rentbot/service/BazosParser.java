@@ -8,6 +8,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 
@@ -26,7 +27,20 @@ public class BazosParser {
     private static final Logger log = LoggerFactory.getLogger(BazosParser.class);
 
     private static final String BASE_URL = "https://reality.bazos.cz";
+    private final Object rateLimitLock = new Object();
     private volatile boolean rateLimitedForCurrentCycle = false;
+    private volatile long rateLimitedUntilMillis = 0;
+    private volatile String rateLimitReason = "";
+    private int requestsMadeThisCycle = 0;
+
+    @Value("${rentbot.bazos.max-requests-per-cycle:24}")
+    private int maxRequestsPerCycle;
+
+    @Value("${rentbot.bazos.rate-limit-cooldown-ms:900000}")
+    private long rateLimitCooldownMillis;
+
+    @Value("${rentbot.bazos.request-delay-ms:500}")
+    private long requestDelayMillis;
 
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
@@ -54,10 +68,12 @@ public class BazosParser {
     };
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
-        if (rateLimitedForCurrentCycle) {
-            log.info(
-                    "Bazos skipped region={} reason=rate_limited_current_cycle",
-                    region != null ? region.getTitle() : "default"
+        if (isRateLimitedForCurrentCycle()) {
+            log.debug(
+                    "Bazos skipped region={} reason={} cooldownRemainingSeconds={}",
+                    regionTitle(region),
+                    currentSkipReason(),
+                    currentSkipRemainingSeconds()
             );
             return List.of();
         }
@@ -82,6 +98,9 @@ public class BazosParser {
         int diagnosticSamples = 0;
 
         for (String url : urls) {
+            if (!reserveRequestSlot(region, url)) {
+                break;
+            }
 
             log.debug("Bazos URL = {}", url);
 
@@ -93,11 +112,12 @@ public class BazosParser {
                     .execute();
 
             if (response.statusCode() == 429) {
-                rateLimitedForCurrentCycle = true;
+                markRateLimited("rate_limited_cooldown", rateLimitCooldownMillis);
                 log.warn(
-                        "Bazos rate limited region={} finalUrl={}. Skipping remaining Bazos URLs for this scheduler cycle.",
-                        region != null ? region.getTitle() : "default",
-                        response.url()
+                        "Bazos rate limited region={} finalUrl={} cooldownSeconds={}. Skipping Bazos until cooldown expires.",
+                        regionTitle(region),
+                        response.url(),
+                        currentSkipRemainingSeconds()
                 );
                 break;
             }
@@ -175,6 +195,8 @@ public class BazosParser {
                         LocalDateTime.now()
                 ));
             }
+
+            pauseBetweenRequests();
         }
 
         log.info(
@@ -193,11 +215,119 @@ public class BazosParser {
     }
 
     public void resetRateLimitCycle() {
-        rateLimitedForCurrentCycle = false;
+        synchronized (rateLimitLock) {
+            requestsMadeThisCycle = 0;
+
+            if (isCoolingDown(System.currentTimeMillis())) {
+                rateLimitedForCurrentCycle = true;
+                rateLimitReason = "rate_limited_cooldown";
+                return;
+            }
+
+            rateLimitedForCurrentCycle = false;
+            rateLimitReason = "";
+            rateLimitedUntilMillis = 0;
+        }
     }
 
     public boolean isRateLimitedForCurrentCycle() {
-        return rateLimitedForCurrentCycle;
+        synchronized (rateLimitLock) {
+            if (isCoolingDown(System.currentTimeMillis())) {
+                rateLimitedForCurrentCycle = true;
+                rateLimitReason = "rate_limited_cooldown";
+                return true;
+            }
+
+            if ("rate_limited_cooldown".equals(rateLimitReason)) {
+                rateLimitedForCurrentCycle = false;
+                rateLimitReason = "";
+                rateLimitedUntilMillis = 0;
+            }
+
+            return rateLimitedForCurrentCycle;
+        }
+    }
+
+    public String currentSkipReason() {
+        if (isCoolingDown(System.currentTimeMillis())) {
+            return "rate_limited_cooldown";
+        }
+        if (rateLimitReason == null || rateLimitReason.isBlank()) {
+            return "rate_limited_current_cycle";
+        }
+        return rateLimitReason;
+    }
+
+    public long currentSkipRemainingSeconds() {
+        long remainingMillis = rateLimitedUntilMillis - System.currentTimeMillis();
+        if (remainingMillis <= 0) {
+            return 0;
+        }
+        return (remainingMillis + 999) / 1000;
+    }
+
+    private boolean reserveRequestSlot(Region region, String url) {
+        synchronized (rateLimitLock) {
+            long now = System.currentTimeMillis();
+
+            if (isCoolingDown(now)) {
+                rateLimitedForCurrentCycle = true;
+                rateLimitReason = "rate_limited_cooldown";
+                log.debug(
+                        "Bazos skipped region={} reason=rate_limited_cooldown cooldownRemainingSeconds={}",
+                        regionTitle(region),
+                        currentSkipRemainingSeconds()
+                );
+                return false;
+            }
+
+            int requestBudget = Math.max(1, maxRequestsPerCycle);
+            if (requestsMadeThisCycle >= requestBudget) {
+                rateLimitedForCurrentCycle = true;
+                rateLimitReason = "request_budget_exhausted_current_cycle";
+                log.info(
+                        "Bazos request budget exhausted region={} requests={} maxRequestsPerCycle={} nextUrl={}",
+                        regionTitle(region),
+                        requestsMadeThisCycle,
+                        requestBudget,
+                        url
+                );
+                return false;
+            }
+
+            requestsMadeThisCycle++;
+            return true;
+        }
+    }
+
+    private void markRateLimited(String reason, long cooldownMillis) {
+        synchronized (rateLimitLock) {
+            rateLimitedForCurrentCycle = true;
+            rateLimitReason = reason;
+            rateLimitedUntilMillis = System.currentTimeMillis() + Math.max(60_000, cooldownMillis);
+        }
+    }
+
+    private boolean isCoolingDown(long now) {
+        return rateLimitedUntilMillis > now;
+    }
+
+    private void pauseBetweenRequests() throws IOException {
+        long delay = Math.max(0, requestDelayMillis);
+        if (delay == 0) {
+            return;
+        }
+
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while throttling Bazos requests", e);
+        }
+    }
+
+    private String regionTitle(Region region) {
+        return region != null ? region.getTitle() : "default";
     }
 
     private String normalizeLogSample(String text, int maxLength) {

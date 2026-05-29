@@ -139,7 +139,12 @@ public class ParserService {
 
         try {
             if (bazosParser.isRateLimitedForCurrentCycle()) {
-                log.info("Bazos skipped region={} reason=rate_limited_current_cycle", regionTitle(region));
+                log.debug(
+                        "Bazos skipped region={} reason={} cooldownRemainingSeconds={}",
+                        regionTitle(region),
+                        bazosParser.currentSkipReason(),
+                        bazosParser.currentSkipRemainingSeconds()
+                );
             } else {
                 List<ListingDto> bazos = bazosParser.fetchListings(region);
                 bazosRaw = bazos.size();
@@ -231,7 +236,11 @@ public class ParserService {
 
             try {
                 if (bazosParser.isRateLimitedForCurrentCycle()) {
-                    log.info("Bazos skipped reason=rate_limited_current_cycle");
+                    log.debug(
+                            "Bazos skipped reason={} cooldownRemainingSeconds={}",
+                            bazosParser.currentSkipReason(),
+                            bazosParser.currentSkipRemainingSeconds()
+                    );
                 } else {
                     List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
                     bazosRaw = bazos.size();
