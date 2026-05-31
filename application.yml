@@ -20,6 +20,6 @@ rentbot:
   notifications:
     max-per-user-per-cycle: ${RENTBOT_NOTIFICATIONS_MAX_PER_USER_PER_CYCLE:5}
   bazos:
-    max-requests-per-cycle: ${RENTBOT_BAZOS_MAX_REQUESTS_PER_CYCLE:24}
+    max-requests-per-cycle: ${RENTBOT_BAZOS_MAX_REQUESTS_PER_CYCLE:30}
     request-delay-ms: ${RENTBOT_BAZOS_REQUEST_DELAY_MS:500}
     rate-limit-cooldown-ms: ${RENTBOT_BAZOS_RATE_LIMIT_COOLDOWN_MS:900000}

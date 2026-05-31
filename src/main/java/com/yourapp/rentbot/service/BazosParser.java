@@ -33,7 +33,7 @@ public class BazosParser {
     private volatile String rateLimitReason = "";
     private int requestsMadeThisCycle = 0;
 
-    @Value("${rentbot.bazos.max-requests-per-cycle:24}")
+    @Value("${rentbot.bazos.max-requests-per-cycle:30}")
     private int maxRequestsPerCycle;
 
     @Value("${rentbot.bazos.rate-limit-cooldown-ms:900000}")
