@@ -112,6 +112,10 @@ public class SchedulerService {
                 int sentForUser = 0;
 
                 for (ListingDto listing : listings) {
+                    if (!user.isActive()) {
+                        break;
+                    }
+
                     if (sentForUser >= maxNotificationsPerUserPerCycle) {
                         totalSkippedByLimit++;
                         continue;

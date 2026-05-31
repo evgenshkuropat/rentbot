@@ -7,6 +7,8 @@ import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -16,6 +18,8 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 @Service
 public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final TelegramClient telegramClient;
     private final SentLogRepo sentLogRepo;
@@ -33,6 +37,10 @@ public class NotificationService {
     }
 
     public boolean sendIfNotSent(UserFilter user, ListingDto listing) {
+        if (!user.isActive()) {
+            return false;
+        }
+
         Long chatId = user.getTelegramUserId();
         String key = listing.link();
 
@@ -136,9 +144,13 @@ public class NotificationService {
     }
 
     private void deactivateUser(UserFilter user, Long chatId) {
+        if (!user.isActive()) {
+            return;
+        }
+
         user.setActive(false);
         userFilterRepo.save(user);
-        System.out.println("User blocked bot, subscription disabled: " + chatId);
+        log.info("User blocked bot, subscription disabled: {}", chatId);
     }
 
     private boolean hasUsablePhotoUrl(String photoUrl) {
