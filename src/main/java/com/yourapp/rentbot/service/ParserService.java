@@ -292,7 +292,7 @@ public class ParserService {
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
-        logSrealityFilterDiagnostics(all, filter, regionTitle, needLayout, maxPrice, groupCode);
+        logFilterDiagnosticsBySource(all, filter, regionTitle, needLayout, maxPrice, groupCode);
 
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
@@ -367,96 +367,96 @@ public class ParserService {
         return filtered;
     }
 
-    private void logSrealityFilterDiagnostics(List<ListingDto> all,
+    private void logFilterDiagnosticsBySource(List<ListingDto> all,
                                               UserFilter filter,
                                               String regionTitle,
                                               String needLayout,
                                               Integer maxPrice,
                                               String groupCode) {
-        int total = 0;
-        int passed = 0;
-        int rejectedLayout = 0;
-        int rejectedMaxPrice = 0;
-        int rejectedRegion = 0;
-        int rejectedRegionGroup = 0;
-        int rejectedMinPrice = 0;
-        int zeroPrice = 0;
-        int blankLocality = 0;
-        String firstRejectedRegionSample = "";
+        Map<String, FilterDiagnostics> diagnosticsBySource = new LinkedHashMap<>();
 
         for (ListingDto x : all) {
-            String source = x.source() == null ? "" : x.source().toLowerCase();
-            if (!source.contains("sreality")) {
+            if (x == null) {
                 continue;
             }
 
-            total++;
+            String source = x.source() == null || x.source().isBlank() ? "UNKNOWN" : x.source();
+            FilterDiagnostics diagnostics = diagnosticsBySource.computeIfAbsent(source, ignored -> new FilterDiagnostics());
+
+            diagnostics.total++;
 
             if (x.priceCzk() <= 0) {
-                zeroPrice++;
+                diagnostics.zeroPrice++;
             }
             if (x.locality() == null || x.locality().isBlank()) {
-                blankLocality++;
+                diagnostics.blankLocality++;
             }
 
             if (needLayout != null && !layoutMatches(needLayout, x.layout())) {
-                rejectedLayout++;
+                diagnostics.rejectedLayout++;
                 continue;
             }
 
             if (maxPrice != null && maxPrice > 0 && (x.priceCzk() <= 0 || x.priceCzk() > maxPrice)) {
-                rejectedMaxPrice++;
+                diagnostics.rejectedMaxPrice++;
                 continue;
             }
 
             if (!matchesRegion(x.locality(), regionTitle)) {
-                rejectedRegion++;
-                if (firstRejectedRegionSample.isBlank()) {
-                    firstRejectedRegionSample = listingLogSample(x);
+                diagnostics.rejectedRegion++;
+                if (diagnostics.firstRejectedRegionSample.isBlank()) {
+                    diagnostics.firstRejectedRegionSample = listingLogSample(x);
                 }
                 continue;
             }
 
             if (!matchesRegionGroup(x.locality(), groupCode)) {
-                rejectedRegionGroup++;
+                diagnostics.rejectedRegionGroup++;
                 continue;
             }
 
             if (x.priceCzk() > 0 && x.priceCzk() < 3000) {
-                rejectedMinPrice++;
+                diagnostics.rejectedMinPrice++;
                 continue;
             }
 
-            passed++;
+            diagnostics.passed++;
         }
 
-        if (total == 0) {
-            return;
-        }
-
-        String message = "Sreality filter diagnostics user={} region={} group={} needLayout={} maxPrice={} "
-                + "total={} passed={} rejectedLayout={} rejectedMaxPrice={} rejectedRegion={} "
-                + "rejectedRegionGroup={} rejectedMinPrice={} zeroPrice={} blankLocality={} firstRejectedRegion={}";
-
-        Object[] args = {
+        diagnosticsBySource.forEach((source, d) -> log.debug(
+                "Filter diagnostics user={} source={} region={} group={} needLayout={} maxPrice={} "
+                        + "total={} passed={} rejectedLayout={} rejectedMaxPrice={} rejectedRegion={} "
+                        + "rejectedRegionGroup={} rejectedMinPrice={} zeroPrice={} blankLocality={} firstRejectedRegion={}",
                 filter.getTelegramUserId(),
+                source,
                 regionTitle,
                 groupCode,
                 needLayout,
                 maxPrice,
-                total,
-                passed,
-                rejectedLayout,
-                rejectedMaxPrice,
-                rejectedRegion,
-                rejectedRegionGroup,
-                rejectedMinPrice,
-                zeroPrice,
-                blankLocality,
-                firstRejectedRegionSample
-        };
+                d.total,
+                d.passed,
+                d.rejectedLayout,
+                d.rejectedMaxPrice,
+                d.rejectedRegion,
+                d.rejectedRegionGroup,
+                d.rejectedMinPrice,
+                d.zeroPrice,
+                d.blankLocality,
+                d.firstRejectedRegionSample
+        ));
+    }
 
-        log.debug(message, args);
+    private static class FilterDiagnostics {
+        private int total;
+        private int passed;
+        private int rejectedLayout;
+        private int rejectedMaxPrice;
+        private int rejectedRegion;
+        private int rejectedRegionGroup;
+        private int rejectedMinPrice;
+        private int zeroPrice;
+        private int blankLocality;
+        private String firstRejectedRegionSample = "";
     }
 
     private String listingLogSample(ListingDto dto) {
