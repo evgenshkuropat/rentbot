@@ -423,7 +423,7 @@ public class ParserService {
             diagnostics.passed++;
         }
 
-        diagnosticsBySource.forEach((source, d) -> log.debug(
+        diagnosticsBySource.forEach((source, d) -> log.info(
                 "Filter diagnostics user={} source={} region={} group={} needLayout={} maxPrice={} "
                         + "total={} passed={} rejectedLayout={} rejectedMaxPrice={} rejectedRegion={} "
                         + "rejectedRegionGroup={} rejectedMinPrice={} zeroPrice={} blankLocality={} firstRejectedRegion={}",
