@@ -121,6 +121,24 @@ public class IdnesParser {
 
             String photoUrl = extractPhoto(card);
 
+            if (title == null || title.isBlank()) {
+                skippedBlankTitle++;
+                continue;
+            }
+
+            String lowerTitle = title.toLowerCase(Locale.ROOT);
+            String lowerWholeText = wholeText.toLowerCase(Locale.ROOT);
+
+            boolean isRoom = lowerTitle.contains("pokoj")
+                    || lowerWholeText.contains("pokoj")
+                    || lowerWholeText.contains("spolubydlení")
+                    || lowerWholeText.contains("spolubydleni");
+
+            if (!lowerTitle.contains("byt") && !isRoom) {
+                skippedNotApartment++;
+                continue;
+            }
+
             if (priceCzk <= 0 || locality.isBlank()) {
                 DetailFields detail = fetchDetailFields(absoluteLink);
                 detailFetches++;
@@ -139,24 +157,6 @@ public class IdnesParser {
                 if ((photoUrl == null || photoUrl.isBlank()) && !detail.photoUrl().isBlank()) {
                     photoUrl = detail.photoUrl();
                 }
-            }
-
-            if (title == null || title.isBlank()) {
-                skippedBlankTitle++;
-                continue;
-            }
-
-            String lowerTitle = title.toLowerCase(Locale.ROOT);
-            String lowerWholeText = wholeText.toLowerCase(Locale.ROOT);
-
-            boolean isRoom = lowerTitle.contains("pokoj")
-                    || lowerWholeText.contains("pokoj")
-                    || lowerWholeText.contains("spolubydlení")
-                    || lowerWholeText.contains("spolubydleni");
-
-            if (!lowerTitle.contains("byt") && !isRoom) {
-                skippedNotApartment++;
-                continue;
             }
 
             result.add(new ListingDto(
