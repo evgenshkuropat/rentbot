@@ -78,6 +78,9 @@ public class IdnesParser {
         int skippedBlankText = 0;
         int skippedBlankTitle = 0;
         int skippedNotApartment = 0;
+        int detailFetches = 0;
+        int detailPriceFilled = 0;
+        int detailLocalityFilled = 0;
 
         for (Element linkEl : links) {
             String href = linkEl.attr("href");
@@ -118,6 +121,26 @@ public class IdnesParser {
 
             String photoUrl = extractPhoto(card);
 
+            if (priceCzk <= 0 || locality.isBlank()) {
+                DetailFields detail = fetchDetailFields(absoluteLink);
+                detailFetches++;
+
+                if (priceCzk <= 0 && detail.priceCzk() > 0) {
+                    priceCzk = detail.priceCzk();
+                    detailPriceFilled++;
+                }
+                if (locality.isBlank() && !detail.locality().isBlank()) {
+                    locality = detail.locality();
+                    detailLocalityFilled++;
+                }
+                if (layout == null && detail.layout() != null) {
+                    layout = detail.layout();
+                }
+                if ((photoUrl == null || photoUrl.isBlank()) && !detail.photoUrl().isBlank()) {
+                    photoUrl = detail.photoUrl();
+                }
+            }
+
             if (title == null || title.isBlank()) {
                 skippedBlankTitle++;
                 continue;
@@ -151,7 +174,7 @@ public class IdnesParser {
         List<ListingDto> deduped = dedupeByLink(result);
 
         log.info(
-                "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={}",
+                "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={} detailFetches={} detailPriceFilled={} detailLocalityFilled={}",
                 region != null ? region.getTitle() : "default",
                 url,
                 response.statusCode(),
@@ -162,7 +185,10 @@ public class IdnesParser {
                 skippedNoCard,
                 skippedBlankText,
                 skippedBlankTitle,
-                skippedNotApartment
+                skippedNotApartment,
+                detailFetches,
+                detailPriceFilled,
+                detailLocalityFilled
         );
 
         return deduped;
@@ -290,6 +316,45 @@ public class IdnesParser {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    private DetailFields fetchDetailFields(String url) {
+        if (url == null || url.isBlank()) {
+            return DetailFields.EMPTY;
+        }
+
+        try {
+            Document doc = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0")
+                    .timeout(8000)
+                    .ignoreHttpErrors(true)
+                    .get();
+
+            String text = doc.text();
+            int priceCzk = extractPrice(text);
+            String locality = extractLocality(text);
+            String layout = extractLayout(text);
+            String photoUrl = extractMetaImage(doc);
+
+            return new DetailFields(priceCzk, locality, layout, photoUrl);
+        } catch (Exception e) {
+            log.debug("iDNES detail fallback failed url={} error={}", url, e.getMessage());
+            return DetailFields.EMPTY;
+        }
+    }
+
+    private String extractMetaImage(Document doc) {
+        if (doc == null) {
+            return "";
+        }
+
+        Element meta = doc.selectFirst("meta[property=og:image], meta[name=twitter:image]");
+        if (meta == null) {
+            return "";
+        }
+
+        String content = meta.attr("content");
+        return content == null ? "" : content.trim();
     }
 
     private String extractLocality(String text) {
@@ -533,5 +598,9 @@ public class IdnesParser {
             return -1;
         }
         return text.toLowerCase(Locale.ROOT).indexOf(part.toLowerCase(Locale.ROOT));
+    }
+
+    private record DetailFields(int priceCzk, String locality, String layout, String photoUrl) {
+        private static final DetailFields EMPTY = new DetailFields(0, "", null, "");
     }
 }
