@@ -32,7 +32,7 @@ public class IdnesParser {
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern PRICE_PATTERN =
-            Pattern.compile("(\\d[\\d\\s]*)\\s*Kč", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("(\\d[\\d\\s.]{2,})\\s*K\\s*(?:č|c|\\p{L}+)?", Pattern.CASE_INSENSITIVE);
 
     private static final String[] KNOWN_PLACES = {
             "Praha", "Brno", "Ostrava", "Plzeň", "Plzen", "Pardubice", "Olomouc",
@@ -106,6 +106,9 @@ public class IdnesParser {
 
             if (locality.isBlank()) {
                 locality = extractLocality(title);
+            }
+            if (locality.isBlank() && region != null && region.getTitle() != null) {
+                locality = region.getTitle();
             }
 
             String layout = extractLayout(title);
@@ -219,17 +222,27 @@ public class IdnesParser {
 
     private Element findCardContainer(Element element) {
         Element current = element;
-        for (int i = 0; i < 6 && current != null; i++) {
+        Element firstCardLike = null;
+
+        for (int i = 0; i < 10 && current != null; i++) {
             String cls = current.className() == null ? "" : current.className().toLowerCase(Locale.ROOT);
             if ("article".equalsIgnoreCase(current.tagName())
                     || cls.contains("card")
                     || cls.contains("item")
                     || cls.contains("offer")) {
-                return current;
+                if (firstCardLike == null) {
+                    firstCardLike = current;
+                }
+
+                String text = current.text();
+                if (text != null && text.length() < 2500 && PRICE_PATTERN.matcher(text.replace('\u00A0', ' ')).find()) {
+                    return current;
+                }
             }
             current = current.parent();
         }
-        return element.parent();
+
+        return firstCardLike != null ? firstCardLike : element.parent();
     }
 
     private String extractTitle(Element card, String wholeText) {
@@ -271,7 +284,7 @@ public class IdnesParser {
             return 0;
         }
 
-        String raw = m.group(1).replaceAll("\\s+", "");
+        String raw = m.group(1).replace(".", "").replaceAll("\\s+", "");
         try {
             return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
