@@ -611,6 +611,37 @@ public class BazosParser {
         return text.toLowerCase().indexOf(part.toLowerCase());
     }
 
+    private int indexOfPlace(String text, String place) {
+        if (text == null || place == null || place.isBlank()) {
+            return -1;
+        }
+
+        String lowerText = text.toLowerCase();
+        String lowerPlace = place.toLowerCase();
+        int from = 0;
+
+        while (from < lowerText.length()) {
+            int idx = lowerText.indexOf(lowerPlace, from);
+            if (idx < 0) {
+                return -1;
+            }
+
+            int before = idx - 1;
+            int after = idx + lowerPlace.length();
+
+            boolean startsAtBoundary = before < 0 || !Character.isLetterOrDigit(text.charAt(before));
+            boolean endsAtBoundary = after >= text.length() || !Character.isLetterOrDigit(text.charAt(after));
+
+            if (startsAtBoundary && endsAtBoundary) {
+                return idx;
+            }
+
+            from = idx + 1;
+        }
+
+        return -1;
+    }
+
     private int findFirstStop(String s) {
         String lower = s.toLowerCase();
 
@@ -661,7 +692,7 @@ public class BazosParser {
         String best = "";
 
         for (String place : knownPlaces) {
-            int idx = indexOfIgnoreCase(text, place);
+            int idx = indexOfPlace(text, place);
             if (idx < 0) {
                 continue;
             }
