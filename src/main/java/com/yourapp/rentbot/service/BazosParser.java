@@ -94,6 +94,7 @@ public class BazosParser {
         int skippedBlankLink = 0;
         int skippedPrice = 0;
         int skippedLayout = 0;
+        int localityFallbacks = 0;
         int pagesWithoutLinks = 0;
         int diagnosticSamples = 0;
 
@@ -171,6 +172,10 @@ public class BazosParser {
                 int price = extractPrice(linkEl, container, fullText);
 
                 String locality = normalizeDisplayLocality(extractLocality(fullText));
+                if (shouldUseRegionLocalityFallback(locality) && region != null && region.getTitle() != null) {
+                    locality = region.getTitle();
+                    localityFallbacks++;
+                }
 
                 String photoUrl = extractPhoto(container);
 
@@ -200,7 +205,7 @@ public class BazosParser {
         }
 
         log.info(
-                "Bazos summary region={} pagesWithoutLinks={} candidateLinks={} accepted={} skippedBlankTitle={} skippedBlankLink={} skippedPrice={} skippedLayout={}",
+                "Bazos summary region={} pagesWithoutLinks={} candidateLinks={} accepted={} skippedBlankTitle={} skippedBlankLink={} skippedPrice={} skippedLayout={} localityFallbacks={}",
                 region != null ? region.getTitle() : "default",
                 pagesWithoutLinks,
                 candidateLinks,
@@ -208,7 +213,8 @@ public class BazosParser {
                 skippedBlankTitle,
                 skippedBlankLink,
                 skippedPrice,
-                skippedLayout
+                skippedLayout,
+                localityFallbacks
         );
 
         return dedupeByLink(result);
@@ -770,6 +776,24 @@ public class BazosParser {
         s = s.replaceAll("(?i)\\b(\\w+)\\s+\\1\\b", "$1");
 
         return s;
+    }
+
+    private boolean shouldUseRegionLocalityFallback(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return true;
+        }
+
+        String lower = normalizeLocality(locality);
+        if (lower == null || lower.isBlank()) {
+            return true;
+        }
+
+        return lower.contains("vchodem")
+                || lower.contains("bytovem")
+                || lower.contains("zarizene")
+                || lower.contains("uzamykatelny")
+                || lower.contains("kuchyn")
+                || lower.contains("zahrada");
     }
 
     private String normalizeLocality(String s) {
