@@ -779,10 +779,35 @@ public class BazosParser {
 
         Matcher m = p.matcher(tail.trim());
         if (m.find()) {
-            return m.group(1);
+            return trimLocalityDescriptionTail(m.group(1));
         }
 
         return tail;
+    }
+
+    private String trimLocalityDescriptionTail(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return "";
+        }
+
+        String[] words = locality.split("\\s+");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            String normalized = normalizeLocality(word);
+            if (normalized != null && (normalized.equals("novy")
+                    || normalized.equals("min")
+                    || normalized.equals("autem"))) {
+                break;
+            }
+
+            if (!result.isEmpty()) {
+                result.append(' ');
+            }
+            result.append(word);
+        }
+
+        return result.toString().trim();
     }
 
     private String normalizeDisplayLocality(String locality) {
@@ -823,6 +848,8 @@ public class BazosParser {
                 || lower.contains("bytovem")
                 || lower.contains("zarizene")
                 || lower.contains("uzamykatelny")
+                || lower.contains("pokoj")
+                || lower.contains("toaleta")
                 || lower.contains("kuchyn")
                 || lower.contains("zahrada");
     }
