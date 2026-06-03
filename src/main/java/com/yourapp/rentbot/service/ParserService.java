@@ -999,4 +999,38 @@ public class ParserService {
     public ParserRunStats getLastRunStats() {
         return lastRunStats.get();
     }
+
+    public void updateLastRunFilterStats(int filteredBaseTotal,
+                                         int filteredBaseSreality,
+                                         int filteredBaseIdnes,
+                                         int filteredBaseBezrealitky,
+                                         int filteredBaseBazos,
+                                         int finalFiltered,
+                                         int finalSreality,
+                                         int finalIdnes,
+                                         int finalBezrealitky,
+                                         int finalBazos) {
+        ParserRunStats previous = lastRunStats.get();
+
+        lastRunStats.set(new ParserRunStats(
+                previous.srealityRaw(),
+                previous.idnesRaw(),
+                previous.bezrealitkyRaw(),
+                previous.bazosRaw(),
+                previous.afterDedupeByLink(),
+                previous.afterDedupeBySignature(),
+
+                filteredBaseTotal,
+                filteredBaseSreality,
+                filteredBaseIdnes,
+                filteredBaseBezrealitky,
+                filteredBaseBazos,
+
+                finalFiltered,
+                finalSreality,
+                finalIdnes,
+                finalBezrealitky,
+                finalBazos
+        ));
+    }
 }

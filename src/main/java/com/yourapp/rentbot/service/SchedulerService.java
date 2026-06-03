@@ -4,6 +4,7 @@ import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
+import com.yourapp.rentbot.service.dto.ParserRunStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,6 +77,16 @@ public class SchedulerService {
         int totalSent = 0;
         int totalSkippedByLimit = 0;
         int parserRuns = 0;
+        int aggregateFilteredBaseTotal = 0;
+        int aggregateFilteredBaseSreality = 0;
+        int aggregateFilteredBaseIdnes = 0;
+        int aggregateFilteredBaseBezrealitky = 0;
+        int aggregateFilteredBaseBazos = 0;
+        int aggregateFinalFiltered = 0;
+        int aggregateFinalSreality = 0;
+        int aggregateFinalIdnes = 0;
+        int aggregateFinalBezrealitky = 0;
+        int aggregateFinalBazos = 0;
 
         for (UserFilter user : users) {
             Long userId = user.getTelegramUserId();
@@ -100,6 +111,17 @@ public class SchedulerService {
                 }
 
                 List<ListingDto> listings = parserService.filterForUser(allListings, user);
+                ParserRunStats userFilterStats = parserService.getLastRunStats();
+                aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
+                aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
+                aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
+                aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
+                aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
+                aggregateFinalFiltered += userFilterStats.finalFiltered();
+                aggregateFinalSreality += userFilterStats.finalSreality();
+                aggregateFinalIdnes += userFilterStats.finalIdnes();
+                aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
+                aggregateFinalBazos += userFilterStats.finalBazos();
 
                 if (listings == null || listings.isEmpty()) {
                     log.debug("User {}: no matching listings", userId);
@@ -137,8 +159,21 @@ public class SchedulerService {
             }
         }
 
+        parserService.updateLastRunFilterStats(
+                aggregateFilteredBaseTotal,
+                aggregateFilteredBaseSreality,
+                aggregateFilteredBaseIdnes,
+                aggregateFilteredBaseBezrealitky,
+                aggregateFilteredBaseBazos,
+                aggregateFinalFiltered,
+                aggregateFinalSreality,
+                aggregateFinalIdnes,
+                aggregateFinalBezrealitky,
+                aggregateFinalBazos
+        );
+
         log.info(
-                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, maxNotificationsPerUserPerCycle={}",
+                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, maxNotificationsPerUserPerCycle={}, aggregateFilteredBase={}, aggregateFinal={}",
                 usersProcessed,
                 usersWithMatches,
                 parserRuns,
@@ -146,7 +181,9 @@ public class SchedulerService {
                 totalSendAttempts,
                 totalSent,
                 totalSkippedByLimit,
-                maxNotificationsPerUserPerCycle
+                maxNotificationsPerUserPerCycle,
+                aggregateFilteredBaseTotal,
+                aggregateFinalFiltered
         );
     }
 
