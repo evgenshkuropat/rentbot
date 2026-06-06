@@ -164,7 +164,7 @@ public class ParserService {
         all = dedupeBySignature(all);
         int afterDedupeBySignature = all.size();
 
-        lastRunStats.set(new ParserRunStats(
+        ParserRunStats stats = new ParserRunStats(
                 srealityRaw,
                 idnesRaw,
                 bezrealitkyRaw,
@@ -173,7 +173,8 @@ public class ParserService {
                 afterDedupeBySignature,
                 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0
-        ));
+        );
+        lastRunStats.set(stats);
 
         log.info("All listings region={} count={}", regionTitle(region), all.size());
 
@@ -280,8 +281,32 @@ public class ParserService {
     }
 
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
+        return filterForUserInternal(all, filter, true).listings();
+    }
+
+    public FilterResult filterForScheduler(List<ListingDto> all, UserFilter filter) {
+        return filterForUserInternal(all, filter, false);
+    }
+
+    private FilterResult filterForUserInternal(List<ListingDto> all, UserFilter filter, boolean updateLastRunStats) {
         if (all == null || all.isEmpty() || filter == null) {
-            return List.of();
+            ParserRunStats previous = lastRunStats.get();
+            ParserRunStats stats = new ParserRunStats(
+                    previous.srealityRaw(),
+                    previous.idnesRaw(),
+                    previous.bezrealitkyRaw(),
+                    previous.bazosRaw(),
+                    previous.afterDedupeByLink(),
+                    previous.afterDedupeBySignature(),
+                    0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0
+            );
+
+            if (updateLastRunStats) {
+                lastRunStats.set(stats);
+            }
+
+            return new FilterResult(List.of(), stats);
         }
 
         Region region = filter.getRegion();
@@ -339,7 +364,7 @@ public class ParserService {
 
         ParserRunStats previous = lastRunStats.get();
 
-        lastRunStats.set(new ParserRunStats(
+        ParserRunStats stats = new ParserRunStats(
                 previous.srealityRaw(),
                 previous.idnesRaw(),
                 previous.bezrealitkyRaw(),
@@ -358,13 +383,16 @@ public class ParserService {
                 finalIdnes,
                 finalBezrealitky,
                 finalBazos
-        ));
+        );
 
-        if (filtered.isEmpty()) {
-            return filtered;
+        if (updateLastRunStats) {
+            lastRunStats.set(stats);
         }
 
-        return filtered;
+        return new FilterResult(filtered, stats);
+    }
+
+    public record FilterResult(List<ListingDto> listings, ParserRunStats stats) {
     }
 
     private void logFilterDiagnosticsBySource(List<ListingDto> all,
@@ -1012,7 +1040,7 @@ public class ParserService {
                                          int finalBazos) {
         ParserRunStats previous = lastRunStats.get();
 
-        lastRunStats.set(new ParserRunStats(
+        ParserRunStats stats = new ParserRunStats(
                 previous.srealityRaw(),
                 previous.idnesRaw(),
                 previous.bezrealitkyRaw(),
@@ -1031,6 +1059,7 @@ public class ParserService {
                 finalIdnes,
                 finalBezrealitky,
                 finalBazos
-        ));
+        );
+        lastRunStats.set(stats);
     }
 }

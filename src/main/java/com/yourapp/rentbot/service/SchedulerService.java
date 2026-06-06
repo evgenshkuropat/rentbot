@@ -110,8 +110,9 @@ public class SchedulerService {
                     );
                 }
 
-                List<ListingDto> listings = parserService.filterForUser(allListings, user);
-                ParserRunStats userFilterStats = parserService.getLastRunStats();
+                ParserService.FilterResult filterResult = parserService.filterForScheduler(allListings, user);
+                List<ListingDto> listings = filterResult.listings();
+                ParserRunStats userFilterStats = filterResult.stats();
                 aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
                 aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
                 aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
