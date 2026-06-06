@@ -313,16 +313,17 @@ public class ParserService {
         RegionGroup regionGroup = filter.getRegionGroup();
 
         String regionTitle = region == null ? null : region.getTitle();
+        String regionCode = region == null ? null : region.getCode();
         String needLayout = normalizeLayout(filter.getLayout());
         Integer maxPrice = filter.getMaxPrice();
         String groupCode = regionGroup == null ? null : regionGroup.getCode();
 
-        logFilterDiagnosticsBySource(all, filter, regionTitle, needLayout, maxPrice, groupCode);
+        logFilterDiagnosticsBySource(all, filter, regionTitle, regionCode, needLayout, maxPrice, groupCode);
 
         List<ListingDto> filteredBase = all.stream()
                 .filter(x -> needLayout == null || layoutMatches(needLayout, x.layout()))
                 .filter(x -> maxPrice == null || maxPrice == 0 || (x.priceCzk() > 0 && x.priceCzk() <= maxPrice))
-                .filter(x -> matchesRegion(x.locality(), regionTitle))
+                .filter(x -> matchesRegion(x, regionTitle, regionCode))
                 .filter(x -> matchesRegionGroup(x.locality(), groupCode))
                 .filter(x -> x.priceCzk() == 0 || x.priceCzk() >= 3000)
                 .sorted(Comparator.comparingInt((ListingDto x) -> listingScore(x, filter)).reversed())
@@ -398,6 +399,7 @@ public class ParserService {
     private void logFilterDiagnosticsBySource(List<ListingDto> all,
                                               UserFilter filter,
                                               String regionTitle,
+                                              String regionCode,
                                               String needLayout,
                                               Integer maxPrice,
                                               String groupCode) {
@@ -430,7 +432,7 @@ public class ParserService {
                 continue;
             }
 
-            if (!matchesRegion(x.locality(), regionTitle)) {
+            if (!matchesRegion(x, regionTitle, regionCode)) {
                 diagnostics.rejectedRegion++;
                 if (diagnostics.firstRejectedRegionSample.isBlank()) {
                     diagnostics.firstRejectedRegionSample = listingLogSample(x);
@@ -501,6 +503,31 @@ public class ParserService {
         return sample.replace('\u00A0', ' ')
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private boolean matchesRegion(ListingDto dto, String regionTitle, String regionCode) {
+        if (dto == null) return false;
+
+        String locality = dto.locality();
+        String source = dto.source() == null ? "" : dto.source().toLowerCase();
+
+        if (isTrustedRegionalSource(source) && isNonPrahaRegion(regionCode) && locality != null && !locality.isBlank()) {
+            return true;
+        }
+
+        return matchesRegion(locality, regionTitle);
+    }
+
+    private boolean isTrustedRegionalSource(String source) {
+        return source.contains("sreality")
+                || source.contains("idnes")
+                || source.contains("bezrealitky");
+    }
+
+    private boolean isNonPrahaRegion(String regionCode) {
+        return regionCode != null
+                && !regionCode.isBlank()
+                && !"PRAHA".equalsIgnoreCase(regionCode);
     }
 
     private boolean matchesRegion(String locality, String regionTitle) {
