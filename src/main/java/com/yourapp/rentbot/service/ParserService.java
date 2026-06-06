@@ -164,6 +164,7 @@ public class ParserService {
         all = dedupeBySignature(all);
         int afterDedupeBySignature = all.size();
 
+        ParserRunStats previous = lastRunStats.get();
         ParserRunStats stats = new ParserRunStats(
                 srealityRaw,
                 idnesRaw,
@@ -171,8 +172,16 @@ public class ParserService {
                 bazosRaw,
                 afterDedupeByLink,
                 afterDedupeBySignature,
-                0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0
+                previous.filteredBaseTotal(),
+                previous.filteredBaseSreality(),
+                previous.filteredBaseIdnes(),
+                previous.filteredBaseBezrealitky(),
+                previous.filteredBaseBazos(),
+                previous.finalFiltered(),
+                previous.finalSreality(),
+                previous.finalIdnes(),
+                previous.finalBezrealitky(),
+                previous.finalBazos()
         );
         lastRunStats.set(stats);
 
@@ -262,6 +271,7 @@ public class ParserService {
 
             log.info("All listings from all parsers count={}", all.size());
 
+            ParserRunStats previous = lastRunStats.get();
             lastRunStats.set(new ParserRunStats(
                     srealityRaw,
                     idnesRaw,
@@ -269,8 +279,16 @@ public class ParserService {
                     bazosRaw,
                     afterDedupeByLink,
                     afterDedupeBySignature,
-                    0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0
+                    previous.filteredBaseTotal(),
+                    previous.filteredBaseSreality(),
+                    previous.filteredBaseIdnes(),
+                    previous.filteredBaseBezrealitky(),
+                    previous.filteredBaseBazos(),
+                    previous.finalFiltered(),
+                    previous.finalSreality(),
+                    previous.finalIdnes(),
+                    previous.finalBezrealitky(),
+                    previous.finalBazos()
             ));
 
             cachedListings = all;
