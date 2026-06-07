@@ -301,7 +301,6 @@ public class Keyboards {
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
                 .resizeKeyboard(true)
-                .isPersistent(true)
                 .build();
     }
 
