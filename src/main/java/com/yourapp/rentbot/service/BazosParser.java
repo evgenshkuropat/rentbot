@@ -524,6 +524,11 @@ public class BazosParser {
             return best;
         }
 
+        String titleTail = extractLocalityFromCommaTail(normalized);
+        if (!titleTail.isBlank()) {
+            return titleTail;
+        }
+
         String[] lines = text.split("\\R");
         for (String line : lines) {
             String s = line == null ? "" : line.trim();
@@ -538,6 +543,48 @@ public class BazosParser {
         }
 
         return "";
+    }
+
+    private String extractLocalityFromCommaTail(String text) {
+        if (text == null || text.isBlank() || !text.contains(",")) {
+            return "";
+        }
+
+        String[] parts = text.split(",");
+        for (int i = parts.length - 1; i >= 0; i--) {
+            String candidate = parts[i] == null ? "" : parts[i].trim();
+            if (candidate.isBlank()) {
+                continue;
+            }
+
+            if (looksLikeLocalityTail(candidate)) {
+                return extractLocalityWindow(candidate);
+            }
+        }
+
+        return "";
+    }
+
+    private boolean looksLikeLocalityTail(String candidate) {
+        if (candidate == null || candidate.isBlank()) {
+            return false;
+        }
+
+        String normalized = normalizeLocality(candidate);
+        if (normalized == null || normalized.isBlank()) {
+            return false;
+        }
+
+        if (normalized.matches(".*\\b(kc|czk|eur|mesic|mesicne|m2|kk|byt|bytu|pronajem|nabidka)\\b.*")) {
+            return false;
+        }
+
+        if (normalized.matches(".*\\d{4,}.*")) {
+            return false;
+        }
+
+        String[] words = candidate.trim().split("\\s+");
+        return words.length >= 2 && words.length <= 5;
     }
 
     private String extractLayout(String text) {
