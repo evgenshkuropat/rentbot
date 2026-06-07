@@ -308,7 +308,11 @@ Bazoš: %d
             return;
         }
 
-        if (text.equals("📦 Інші сервіси")
+        if (text.equals("🤝 Інші сервіси")
+                || text.equals("🤝 Другие сервисы")
+                || text.equals("🤝 Další služby")
+                || text.equals("🤝 Other services")
+                || text.equals("📦 Інші сервіси")
                 || text.equals("📦 Другие сервисы")
                 || text.equals("📦 Další služby")
                 || text.equals("📦 Other services")) {

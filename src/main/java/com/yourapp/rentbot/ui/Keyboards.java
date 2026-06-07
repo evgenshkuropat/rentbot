@@ -278,10 +278,10 @@ public class Keyboards {
             default -> "🌐 Мова / Language";
         });
         row3.add(switch (lang) {
-            case RU -> "📦 Другие сервисы";
-            case CZ -> "📦 Další služby";
-            case EN -> "📦 Other services";
-            default -> "📦 Інші сервіси";
+            case RU -> "🤝 Другие сервисы";
+            case CZ -> "🤝 Další služby";
+            case EN -> "🤝 Other services";
+            default -> "🤝 Інші сервіси";
         });
 
         KeyboardRow row4 = new KeyboardRow();
