@@ -371,8 +371,12 @@ Bazoš: %d
             return;
         }
 
-        if (text.equals(msg(userId, "menu.share.bot"))
-                || text.equals("🚗 Знайти авто")
+        if (text.equals(msg(userId, "menu.share.bot"))) {
+            send(chatId, msg(userId, "share.text"), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.equals("🚗 Знайти авто")
                 || text.equals("🚗 Найти авто")
                 || text.equals("🚗 Najít auto")
                 || text.equals("🚗 Find a car")) {
