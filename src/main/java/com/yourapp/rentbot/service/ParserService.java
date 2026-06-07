@@ -28,8 +28,11 @@ public class ParserService {
     private static final long CACHE_TTL_MILLIS = 55_000;
     private static final Set<String> ADDRESS_STOP_WORDS = Set.of(
             "www", "http", "https", "cz", "detail", "reality", "sreality", "idnes",
-            "pronajem", "pronajmu", "nabidka", "byt", "bytu", "m2", "kc", "mesic", "mesicne",
+            "pronajem", "pronajmu", "nabidka", "byt", "bytu", "kk", "m2", "kc", "mesic", "mesicne",
             "okres", "kraj", "ulice", "ul", "cena", "dispozice", "plocha",
+            "stredocesky", "jihomoravsky", "moravskoslezsky", "olomoucky", "zlinsky",
+            "pardubicky", "kralovehradecky", "liberecky", "plzensky", "ustecky",
+            "vysocina", "jihocesky", "karlovarsky",
             "kolin", "praha", "brno", "ostrava", "plzen", "liberec", "olomouc", "zlin",
             "pardubice", "jihlava", "kladno", "nymburk", "tabor", "cheb", "most",
             "iv", "iii", "ii", "i"
@@ -587,6 +590,7 @@ public class ParserService {
 
     private List<ListingDto> dedupeBySignature(List<ListingDto> input) {
         Map<String, ListingDto> map = new LinkedHashMap<>();
+        Map<String, String> addressPriceKeys = new LinkedHashMap<>();
 
         for (ListingDto dto : input) {
             if (dto == null) continue;
@@ -595,13 +599,24 @@ public class ParserService {
             int price = dto.priceCzk();
             String addressCore = extractAddressCore(dto);
 
-            if (layout == null || addressCore == null || addressCore.isBlank() || price <= 0) {
+            if (addressCore == null || addressCore.isBlank() || price <= 0) {
                 String fallbackKey = "LINK:" + (dto.link() == null ? "" : dto.link());
                 map.putIfAbsent(fallbackKey, dto);
                 continue;
             }
 
-            String key = layout + "|" + price + "|" + addressCore;
+            String addressPriceKey = price + "|" + addressCore;
+            String key = layout == null
+                    ? "ADDRESS:" + addressPriceKey
+                    : "LAYOUT:" + layout + "|" + addressPriceKey;
+
+            String existingKey = addressPriceKeys.get(addressPriceKey);
+            if (existingKey != null) {
+                key = existingKey;
+            } else {
+                addressPriceKeys.put(addressPriceKey, key);
+            }
+
             ListingDto existing = map.get(key);
 
             if (existing == null) {
@@ -856,6 +871,8 @@ public class ParserService {
                 .replaceAll("\\bnovy\\b", " ");
 
         normalized = normalized
+                .replaceAll("\\b\\d+\\s*kk\\b", " ")
+                .replaceAll("\\b\\d+\\s*1\\b", " ")
                 .replaceAll("\\b\\d+\\+kk\\b", " ")
                 .replaceAll("\\b\\d+\\+1\\b", " ")
                 .replaceAll("\\b\\d{1,3}\\s*m\\b", " ")
