@@ -905,7 +905,7 @@ Bazoš: %d
         send(chatId, msg(userId, "callback.unknown") + data, null);
     }
 
-    private void enableSubscriptionAndSendListings(long chatId, long userId, UserFilter filter, Language lang) {
+    private void enableSubscriptionAndSendListings(long chatId, long userId, UserFilter filter, Language lang) throws TelegramApiException {
         filter.setActive(true);
         flowService.save(filter);
 
