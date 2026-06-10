@@ -835,7 +835,7 @@ Bazoš: %d
                 UserFilter fullFilter = userFilterRepo.findFullById(userId)
                         .orElseGet(() -> f);
                 send(chatId,
-                        msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
+                        flowService.confirmationPreview(fullFilter, lang),
                         Keyboards.confirmKeyboard(lang));
                 return;
             }
@@ -861,7 +861,7 @@ Bazoš: %d
                 UserFilter fullFilter = userFilterRepo.findFullById(userId)
                         .orElseGet(() -> f);
                 send(chatId,
-                        msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
+                        flowService.confirmationPreview(fullFilter, lang),
                         Keyboards.confirmKeyboard(lang));
                 return;
             }
@@ -883,7 +883,7 @@ Bazoš: %d
             flowService.save(f);
 
             send(chatId,
-                    msg(userId, "subscribe.not.enabled") + "\n\n" + flowService.pretty(f, lang),
+                    flowService.confirmationPreview(f, lang),
                     Keyboards.confirmKeyboard(lang));
 
             return;

@@ -205,10 +205,10 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "✅ Начать поиск";
-                    case CZ -> "✅ Začít hledání";
-                    case EN -> "✅ Start search";
-                    default -> "✅ Почати пошук";
+                    case RU -> "🔔 Включить уведомления";
+                    case CZ -> "🔔 Zapnout upozornění";
+                    case EN -> "🔔 Enable notifications";
+                    default -> "🔔 Увімкнути сповіщення";
                 }, "CONFIRM:SUBSCRIBE")
         ));
 
