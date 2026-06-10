@@ -57,67 +57,6 @@ public class FlowService {
                 .orElseThrow(() -> new IllegalStateException("Region PRAHA not found in DB"));
     }
 
-    public String confirmationPreview(UserFilter f, Language lang) {
-        String city = f.getRegion() == null ? "-" : f.getRegion().getTitle();
-        String districtLine = f.getRegionGroup() == null
-                ? ""
-                : switch (lang) {
-                    case RU -> "📍 Район: " + f.getRegionGroup().getTitle() + "\n";
-                    case CZ -> "📍 Oblast: " + f.getRegionGroup().getTitle() + "\n";
-                    case EN -> "📍 Area: " + f.getRegionGroup().getTitle() + "\n";
-                    default -> "📍 Район: " + f.getRegionGroup().getTitle() + "\n";
-                };
-        String layout = prettyLayout(f.getLayout(), lang);
-        String price = prettyPrice(f.getMaxPrice(), lang);
-
-        return switch (lang) {
-            case RU -> """
-✅ Почти готово!
-
-Я буду присылать тебе новые квартиры, которые подходят под твой фильтр:
-
-🏙 Город: %s
-%s🏠 Тип: %s
-💰 Бюджет: %s
-
-Как только появится новое объявление — ты получишь сообщение.
-""".formatted(city, districtLine, layout, price);
-            case CZ -> """
-✅ Skoro hotovo!
-
-Budu vám posílat nové byty, které odpovídají vašemu filtru:
-
-🏙 Město: %s
-%s🏠 Typ: %s
-💰 Rozpočet: %s
-
-Jakmile se objeví nová nabídka, dostanete zprávu.
-""".formatted(city, districtLine, layout, price);
-            case EN -> """
-✅ Almost ready!
-
-I will send you new apartments that match your filter:
-
-🏙 City: %s
-%s🏠 Type: %s
-💰 Budget: %s
-
-As soon as a new listing appears, you will get a message.
-""".formatted(city, districtLine, layout, price);
-            default -> """
-✅ Майже готово!
-
-Я буду надсилати тобі нові квартири, які підходять під твій фільтр:
-
-🏙 Місто: %s
-%s🏠 Тип: %s
-💰 Бюджет: %s
-
-Щойно зʼявиться нове оголошення — ти отримаєш повідомлення.
-""".formatted(city, districtLine, layout, price);
-        };
-    }
-
     public String pretty(UserFilter f, Language lang) {
         String regionTitle = f.getRegion() == null ? "—" : f.getRegion().getTitle();
         String groupTitle = f.getRegionGroup() == null ? "—" : f.getRegionGroup().getTitle();
@@ -240,24 +179,6 @@ As soon as a new listing appears, you will get a message.
                 default -> "4+ і більше";
             };
             default -> layout;
-        };
-    }
-
-    private String prettyPrice(Integer maxPrice, Language lang) {
-        if (maxPrice == null) {
-            return "-";
-        }
-        if (maxPrice == 0) {
-            return switch (lang) {
-                case RU -> "Без лимита";
-                case CZ -> "Bez limitu";
-                case EN -> "No limit";
-                default -> "Без ліміту";
-            };
-        }
-        return switch (lang) {
-            case EN -> "up to " + maxPrice + " Kč";
-            default -> "до " + maxPrice + " Kč";
         };
     }
 }

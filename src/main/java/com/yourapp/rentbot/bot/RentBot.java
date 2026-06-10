@@ -830,13 +830,7 @@ Bazoš: %d
                     && f.getLayout() != null
                     && f.getMaxPrice() != null) {
                 f.setStep(FlowStep.CONFIRM);
-                flowService.save(f);
-
-                UserFilter fullFilter = userFilterRepo.findFullById(userId)
-                        .orElseGet(() -> f);
-                send(chatId,
-                        flowService.confirmationPreview(fullFilter, lang),
-                        Keyboards.confirmKeyboard(lang));
+                enableSubscriptionAndSendListings(chatId, userId, f, lang);
                 return;
             }
 
@@ -856,13 +850,7 @@ Bazoš: %d
             if (EDIT_LAYOUT.equals(filterEditMode.remove(userId))
                     && f.getMaxPrice() != null) {
                 f.setStep(FlowStep.CONFIRM);
-                flowService.save(f);
-
-                UserFilter fullFilter = userFilterRepo.findFullById(userId)
-                        .orElseGet(() -> f);
-                send(chatId,
-                        flowService.confirmationPreview(fullFilter, lang),
-                        Keyboards.confirmKeyboard(lang));
+                enableSubscriptionAndSendListings(chatId, userId, f, lang);
                 return;
             }
 
@@ -878,53 +866,15 @@ Bazoš: %d
 
             filterEditMode.remove(userId);
             f.setMaxPrice(price);
-            f.setActive(false);
             f.setStep(FlowStep.CONFIRM);
-            flowService.save(f);
-
-            send(chatId,
-                    flowService.confirmationPreview(f, lang),
-                    Keyboards.confirmKeyboard(lang));
+            enableSubscriptionAndSendListings(chatId, userId, f, lang);
 
             return;
         }
 
         if (data.startsWith("CONFIRM:SUBSCRIBE")) {
             filterEditMode.remove(userId);
-            f.setActive(true);
-            flowService.save(f);
-
-            UserFilter fullFilter = userFilterRepo.findFullById(userId)
-                    .orElseGet(() -> f);
-
-            send(chatId,
-                    msg(userId, "subscribe.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
-                    Keyboards.mainMenuKeyboard(lang));
-
-            try {
-                List<ListingDto> listings = parserService.findNewListings(userId);
-
-                if (listings.isEmpty()) {
-                    send(chatId,
-                            msg(userId, "search.new.empty"),
-                            Keyboards.mainMenuKeyboard(lang));
-                    return;
-                }
-
-                send(chatId,
-                        msg(userId, "search.found.prefix")
-                                + listings.size()
-                                + msg(userId, "search.found.middle")
-                                + 1
-                                + msg(userId, "search.found.suffix"),
-                        Keyboards.mainMenuKeyboard(lang));
-
-                startPagedSearch(chatId, userId, listings);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                send(chatId, msg(userId, "notify.fetch.failed"), Keyboards.mainMenuKeyboard(lang));
-            }
+            enableSubscriptionAndSendListings(chatId, userId, f, lang);
 
             return;
         }
@@ -953,6 +903,43 @@ Bazoš: %d
         }
 
         send(chatId, msg(userId, "callback.unknown") + data, null);
+    }
+
+    private void enableSubscriptionAndSendListings(long chatId, long userId, UserFilter filter, Language lang) {
+        filter.setActive(true);
+        flowService.save(filter);
+
+        UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                .orElseGet(() -> filter);
+
+        send(chatId,
+                msg(userId, "subscribe.enabled") + "\n\n" + flowService.pretty(fullFilter, lang),
+                Keyboards.mainMenuKeyboard(lang));
+
+        try {
+            List<ListingDto> listings = parserService.findNewListings(userId);
+
+            if (listings.isEmpty()) {
+                send(chatId,
+                        msg(userId, "search.new.empty"),
+                        Keyboards.mainMenuKeyboard(lang));
+                return;
+            }
+
+            send(chatId,
+                    msg(userId, "search.found.prefix")
+                            + listings.size()
+                            + msg(userId, "search.found.middle")
+                            + 1
+                            + msg(userId, "search.found.suffix"),
+                    Keyboards.mainMenuKeyboard(lang));
+
+            startPagedSearch(chatId, userId, listings);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            send(chatId, msg(userId, "notify.fetch.failed"), Keyboards.mainMenuKeyboard(lang));
+        }
     }
 
     private void startPagedSearch(long chatId, long userId, List<ListingDto> listings) throws TelegramApiException {
