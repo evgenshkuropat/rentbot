@@ -689,7 +689,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("SERVICE:NO_AGENT")) {
-            send(chatId, noAgentSearchInfo(lang), Keyboards.authorContactKeyboard(lang));
+            send(chatId, premiumInfo(lang), Keyboards.authorContactKeyboard(lang));
             return;
         }
 
@@ -980,45 +980,69 @@ Bazoš: %d
         };
     }
 
-    private String noAgentSearchInfo(Language lang) {
+    private String premiumInfo(Language lang) {
         return switch (lang) {
             case RU -> """
-🏠 Без риелтора
+💎 Премиум
 
-Планируем отдельный режим поиска:
-⚡ быстрые уведомления
-🔎 больше объявлений
-🏠 приоритет вариантов от собственников
+Планируем расширенный режим для тех, кто ищет жильё активнее:
+
+✅ несколько фильтров одновременно
+Например: Praha 1+kk, Brno 2+kk, Plzeň комната.
+
+🔎 больше предложений
+Расширенный поиск по доступным источникам.
+
+🏠 больше вариантов без риелтора
+Приоритет объявлений от собственников и источников вроде Bezrealitky.
 
 Сервис в разработке. Если интересно — напишите автору.
 """;
             case CZ -> """
-🏠 Bez realitky
+💎 Premium
 
-Plánujeme samostatný režim hledání:
-⚡ rychlá upozornění
+Plánujeme rozšířený režim pro aktivnější hledání bydlení:
+
+✅ více filtrů najednou
+Například: Praha 1+kk, Brno 2+kk, Plzeň pokoj.
+
 🔎 více nabídek
-🏠 priorita nabídek od majitelů
+Rozšířené hledání v dostupných zdrojích.
+
+🏠 více nabídek bez realitky
+Priorita nabídek od majitelů a zdrojů jako Bezrealitky.
 
 Služba je ve vývoji. Pokud máte zájem, napište autorovi.
 """;
             case EN -> """
-🏠 No agent
+💎 Premium
 
-We are planning a separate search mode:
-⚡ fast notifications
+We are planning an advanced mode for more active apartment search:
+
+✅ multiple filters at once
+For example: Praha 1+kk, Brno 2+kk, Plzeň room.
+
 🔎 more listings
-🏠 priority for owner listings
+Expanded search across available sources.
+
+🏠 more no-agent options
+Priority for owner listings and sources like Bezrealitky.
 
 This service is in development. If you are interested, contact the author.
 """;
             default -> """
-🏠 Без рієлтора
+💎 Преміум
 
-Плануємо окремий режим пошуку:
-⚡ швидкі сповіщення
-🔎 більше оголошень
-🏠 пріоритет варіантів від власників
+Плануємо розширений режим для тих, хто шукає житло активніше:
+
+✅ кілька фільтрів одночасно
+Наприклад: Praha 1+kk, Brno 2+kk, Plzeň кімната.
+
+🔎 більше пропозицій
+Розширений пошук по доступних джерелах.
+
+🏠 більше варіантів без рієлтора
+Пріоритет оголошень від власників і джерел на кшталт Bezrealitky.
 
 Сервіс у розробці. Якщо цікаво — напишіть автору.
 """;
