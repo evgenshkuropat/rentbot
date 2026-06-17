@@ -384,6 +384,13 @@ Bazoš: %d
             return;
         }
 
+        if (text.equals("💎 Преміум")
+                || text.equals("💎 Премиум")
+                || text.equals("💎 Premium")) {
+            send(chatId, premiumInfo(lang), Keyboards.authorContactKeyboard(lang));
+            return;
+        }
+
         if (text.equals(msg(userId, "menu.support.project"))) {
             send(chatId, msg(userId, "support.text"), Keyboards.persistentNavKeyboard(lang));
             return;
@@ -690,6 +697,11 @@ Bazoš: %d
 
         if (data.startsWith("SERVICE:NO_AGENT")) {
             send(chatId, premiumInfo(lang), Keyboards.authorContactKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("SERVICE:SUPPORT")) {
+            send(chatId, msg(userId, "support.text"), Keyboards.authorContactKeyboard(lang));
             return;
         }
 

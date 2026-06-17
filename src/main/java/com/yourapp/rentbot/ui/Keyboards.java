@@ -286,10 +286,10 @@ public class Keyboards {
 
         KeyboardRow row4 = new KeyboardRow();
         row4.add(switch (lang) {
-            case RU -> "💙 Поддержать проект";
-            case CZ -> "💙 Podpořit projekt";
-            case EN -> "💙 Support project";
-            default -> "💙 Підтримати проєкт";
+            case RU -> "💎 Премиум";
+            case CZ -> "💎 Premium";
+            case EN -> "💎 Premium";
+            default -> "💎 Преміум";
         });
 
         List<KeyboardRow> keyboard = new ArrayList<>();
@@ -559,11 +559,11 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(button(switch (lang) {
-            case RU -> "💎 Премиум";
-            case CZ -> "💎 Premium";
-            case EN -> "💎 Premium";
-            default -> "💎 Преміум";
-        }, "SERVICE:NO_AGENT"));
+            case RU -> "💙 Поддержать проект";
+            case CZ -> "💙 Podpořit projekt";
+            case EN -> "💙 Support project";
+            default -> "💙 Підтримати проєкт";
+        }, "SERVICE:SUPPORT"));
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
         row3.add(button(switch (lang) {
