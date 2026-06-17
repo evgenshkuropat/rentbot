@@ -161,7 +161,7 @@ public class NotificationService {
         String lower = photoUrl.toLowerCase();
 
         if (!(lower.startsWith("http://") || lower.startsWith("https://"))) {
-            return false;
+            return true;
         }
 
         return !lower.contains(".html")
@@ -191,6 +191,10 @@ public class NotificationService {
     private String safeUrl(String url) {
         if (url == null || url.isBlank()) {
             return "https://t.me/zhytloCZ_bot";
+        }
+        String lower = url.toLowerCase();
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return "https://t.me/evzen_cz";
         }
         return url;
     }

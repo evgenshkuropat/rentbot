@@ -1,6 +1,7 @@
 package com.yourapp.rentbot.bot;
 
 import com.yourapp.rentbot.domain.FavoriteListing;
+import com.yourapp.rentbot.domain.OwnerListing;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.UserFilter;
@@ -14,6 +15,7 @@ import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
+import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
@@ -29,15 +31,19 @@ import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.photo.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
 
+import java.text.Normalizer;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -49,6 +55,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
     private final NotificationService notificationService;
+    private final OwnerListingService ownerListingService;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -65,6 +72,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final Map<Long, Integer> searchOffset = new HashMap<>();
     private final Map<Long, Integer> searchCurrentIndex = new HashMap<>();
     private final Map<Long, String> filterEditMode = new HashMap<>();
+    private final Map<Long, OwnerListingDraft> ownerListingDrafts = new HashMap<>();
     private static final int PAGE_SIZE = 10;
     private static final String EDIT_CITY = "CITY";
     private static final String EDIT_DISTRICT = "DISTRICT";
@@ -78,6 +86,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             UserFilterRepo userFilterRepo,
             ParserService parserService,
             NotificationService notificationService,
+            OwnerListingService ownerListingService,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService
@@ -89,6 +98,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
+        this.ownerListingService = ownerListingService;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -110,6 +120,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         try {
             if (update.hasMessage() && update.getMessage().hasText()) {
                 onText(update);
+            } else if (update.hasMessage() && update.getMessage().hasPhoto()) {
+                onPhoto(update);
             } else if (update.hasCallbackQuery()) {
                 onCallback(update);
             }
@@ -123,6 +135,26 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         long userId = update.getMessage().getFrom().getId();
         String text = update.getMessage().getText().trim();
         Language lang = getUserLanguage(userId);
+
+        if (chatId == ADMIN_ID && text.equalsIgnoreCase("/add_owner_listing")) {
+            OwnerListingDraft draft = new OwnerListingDraft();
+            ownerListingDrafts.put(userId, draft);
+            send(chatId,
+                    "Додаємо житло від власника.\n\n1/8 Напиши місто або округ, наприклад: Praha, Brno, Kolín, Plzeň.\n\nСкасувати: /cancel",
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (chatId == ADMIN_ID && text.equalsIgnoreCase("/cancel") && ownerListingDrafts.containsKey(userId)) {
+            ownerListingDrafts.remove(userId);
+            send(chatId, "Додавання оголошення скасовано.", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (chatId == ADMIN_ID && ownerListingDrafts.containsKey(userId)) {
+            handleOwnerListingText(chatId, userId, text, lang);
+            return;
+        }
 
         if (text.equalsIgnoreCase("/admin")) {
             cleanupExpiredInteractionCaches();
@@ -500,6 +532,223 @@ Bazoš: %d
         send(chatId, msg(userId, "unknown.command"), Keyboards.persistentNavKeyboard(lang));
     }
 
+    private void onPhoto(Update update) throws TelegramApiException {
+        long chatId = update.getMessage().getChatId();
+        long userId = update.getMessage().getFrom().getId();
+        Language lang = getUserLanguage(userId);
+
+        if (chatId != ADMIN_ID) {
+            return;
+        }
+
+        OwnerListingDraft draft = ownerListingDrafts.get(userId);
+        if (draft == null) {
+            return;
+        }
+
+        if (draft.step != OwnerListingDraft.Step.PHOTO) {
+            send(chatId, "Фото збережу на останньому кроці. Зараз очікую: " + draft.stepLabel(), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        List<PhotoSize> photos = update.getMessage().getPhoto();
+        if (photos == null || photos.isEmpty()) {
+            send(chatId, "Не бачу фото. Надішли фото або напиши - якщо фото немає.", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        draft.photoFileId = photos.get(photos.size() - 1).getFileId();
+        draft.step = OwnerListingDraft.Step.CONFIRM;
+        sendOwnerListingPreview(chatId, draft);
+    }
+
+    private void handleOwnerListingText(long chatId, long userId, String text, Language lang) throws TelegramApiException {
+        OwnerListingDraft draft = ownerListingDrafts.get(userId);
+        if (draft == null) {
+            return;
+        }
+
+        switch (draft.step) {
+            case CITY -> {
+                Optional<Region> region = findRegionByInput(text);
+                if (region.isEmpty()) {
+                    send(chatId,
+                            "Не знайшов таке місто/округ у базі. Напиши як у боті, наприклад: Praha, Brno, Kolín, Plzeň.",
+                            Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.region = region.get();
+                draft.step = OwnerListingDraft.Step.LOCALITY;
+                send(chatId, "2/8 Локація або адреса. Наприклад: Kolín - Kolín II, Masarykova.", Keyboards.persistentNavKeyboard(lang));
+            }
+            case LOCALITY -> {
+                draft.locality = cleanRequired(text);
+                if (draft.locality == null) {
+                    send(chatId, "Локація не може бути пустою. Напиши район, місто або адресу.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.step = OwnerListingDraft.Step.LAYOUT;
+                send(chatId, "3/8 Тип житла: room, 1, 2, 3 або 4.", Keyboards.persistentNavKeyboard(lang));
+            }
+            case LAYOUT -> {
+                String layout = normalizeOwnerLayout(text);
+                if (layout == null) {
+                    send(chatId, "Не зрозумів тип. Напиши: room, 1, 2, 3 або 4.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.layout = layout;
+                draft.step = OwnerListingDraft.Step.PRICE;
+                send(chatId, "4/8 Ціна в Kč. Наприклад: 12990.", Keyboards.persistentNavKeyboard(lang));
+            }
+            case PRICE -> {
+                Integer price = parseOwnerPrice(text);
+                if (price == null) {
+                    send(chatId, "Ціна має бути числом. Наприклад: 12990.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.priceCzk = price;
+                draft.step = OwnerListingDraft.Step.TITLE;
+                send(chatId, "5/8 Назва оголошення. Наприклад: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.", Keyboards.persistentNavKeyboard(lang));
+            }
+            case TITLE -> {
+                draft.title = cleanRequired(text);
+                if (draft.title == null) {
+                    send(chatId, "Назва не може бути пустою.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.step = OwnerListingDraft.Step.DESCRIPTION;
+                send(chatId, "6/8 Опис. Можна коротко: меблі, депозит, доступність. Якщо опису немає, напиши -", Keyboards.persistentNavKeyboard(lang));
+            }
+            case DESCRIPTION -> {
+                draft.description = "-".equals(text.trim()) ? null : text.trim();
+                draft.step = OwnerListingDraft.Step.CONTACT;
+                send(chatId, "7/8 Контакт власника: телефон, Telegram або інший спосіб зв'язку.", Keyboards.persistentNavKeyboard(lang));
+            }
+            case CONTACT -> {
+                draft.contact = cleanRequired(text);
+                if (draft.contact == null) {
+                    send(chatId, "Контакт не може бути пустим.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.step = OwnerListingDraft.Step.PHOTO;
+                send(chatId, "8/8 Надішли фото квартири. Якщо фото немає, напиши -", Keyboards.persistentNavKeyboard(lang));
+            }
+            case PHOTO -> {
+                if (!"-".equals(text.trim())) {
+                    send(chatId, "На цьому кроці надішли саме фото або напиши - якщо фото немає.", Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+                draft.photoFileId = null;
+                draft.step = OwnerListingDraft.Step.CONFIRM;
+                sendOwnerListingPreview(chatId, draft);
+            }
+            case CONFIRM -> sendOwnerListingPreview(chatId, draft);
+        }
+    }
+
+    private Optional<Region> findRegionByInput(String input) {
+        String normalized = normalizeSearch(input);
+        if (normalized.isBlank()) {
+            return Optional.empty();
+        }
+
+        return regionRepo.findAll().stream()
+                .filter(region -> normalizeSearch(region.getTitle()).equals(normalized)
+                        || normalizeSearch(region.getCode()).equals(normalized))
+                .findFirst()
+                .or(() -> regionRepo.findAll().stream()
+                        .filter(region -> normalizeSearch(region.getTitle()).contains(normalized)
+                                || normalized.contains(normalizeSearch(region.getTitle())))
+                        .findFirst());
+    }
+
+    private String normalizeSearch(String value) {
+        if (value == null) {
+            return "";
+        }
+        String noAccents = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return noAccents.toLowerCase()
+                .replaceAll("[^a-z0-9]+", "");
+    }
+
+    private String normalizeOwnerLayout(String text) {
+        if (text == null) {
+            return null;
+        }
+        String normalized = normalizeSearch(text);
+        if (normalized.equals("room")
+                || normalized.contains("kimnata")
+                || normalized.contains("komnata")
+                || normalized.contains("pokoj")) {
+            return "ROOM";
+        }
+        if (normalized.startsWith("1")) {
+            return "1";
+        }
+        if (normalized.startsWith("2")) {
+            return "2";
+        }
+        if (normalized.startsWith("3")) {
+            return "3";
+        }
+        if (normalized.startsWith("4")) {
+            return "4";
+        }
+        return null;
+    }
+
+    private Integer parseOwnerPrice(String text) {
+        if (text == null) {
+            return null;
+        }
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+        try {
+            int price = Integer.parseInt(digits);
+            return price > 0 ? price : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String cleanRequired(String text) {
+        if (text == null || text.isBlank() || "-".equals(text.trim())) {
+            return null;
+        }
+        return text.trim();
+    }
+
+    private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft) throws TelegramApiException {
+        String preview = """
+                🏠 Оголошення від власника
+
+                Місто/округ: %s
+                Локація: %s
+                Тип: %s
+                Ціна: %s
+                Назва: %s
+                Опис: %s
+                Контакт: %s
+                Фото: %s
+
+                Опублікувати це оголошення?
+                """.formatted(
+                draft.region == null ? "—" : draft.region.getTitle(),
+                nvl(draft.locality),
+                nvl(draft.layout),
+                draft.priceCzk == null ? "—" : formatPrice(draft.priceCzk),
+                nvl(draft.title),
+                nvl(draft.description),
+                nvl(draft.contact),
+                draft.photoFileId == null ? "немає" : "є"
+        );
+
+        send(chatId, preview, Keyboards.ownerListingConfirmKeyboard());
+    }
+
     private void onCallback(Update update) throws TelegramApiException {
         long chatId = update.getCallbackQuery().getMessage().getChatId();
         long userId = update.getCallbackQuery().getFrom().getId();
@@ -520,6 +769,48 @@ Bazoš: %d
                 .orElseGet(() -> flowService.getOrCreate(userId));
 
         Language lang = getUserLanguage(userId);
+
+        if (data.equals("OWNER:PUBLISH")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            OwnerListingDraft draft = ownerListingDrafts.get(userId);
+            if (draft == null || !draft.readyToPublish()) {
+                send(chatId, "Чернетка не готова або вже скасована. Почни з /add_owner_listing.", Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            OwnerListing listing = new OwnerListing();
+            listing.setCreatedByTelegramId(userId);
+            listing.setRegion(draft.region);
+            listing.setLocality(draft.locality);
+            listing.setLayout(draft.layout);
+            listing.setPriceCzk(draft.priceCzk);
+            listing.setTitle(draft.title);
+            listing.setDescription(draft.description);
+            listing.setContact(draft.contact);
+            listing.setPhotoFileId(draft.photoFileId);
+            listing.setCreatedAt(Instant.now());
+            listing.setApprovedAt(Instant.now());
+
+            OwnerListing saved = ownerListingService.saveApproved(listing);
+            ownerListingDrafts.remove(userId);
+
+            send(chatId,
+                    "✅ Оголошення опубліковано.\nID: " + saved.getId() + "\n\nВоно тепер бере участь у фільтрах як джерело «Власник».",
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("OWNER:CANCEL")) {
+            if (chatId == ADMIN_ID) {
+                ownerListingDrafts.remove(userId);
+                send(chatId, "Додавання оголошення скасовано.", Keyboards.persistentNavKeyboard(lang));
+            }
+            return;
+        }
 
         if (data.startsWith("LANG:")) {
             String langCode = data.substring("LANG:".length());
@@ -1294,7 +1585,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         String lower = photoUrl.toLowerCase();
 
         if (!(lower.startsWith("http://") || lower.startsWith("https://"))) {
-            return false;
+            return true;
         }
 
         return !lower.contains(".html")
@@ -1372,6 +1663,10 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
     private String safeUrl(String url) {
         if (url == null || url.isBlank()) {
             return "https://t.me/zhytloCZ_bot";
+        }
+        String lower = url.toLowerCase();
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return "https://t.me/evzen_cz";
         }
         return url;
     }
@@ -1506,5 +1801,53 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
             case EN -> "Listing";
             default -> "Оголошення";
         };
+    }
+
+    private static class OwnerListingDraft {
+        private enum Step {
+            CITY,
+            LOCALITY,
+            LAYOUT,
+            PRICE,
+            TITLE,
+            DESCRIPTION,
+            CONTACT,
+            PHOTO,
+            CONFIRM
+        }
+
+        private Step step = Step.CITY;
+        private Region region;
+        private String locality;
+        private String layout;
+        private Integer priceCzk;
+        private String title;
+        private String description;
+        private String contact;
+        private String photoFileId;
+
+        private boolean readyToPublish() {
+            return step == Step.CONFIRM
+                    && region != null
+                    && locality != null
+                    && layout != null
+                    && priceCzk != null
+                    && title != null
+                    && contact != null;
+        }
+
+        private String stepLabel() {
+            return switch (step) {
+                case CITY -> "місто";
+                case LOCALITY -> "локація";
+                case LAYOUT -> "тип житла";
+                case PRICE -> "ціна";
+                case TITLE -> "назва";
+                case DESCRIPTION -> "опис";
+                case CONTACT -> "контакт";
+                case PHOTO -> "фото";
+                case CONFIRM -> "підтвердження";
+            };
+        }
     }
 }

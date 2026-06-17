@@ -46,6 +46,7 @@ public class ParserService {
     private final IdnesParser idnesParser;
     private final BezrealitkyParser bezrealitkyParser;
     private final BazosParser bazosParser;
+    private final OwnerListingService ownerListingService;
     private final UserFilterRepo userFilterRepo;
 
     private final AtomicReference<ParserRunStats> lastRunStats =
@@ -60,11 +61,13 @@ public class ParserService {
                          IdnesParser idnesParser,
                          BezrealitkyParser bezrealitkyParser,
                          BazosParser bazosParser,
+                         OwnerListingService ownerListingService,
                          UserFilterRepo userFilterRepo) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
         this.bezrealitkyParser = bezrealitkyParser;
         this.bazosParser = bazosParser;
+        this.ownerListingService = ownerListingService;
         this.userFilterRepo = userFilterRepo;
     }
 
@@ -138,6 +141,14 @@ public class ParserService {
 
         } catch (Exception e) {
             log.warn("Bezrealitky parser failed region={} error={}", regionTitle(region), e.getMessage());
+        }
+
+        try {
+            List<ListingDto> ownerListings = ownerListingService.fetchApprovedListings(region);
+            log.info("Owner listings region={} count={}", regionTitle(region), ownerListings.size());
+            all.addAll(ownerListings);
+        } catch (Exception e) {
+            log.warn("Owner listings failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         try {
@@ -245,6 +256,14 @@ public class ParserService {
                 all.addAll(bezrealitky);
             } catch (Exception e) {
                 log.warn("Bezrealitky parser failed error={}", e.getMessage());
+            }
+
+            try {
+                List<ListingDto> ownerListings = ownerListingService.fetchApprovedListings(defaultRegion);
+                log.info("Owner listings count={}", ownerListings.size());
+                all.addAll(ownerListings);
+            } catch (Exception e) {
+                log.warn("Owner listings failed error={}", e.getMessage());
             }
 
             try {
@@ -542,7 +561,9 @@ public class ParserService {
     private boolean isTrustedRegionalSource(String source) {
         return source.contains("sreality")
                 || source.contains("idnes")
-                || source.contains("bezrealitky");
+                || source.contains("bezrealitky")
+                || source.contains("власник")
+                || source.contains("owner");
     }
 
     private boolean isNonPrahaRegion(String regionCode) {
@@ -1071,6 +1092,7 @@ public class ParserService {
         String source = dto.source() == null ? "" : dto.source().toLowerCase();
 
         if (source.contains("bezrealitky")) score += 25;
+        else if (source.contains("власник") || source.contains("owner")) score += 24;
         else if (source.contains("sreality")) score += 20;
         else if (source.contains("idnes")) score += 15;
         else if (source.contains("bazo")) score += 8;

@@ -628,6 +628,16 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(button("✅ Опублікувати", "OWNER:PUBLISH"));
+        row.add(button("❌ Скасувати", "OWNER:CANCEL"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
     public static InlineKeyboardMarkup listingPagerKeyboard(String token, String link, Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
