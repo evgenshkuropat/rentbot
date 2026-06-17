@@ -558,23 +558,34 @@ public class Keyboards {
                 .build());
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
-        row2.add(button(switch (lang) {
+        row2.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "🏠 Добавить жильё от собственника";
+                    case CZ -> "🏠 Přidat bydlení od majitele";
+                    case EN -> "🏠 Add owner listing";
+                    default -> "🏠 Додати житло від власника";
+                })
+                .url("https://t.me/evzen_cz")
+                .build());
+
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(button(switch (lang) {
             case RU -> "💙 Поддержать проект";
             case CZ -> "💙 Podpořit projekt";
             case EN -> "💙 Support project";
             default -> "💙 Підтримати проєкт";
         }, "SERVICE:SUPPORT"));
 
-        InlineKeyboardRow row3 = new InlineKeyboardRow();
-        row3.add(button(switch (lang) {
+        InlineKeyboardRow row4 = new InlineKeyboardRow();
+        row4.add(button(switch (lang) {
             case RU -> "🏘 Поиск недвижимости";
             case CZ -> "🏘 Hledání nemovitostí";
             case EN -> "🏘 Real estate search";
             default -> "🏘 Пошук нерухомості";
         }, "SERVICE:REAL_ESTATE"));
 
-        InlineKeyboardRow row4 = new InlineKeyboardRow();
-        row4.add(InlineKeyboardButton.builder()
+        InlineKeyboardRow row5 = new InlineKeyboardRow();
+        row5.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "📝 Помощь с оформлением аренды";
                     case CZ -> "📝 Pomoc s nájemní smlouvou";
@@ -584,8 +595,8 @@ public class Keyboards {
                 .url("https://t.me/evzen_cz")
                 .build());
 
-        InlineKeyboardRow row5 = new InlineKeyboardRow();
-        row5.add(InlineKeyboardButton.builder()
+        InlineKeyboardRow row6 = new InlineKeyboardRow();
+        row6.add(InlineKeyboardButton.builder()
                 .text(switch (lang) {
                     case RU -> "💬 Связаться с автором";
                     case CZ -> "💬 Kontaktovat autora";
@@ -596,7 +607,7 @@ public class Keyboards {
                 .build());
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2, row3, row4, row5))
+                .keyboard(List.of(row1, row2, row3, row4, row5, row6))
                 .build();
     }
 
