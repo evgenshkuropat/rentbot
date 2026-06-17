@@ -997,66 +997,74 @@ Bazoš: %d
             case RU -> """
 💎 Премиум
 
-Планируем расширенный режим для тех, кто ищет жильё активнее:
+Для тех, кто хочет искать жильё быстрее и сразу в нескольких направлениях.
 
-✅ несколько фильтров одновременно
+Что планируем добавить:
+
+✅ несколько поисков одновременно
 Например: Praha 1+kk, Brno 2+kk, Plzeň комната.
 
-🔎 больше предложений
-Расширенный поиск по доступным источникам.
+🔎 больше подходящих предложений
+Расширенный поиск по Sreality, iDNES, Bezrealitky и Bazoš.
 
 🏠 больше вариантов без риелтора
-Приоритет объявлений от собственников и источников вроде Bezrealitky.
+Отдельный акцент на объявления от собственников и Bezrealitky.
 
-Сервис в разработке. Если интересно — напишите автору.
+Премиум сейчас в разработке. Если хочешь попасть в список первых пользователей — напиши автору.
 """;
             case CZ -> """
 💎 Premium
 
-Plánujeme rozšířený režim pro aktivnější hledání bydlení:
+Pro ty, kteří chtějí hledat bydlení rychleji a ve více směrech najednou.
 
-✅ více filtrů najednou
+Co plánujeme přidat:
+
+✅ více hledání najednou
 Například: Praha 1+kk, Brno 2+kk, Plzeň pokoj.
 
-🔎 více nabídek
-Rozšířené hledání v dostupných zdrojích.
+🔎 více relevantních nabídek
+Rozšířené hledání přes Sreality, iDNES, Bezrealitky a Bazoš.
 
 🏠 více nabídek bez realitky
-Priorita nabídek od majitelů a zdrojů jako Bezrealitky.
+Větší důraz na nabídky od majitelů a Bezrealitky.
 
-Služba je ve vývoji. Pokud máte zájem, napište autorovi.
+Premium je zatím ve vývoji. Pokud chcete být mezi prvními uživateli, napište autorovi.
 """;
             case EN -> """
 💎 Premium
 
-We are planning an advanced mode for more active apartment search:
+For people who want to search faster and track several apartment searches at once.
 
-✅ multiple filters at once
+What we plan to add:
+
+✅ multiple searches at once
 For example: Praha 1+kk, Brno 2+kk, Plzeň room.
 
-🔎 more listings
-Expanded search across available sources.
+🔎 more relevant listings
+Expanded search across Sreality, iDNES, Bezrealitky and Bazoš.
 
 🏠 more no-agent options
-Priority for owner listings and sources like Bezrealitky.
+More focus on owner listings and Bezrealitky.
 
-This service is in development. If you are interested, contact the author.
+Premium is still in development. If you want early access, contact the author.
 """;
             default -> """
 💎 Преміум
 
-Плануємо розширений режим для тих, хто шукає житло активніше:
+Для тих, хто хоче шукати житло швидше й одразу в кількох напрямках.
 
-✅ кілька фільтрів одночасно
+Що плануємо додати:
+
+✅ кілька пошуків одночасно
 Наприклад: Praha 1+kk, Brno 2+kk, Plzeň кімната.
 
-🔎 більше пропозицій
-Розширений пошук по доступних джерелах.
+🔎 більше релевантних пропозицій
+Розширений пошук по Sreality, iDNES, Bezrealitky та Bazoš.
 
 🏠 більше варіантів без рієлтора
-Пріоритет оголошень від власників і джерел на кшталт Bezrealitky.
+Більший акцент на оголошеннях від власників і Bezrealitky.
 
-Сервіс у розробці. Якщо цікаво — напишіть автору.
+Преміум зараз у розробці. Якщо хочеш потрапити до перших користувачів — напиши автору.
 """;
         };
     }
