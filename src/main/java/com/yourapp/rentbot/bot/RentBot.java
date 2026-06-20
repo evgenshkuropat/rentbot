@@ -240,7 +240,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 🧭 STEP DONE: %d
 
 ⭐ Усього в обраному: %d
-📩 Надіслано повідомлень: %d
+📩 Надіслано за останні 14 днів: %d
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
