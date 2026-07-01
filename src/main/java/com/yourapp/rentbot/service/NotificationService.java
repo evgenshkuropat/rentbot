@@ -170,7 +170,14 @@ public class NotificationService {
     }
 
     private boolean isBlockedByUser(String msg) {
-        return msg != null && msg.contains("bot was blocked by the user");
+        if (msg == null) {
+            return false;
+        }
+
+        String lower = msg.toLowerCase();
+        return lower.contains("bot was blocked by the user")
+                || lower.contains("user is deactivated")
+                || lower.contains("chat not found");
     }
 
     private String trimCaption(String text) {
