@@ -2,6 +2,7 @@ package com.yourapp.rentbot.repo;
 
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowStep;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -55,4 +56,24 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
 
     @Query("select avg(uf.maxPrice) from UserFilter uf where uf.maxPrice is not null")
     Double findAverageMaxPrice();
+
+    @Query("""
+        select uf
+        from UserFilter uf
+        left join fetch uf.region
+        left join fetch uf.regionGroup
+        where uf.active = true
+          and (
+              uf.updatedAt is null
+              or uf.updatedAt < :staleBefore
+          )
+          and (
+              uf.reactivationSentAt is null
+              or uf.reactivationSentAt < :canSendAgainBefore
+          )
+        order by uf.updatedAt asc
+    """)
+    List<UserFilter> findReactivationCandidates(@Param("staleBefore") Instant staleBefore,
+                                                @Param("canSendAgainBefore") Instant canSendAgainBefore,
+                                                Pageable pageable);
 }

@@ -19,6 +19,7 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
@@ -328,6 +329,36 @@ Bazoš: %d
                     );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_reactivate")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            int limit = parseAdminLimit(text, 50, 100);
+            ReactivationResult result = sendReactivationMessages(limit);
+
+            send(chatId,
+                    """
+                    🔄 Reactivation finished
+
+                    Candidates checked: %d
+                    Sent: %d
+                    Skipped: %d
+                    Deactivated: %d
+                    Failed: %d
+                    """
+                            .formatted(
+                                    result.checked,
+                                    result.sent,
+                                    result.skipped,
+                                    result.deactivated,
+                                    result.failed
+                            ),
+                    Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1203,6 +1234,101 @@ Bazoš: %d
         send(chatId, msg(userId, "callback.unknown") + data, null);
     }
 
+    private ReactivationResult sendReactivationMessages(int limit) {
+        ReactivationResult result = new ReactivationResult();
+        Instant now = Instant.now();
+        Instant staleBefore = now.minus(java.time.Duration.ofDays(14));
+        Instant canSendAgainBefore = now.minus(java.time.Duration.ofDays(30));
+
+        List<UserFilter> candidates = userFilterRepo.findReactivationCandidates(
+                staleBefore,
+                canSendAgainBefore,
+                PageRequest.of(0, limit)
+        );
+
+        result.checked = candidates.size();
+
+        for (UserFilter user : candidates) {
+            if (user.getTelegramUserId() == null) {
+                result.skipped++;
+                continue;
+            }
+
+            Language userLang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
+
+            try {
+                send(user.getTelegramUserId(),
+                        reactivationText(user, userLang),
+                        Keyboards.reactivationKeyboard(userLang));
+
+                user.setReactivationSentAt(now);
+                userFilterRepo.save(user);
+                result.sent++;
+
+            } catch (TelegramApiException e) {
+                if (isUnreachableTelegramUser(e.getMessage())) {
+                    user.setActive(false);
+                    userFilterRepo.save(user);
+                    result.deactivated++;
+                } else {
+                    result.failed++;
+                    System.out.println("Reactivation message failed for user="
+                            + user.getTelegramUserId()
+                            + ", error=" + e.getMessage());
+                }
+            } catch (Exception e) {
+                result.failed++;
+                System.out.println("Unexpected reactivation failure for user="
+                        + user.getTelegramUserId()
+                        + ", error=" + e.getMessage());
+            }
+        }
+
+        return result;
+    }
+
+    private String reactivationText(UserFilter user, Language lang) {
+        return switch (lang) {
+            case RU -> "Привет 👋\n\n"
+                    + "Ваш поиск аренды все еще включен. Если вариантов стало мало или фильтр уже неактуален, можно быстро изменить город, район, тип жилья или бюджет.\n\n"
+                    + flowService.pretty(user, lang);
+            case CZ -> "Ahoj 👋\n\n"
+                    + "Vaše hledání nájmu je stále zapnuté. Pokud je nabídek málo nebo filtr už není aktuální, můžete rychle upravit město, oblast, typ bydlení nebo rozpočet.\n\n"
+                    + flowService.pretty(user, lang);
+            case EN -> "Hi 👋\n\n"
+                    + "Your rent search is still active. If there are not enough listings or your filter is outdated, you can quickly update the city, district, housing type, or budget.\n\n"
+                    + flowService.pretty(user, lang);
+            default -> "Привіт 👋\n\n"
+                    + "Ваш пошук оренди все ще увімкнений. Якщо варіантів стало мало або фільтр вже неактуальний, можна швидко змінити місто, район, тип житла або бюджет.\n\n"
+                    + flowService.pretty(user, lang);
+        };
+    }
+
+    private int parseAdminLimit(String text, int defaultLimit, int maxLimit) {
+        String[] parts = text.trim().split("\\s+");
+        if (parts.length < 2) {
+            return defaultLimit;
+        }
+
+        try {
+            int parsed = Integer.parseInt(parts[1]);
+            return Math.max(1, Math.min(parsed, maxLimit));
+        } catch (NumberFormatException e) {
+            return defaultLimit;
+        }
+    }
+
+    private boolean isUnreachableTelegramUser(String message) {
+        if (message == null) {
+            return false;
+        }
+
+        String lower = message.toLowerCase();
+        return lower.contains("bot was blocked by the user")
+                || lower.contains("user is deactivated")
+                || lower.contains("chat not found");
+    }
+
     private void enableSubscriptionAndSendListings(long chatId, long userId, UserFilter filter, Language lang) throws TelegramApiException {
         filter.setActive(true);
         flowService.save(filter);
@@ -1809,6 +1935,14 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
             case EN -> "Listing";
             default -> "Оголошення";
         };
+    }
+
+    private static class ReactivationResult {
+        private int checked;
+        private int sent;
+        private int skipped;
+        private int deactivated;
+        private int failed;
     }
 
     private static class OwnerListingDraft {

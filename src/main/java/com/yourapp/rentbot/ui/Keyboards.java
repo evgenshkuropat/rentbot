@@ -422,6 +422,28 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup reactivationKeyboard(Language lang) {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(button(switch (lang) {
+            case RU -> "🔄 Обновить фильтр";
+            case CZ -> "🔄 Upravit filtr";
+            case EN -> "🔄 Update filter";
+            default -> "🔄 Оновити фільтр";
+        }, "EDIT:FILTER"));
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(button(switch (lang) {
+            case RU -> "📋 Мой фильтр";
+            case CZ -> "📋 Můj filtr";
+            case EN -> "📋 My filter";
+            default -> "📋 Мій фільтр";
+        }, "CONFIRM:SHOW"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
+                .build();
+    }
+
     public static InlineKeyboardMarkup addToFavoritesKeyboard(String token, Language lang) {
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(InlineKeyboardButton.builder()

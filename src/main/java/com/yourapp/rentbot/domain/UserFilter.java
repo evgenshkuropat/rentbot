@@ -45,6 +45,9 @@ public class UserFilter {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
+    @Column(name = "reactivation_sent_at")
+    private Instant reactivationSentAt;
+
     public Long getTelegramUserId() {
         return telegramUserId;
     }
@@ -123,5 +126,13 @@ public class UserFilter {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Instant getReactivationSentAt() {
+        return reactivationSentAt;
+    }
+
+    public void setReactivationSentAt(Instant reactivationSentAt) {
+        this.reactivationSentAt = reactivationSentAt;
     }
 }
