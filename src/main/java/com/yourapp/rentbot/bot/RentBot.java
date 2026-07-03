@@ -1078,11 +1078,6 @@ Bazoš: %d
                     return;
                 }
 
-                System.out.println("OTHER REGIONS SIZE = " + otherRegions.size());
-                otherRegions.forEach(r ->
-                        System.out.println("OTHER: " + r.getTitle() + " popular=" + r.isPopular())
-                );
-
                 send(chatId,
                         switch (lang) {
                             case RU -> "Выберите город:";
@@ -1450,22 +1445,40 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         }
     }
 
-    private void answerCallback(String callbackQueryId) throws TelegramApiException {
-        telegramClient.execute(
-                AnswerCallbackQuery.builder()
-                        .callbackQueryId(callbackQueryId)
-                        .build()
-        );
+    private void answerCallback(String callbackQueryId) {
+        try {
+            telegramClient.execute(
+                    AnswerCallbackQuery.builder()
+                            .callbackQueryId(callbackQueryId)
+                            .build()
+            );
+        } catch (TelegramApiException e) {
+            if (!isExpiredCallback(e)) {
+                System.out.println("AnswerCallbackQuery failed: " + e.getMessage());
+            }
+        }
     }
 
-    private void answerCallback(String callbackQueryId, String text) throws TelegramApiException {
-        telegramClient.execute(
-                AnswerCallbackQuery.builder()
-                        .callbackQueryId(callbackQueryId)
-                        .text(text)
-                        .showAlert(false)
-                        .build()
-        );
+    private void answerCallback(String callbackQueryId, String text) {
+        try {
+            telegramClient.execute(
+                    AnswerCallbackQuery.builder()
+                            .callbackQueryId(callbackQueryId)
+                            .text(text)
+                            .showAlert(false)
+                            .build()
+            );
+        } catch (TelegramApiException e) {
+            if (!isExpiredCallback(e)) {
+                System.out.println("AnswerCallbackQuery failed: " + e.getMessage());
+            }
+        }
+    }
+
+    private boolean isExpiredCallback(TelegramApiException e) {
+        String message = e.getMessage();
+        return message != null
+                && message.contains("query is too old and response timeout expired");
     }
 
     private void sendRegionsEntry(long chatId, long userId, String text) throws TelegramApiException {
@@ -1478,11 +1491,6 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                     Keyboards.persistentNavKeyboard(lang));
             return;
         }
-
-        System.out.println("POPULAR REGIONS SIZE = " + popularRegions.size());
-        popularRegions.forEach(r ->
-                System.out.println("POPULAR: " + r.getTitle() + " popular=" + r.isPopular())
-        );
 
         send(chatId, text, Keyboards.regionsEntryKeyboard(popularRegions, lang));
     }
