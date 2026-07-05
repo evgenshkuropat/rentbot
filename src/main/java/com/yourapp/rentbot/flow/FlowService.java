@@ -91,10 +91,10 @@ public class FlowService {
         };
 
         String cityLabel = switch (lang) {
-            case RU -> "Город";
-            case CZ -> "Město";
-            case EN -> "City";
-            default -> "Місто";
+            case RU -> "Регион поиска";
+            case CZ -> "Oblast hledání";
+            case EN -> "Search region";
+            default -> "Регіон пошуку";
         };
 
         String districtLabel = switch (lang) {
