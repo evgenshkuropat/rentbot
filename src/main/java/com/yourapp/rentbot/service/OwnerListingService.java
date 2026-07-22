@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class OwnerListingService {
@@ -28,6 +29,30 @@ public class OwnerListingService {
         if (listing.getCreatedAt() == null) {
             listing.setCreatedAt(Instant.now());
         }
+        return ownerListingRepo.save(listing);
+    }
+
+    public OwnerListing savePending(OwnerListing listing) {
+        listing.setStatus(OwnerListing.Status.PENDING);
+        if (listing.getCreatedAt() == null) {
+            listing.setCreatedAt(Instant.now());
+        }
+        listing.setApprovedAt(null);
+        return ownerListingRepo.save(listing);
+    }
+
+    public Optional<OwnerListing> findPending(Long id) {
+        return ownerListingRepo.findByIdAndStatus(id, OwnerListing.Status.PENDING);
+    }
+
+    public OwnerListing approve(OwnerListing listing) {
+        listing.setStatus(OwnerListing.Status.APPROVED);
+        listing.setApprovedAt(Instant.now());
+        return ownerListingRepo.save(listing);
+    }
+
+    public OwnerListing archive(OwnerListing listing) {
+        listing.setStatus(OwnerListing.Status.ARCHIVED);
         return ownerListingRepo.save(listing);
     }
 

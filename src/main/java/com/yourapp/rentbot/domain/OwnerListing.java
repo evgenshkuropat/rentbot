@@ -9,6 +9,7 @@ import java.time.Instant;
 public class OwnerListing {
 
     public enum Status {
+        PENDING,
         APPROVED,
         ARCHIVED
     }
@@ -19,6 +20,9 @@ public class OwnerListing {
 
     @Column(name = "created_by_telegram_id", nullable = false)
     private Long createdByTelegramId;
+
+    @Column(name = "created_by_username", length = 255)
+    private String createdByUsername;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "region_id", nullable = false)
@@ -65,6 +69,14 @@ public class OwnerListing {
 
     public void setCreatedByTelegramId(Long createdByTelegramId) {
         this.createdByTelegramId = createdByTelegramId;
+    }
+
+    public String getCreatedByUsername() {
+        return createdByUsername;
+    }
+
+    public void setCreatedByUsername(String createdByUsername) {
+        this.createdByUsername = createdByUsername;
     }
 
     public Region getRegion() {

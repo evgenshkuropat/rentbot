@@ -580,15 +580,12 @@ public class Keyboards {
                 .build());
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
-        row2.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
+        row2.add(button(switch (lang) {
                     case RU -> "🏠 Добавить жильё от собственника";
                     case CZ -> "🏠 Přidat bydlení od majitele";
                     case EN -> "🏠 Add owner listing";
                     default -> "🏠 Додати житло від власника";
-                })
-                .url("https://t.me/evzen_cz")
-                .build());
+                }, "SERVICE:OWNER_LISTING"));
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
         row3.add(button(switch (lang) {
@@ -652,8 +649,18 @@ public class Keyboards {
 
     public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {
         InlineKeyboardRow row = new InlineKeyboardRow();
-        row.add(button("✅ Опублікувати", "OWNER:PUBLISH"));
+        row.add(button("✅ Надіслати", "OWNER:SUBMIT"));
         row.add(button("❌ Скасувати", "OWNER:CANCEL"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
+    public static InlineKeyboardMarkup ownerListingModerationKeyboard(Long listingId) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(button("✅ Опублікувати", "OWNER:APPROVE:" + listingId));
+        row.add(button("❌ Відхилити", "OWNER:REJECT:" + listingId));
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row))
