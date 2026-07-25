@@ -358,6 +358,39 @@ Bazoš: %d
             return;
         }
 
+        if (text.toLowerCase().startsWith("/admin_owner_list")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            int limit = parseAdminLimit(text, 10, 50);
+            sendOwnerListingsList(chatId, limit);
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_owner_view")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long listingId = parseAdminIdArgument(text);
+            showOwnerListingById(chatId, listingId, lang);
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_owner_archive")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long listingId = parseAdminIdArgument(text);
+            archiveOwnerListingById(chatId, listingId, lang);
+            return;
+        }
+
         if (text.equalsIgnoreCase("/language")
                 || text.equals("🌐 Мова / Language")
                 || text.equals("🌐 Язык / Language")
@@ -942,6 +975,154 @@ Bazoš: %d
         send(chatId, preview, Keyboards.ownerListingConfirmKeyboard());
     }
 
+    private void sendOwnerListingsList(long chatId, int limit) throws TelegramApiException {
+        List<OwnerListing> listings = ownerListingService.listRecent(limit);
+        if (listings.isEmpty()) {
+            send(chatId, "Поки немає оголошень від власників.", Keyboards.persistentNavKeyboard(Language.UA));
+            return;
+        }
+
+        send(chatId,
+                "🏠 Оголошення від власників\n\nПоказую останні: " + listings.size()
+                        + "\n\nКоманди:\n/admin_owner_view ID\n/admin_owner_archive ID",
+                Keyboards.persistentNavKeyboard(Language.UA));
+
+        for (OwnerListing listing : listings) {
+            boolean approved = listing.getStatus() == OwnerListing.Status.APPROVED;
+            send(chatId,
+                    ownerListingAdminSummary(listing),
+                    Keyboards.ownerListingAdminKeyboard(listing.getId(), approved));
+        }
+    }
+
+    private void showOwnerListingById(long chatId, Long listingId, Language lang) throws TelegramApiException {
+        if (listingId == null) {
+            send(chatId, "Вкажи ID. Приклад: /admin_owner_view 7", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        Optional<OwnerListing> listing = ownerListingService.findById(listingId);
+        if (listing.isEmpty()) {
+            send(chatId, "Оголошення не знайдено. ID: " + listingId, Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        sendOwnerListingAdminView(chatId, listing.get());
+    }
+
+    private void archiveOwnerListingById(long chatId, Long listingId, Language lang) throws TelegramApiException {
+        if (listingId == null) {
+            send(chatId, "Вкажи ID. Приклад: /admin_owner_archive 7", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        Optional<OwnerListing> listing = ownerListingService.findById(listingId);
+        if (listing.isEmpty()) {
+            send(chatId, "Оголошення не знайдено. ID: " + listingId, Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        OwnerListing archived = ownerListingService.archive(listing.get());
+        send(chatId,
+                "🗄 Оголошення приховано.\nID: " + archived.getId()
+                        + "\n\nВоно більше не потрапляє у видачу.",
+                Keyboards.persistentNavKeyboard(lang));
+    }
+
+    private void sendOwnerListingAdminView(long chatId, OwnerListing listing) throws TelegramApiException {
+        boolean approved = listing.getStatus() == OwnerListing.Status.APPROVED;
+        String text = ownerListingAdminDetails(listing);
+
+        if (hasUsablePhotoUrl(listing.getPhotoFileId())) {
+            try {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(chatId)
+                                .photo(new InputFile(listing.getPhotoFileId()))
+                                .caption(trimCaption(text))
+                                .replyMarkup(Keyboards.ownerListingAdminKeyboard(listing.getId(), approved))
+                                .build()
+                );
+                return;
+            } catch (Exception e) {
+                System.out.println("Owner listing admin view photo failed for listing="
+                        + listing.getId()
+                        + ", fallback=text, error=" + e.getMessage());
+            }
+        }
+
+        send(chatId, text, Keyboards.ownerListingAdminKeyboard(listing.getId(), approved));
+    }
+
+    private String ownerListingAdminSummary(OwnerListing listing) {
+        return """
+                🏠 Оголошення від власника
+
+                ID: %d
+                Статус: %s
+                Регіон пошуку: %s
+                Локація: %s
+                Тип: %s
+                Ціна: %s
+                Назва: %s
+                """.formatted(
+                listing.getId(),
+                ownerListingStatusLabel(listing),
+                listing.getRegion() == null ? "—" : listing.getRegion().getTitle(),
+                nvl(listing.getLocality()),
+                nvl(listing.getLayout()),
+                listing.getPriceCzk() == null ? "—" : formatPrice(listing.getPriceCzk()),
+                nvl(listing.getTitle())
+        );
+    }
+
+    private String ownerListingAdminDetails(OwnerListing listing) {
+        return """
+                🏠 Оголошення від власника
+
+                ID: %d
+                Статус: %s
+                Автор: %s
+                Регіон пошуку: %s
+                Локація: %s
+                Тип: %s
+                Ціна: %s
+                Назва: %s
+                Опис: %s
+                Контакт: %s
+                Фото: %s
+                """.formatted(
+                listing.getId(),
+                ownerListingStatusLabel(listing),
+                ownerListingAuthorLabel(listing),
+                listing.getRegion() == null ? "—" : listing.getRegion().getTitle(),
+                nvl(listing.getLocality()),
+                nvl(listing.getLayout()),
+                listing.getPriceCzk() == null ? "—" : formatPrice(listing.getPriceCzk()),
+                nvl(listing.getTitle()),
+                nvl(listing.getDescription()),
+                nvl(listing.getContact()),
+                hasUsablePhotoUrl(listing.getPhotoFileId()) ? "є" : "немає"
+        );
+    }
+
+    private String ownerListingStatusLabel(OwnerListing listing) {
+        if (listing.getStatus() == OwnerListing.Status.APPROVED) {
+            return "опубліковано";
+        }
+        if (listing.getApprovedAt() == null) {
+            return "очікує модерації";
+        }
+        return "приховано";
+    }
+
+    private String ownerListingAuthorLabel(OwnerListing listing) {
+        if (listing.getCreatedByUsername() == null || listing.getCreatedByUsername().isBlank()) {
+            return String.valueOf(listing.getCreatedByTelegramId());
+        }
+        return "@" + listing.getCreatedByUsername() + " / " + listing.getCreatedByTelegramId();
+    }
+
     private void sendOwnerListingToAdmin(OwnerListing listing) throws TelegramApiException {
         String author = listing.getCreatedByUsername() == null || listing.getCreatedByUsername().isBlank()
                 ? String.valueOf(listing.getCreatedByTelegramId())
@@ -1108,6 +1289,28 @@ Bazoš: %d
                     "❌ Оголошення відхилене / відправлене в архів.\nID: " + archived.getId(),
                     Keyboards.persistentNavKeyboard(lang));
             notifyOwnerListingAuthor(archived, false);
+            return;
+        }
+
+        if (data.startsWith("OWNER:VIEW:")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long listingId = parseLongOrNull(data.substring("OWNER:VIEW:".length()));
+            showOwnerListingById(chatId, listingId, lang);
+            return;
+        }
+
+        if (data.startsWith("OWNER:ARCHIVE:")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long listingId = parseLongOrNull(data.substring("OWNER:ARCHIVE:".length()));
+            archiveOwnerListingById(chatId, listingId, lang);
             return;
         }
 
@@ -1589,6 +1792,15 @@ Bazoš: %d
         } catch (NumberFormatException e) {
             return defaultLimit;
         }
+    }
+
+    private Long parseAdminIdArgument(String text) {
+        String[] parts = text.trim().split("\\s+");
+        if (parts.length < 2) {
+            return null;
+        }
+
+        return parseLongOrNull(parts[1]);
     }
 
     private Long parseLongOrNull(String value) {
