@@ -657,6 +657,123 @@ Bazoš: %d
         };
     }
 
+    private String ownerListingUnexpectedPhotoText(Language lang, String expectedStep) {
+        return switch (lang) {
+            case RU -> "Фото нужно будет отправить на последнем шаге. Сейчас ожидаю: " + expectedStep + ".";
+            case CZ -> "Fotku pošlete až v posledním kroku. Teď očekávám: " + expectedStep + ".";
+            case EN -> "You will send the photo in the last step. Right now I am waiting for: " + expectedStep + ".";
+            default -> "Фото потрібно буде надіслати на останньому кроці. Зараз очікую: " + expectedStep + ".";
+        };
+    }
+
+    private String ownerListingRegionNotFoundText(Language lang) {
+        return switch (lang) {
+            case RU -> "Не нашёл такой город/округ в базе. Напишите как в боте, например: Praha, Brno, Kolín, Plzeň.";
+            case CZ -> "Takové město nebo okres jsem v databázi nenašel. Napište ho jako v botu, například: Praha, Brno, Kolín, Plzeň.";
+            case EN -> "I could not find that city or district in the database. Write it as in the bot, for example: Praha, Brno, Kolín, Plzeň.";
+            default -> "Не знайшов таке місто/округ у базі. Напишіть як у боті, наприклад: Praha, Brno, Kolín, Plzeň.";
+        };
+    }
+
+    private String ownerListingLocalityPromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "2/8 Локация или адрес. Например: Kolín - Kolín II, Masarykova.";
+            case CZ -> "2/8 Lokalita nebo adresa. Například: Kolín - Kolín II, Masarykova.";
+            case EN -> "2/8 Location or address. For example: Kolín - Kolín II, Masarykova.";
+            default -> "2/8 Локація або адреса. Наприклад: Kolín - Kolín II, Masarykova.";
+        };
+    }
+
+    private String ownerListingLocalityRequiredText(Language lang) {
+        return switch (lang) {
+            case RU -> "Локация не может быть пустой. Напишите район, город или адрес.";
+            case CZ -> "Lokalita nesmí být prázdná. Napište část města, město nebo adresu.";
+            case EN -> "Location cannot be empty. Send the district, city, or address.";
+            default -> "Локація не може бути пустою. Напишіть район, місто або адресу.";
+        };
+    }
+
+    private String ownerListingLayoutPromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "3/8 Тип жилья: room, 1, 2, 3 или 4.";
+            case CZ -> "3/8 Typ bydlení: room, 1, 2, 3 nebo 4.";
+            case EN -> "3/8 Housing type: room, 1, 2, 3, or 4.";
+            default -> "3/8 Тип житла: room, 1, 2, 3 або 4.";
+        };
+    }
+
+    private String ownerListingLayoutInvalidText(Language lang) {
+        return switch (lang) {
+            case RU -> "Не понял тип. Напишите: room, 1, 2, 3 или 4.";
+            case CZ -> "Nerozumím typu. Napište: room, 1, 2, 3 nebo 4.";
+            case EN -> "I did not understand the type. Send: room, 1, 2, 3, or 4.";
+            default -> "Не зрозумів тип. Напишіть: room, 1, 2, 3 або 4.";
+        };
+    }
+
+    private String ownerListingPricePromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "4/8 Цена в Kč. Например: 12990.";
+            case CZ -> "4/8 Cena v Kč. Například: 12990.";
+            case EN -> "4/8 Price in Kč. For example: 12990.";
+            default -> "4/8 Ціна в Kč. Наприклад: 12990.";
+        };
+    }
+
+    private String ownerListingPriceInvalidText(Language lang) {
+        return switch (lang) {
+            case RU -> "Цена должна быть числом. Например: 12990.";
+            case CZ -> "Cena musí být číslo. Například: 12990.";
+            case EN -> "Price must be a number. For example: 12990.";
+            default -> "Ціна має бути числом. Наприклад: 12990.";
+        };
+    }
+
+    private String ownerListingTitlePromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "5/8 Название объявления. Например: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
+            case CZ -> "5/8 Název nabídky. Například: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
+            case EN -> "5/8 Listing title. For example: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
+            default -> "5/8 Назва оголошення. Наприклад: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
+        };
+    }
+
+    private String ownerListingTitleRequiredText(Language lang) {
+        return switch (lang) {
+            case RU -> "Название не может быть пустым.";
+            case CZ -> "Název nesmí být prázdný.";
+            case EN -> "Title cannot be empty.";
+            default -> "Назва не може бути пустою.";
+        };
+    }
+
+    private String ownerListingDescriptionPromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "6/8 Описание. Можно коротко: мебель, депозит, доступность. Если описания нет, напишите -";
+            case CZ -> "6/8 Popis. Stačí krátce: nábytek, kauce, dostupnost. Pokud popis není, napište -";
+            case EN -> "6/8 Description. Short is fine: furniture, deposit, availability. If there is no description, send -";
+            default -> "6/8 Опис. Можна коротко: меблі, депозит, доступність. Якщо опису немає, напишіть -";
+        };
+    }
+
+    private String ownerListingContactPromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "7/8 Контакт владельца: телефон, Telegram или другой способ связи.";
+            case CZ -> "7/8 Kontakt na majitele: telefon, Telegram nebo jiný způsob spojení.";
+            case EN -> "7/8 Owner contact: phone, Telegram, or another contact method.";
+            default -> "7/8 Контакт власника: телефон, Telegram або інший спосіб зв'язку.";
+        };
+    }
+
+    private String ownerListingContactRequiredText(Language lang) {
+        return switch (lang) {
+            case RU -> "Контакт не может быть пустым.";
+            case CZ -> "Kontakt nesmí být prázdný.";
+            case EN -> "Contact cannot be empty.";
+            default -> "Контакт не може бути пустим.";
+        };
+    }
+
     private void onPhoto(Update update) throws TelegramApiException {
         long chatId = update.getMessage().getChatId();
         long userId = update.getMessage().getFrom().getId();
@@ -668,7 +785,7 @@ Bazoš: %d
         }
 
         if (draft.step != OwnerListingDraft.Step.PHOTO) {
-            send(chatId, "Фото збережу на останньому кроці. Зараз очікую: " + draft.stepLabel(), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingUnexpectedPhotoText(lang, draft.stepLabel(lang)), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -680,7 +797,7 @@ Bazoš: %d
 
         draft.photoFileId = photos.get(photos.size() - 1).getFileId();
         draft.step = OwnerListingDraft.Step.CONFIRM;
-        sendOwnerListingPreview(chatId, draft);
+        sendOwnerListingPreview(chatId, draft, lang);
     }
 
     private void handleOwnerListingText(long chatId, long userId, String text, Language lang) throws TelegramApiException {
@@ -694,61 +811,61 @@ Bazoš: %d
                 Optional<Region> region = findRegionByInput(text);
                 if (region.isEmpty()) {
                     send(chatId,
-                            "Не знайшов таке місто/округ у базі. Напиши як у боті, наприклад: Praha, Brno, Kolín, Plzeň.",
+                            ownerListingRegionNotFoundText(lang),
                             Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.region = region.get();
                 draft.step = OwnerListingDraft.Step.LOCALITY;
-                send(chatId, "2/8 Локація або адреса. Наприклад: Kolín - Kolín II, Masarykova.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingLocalityPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LOCALITY -> {
                 draft.locality = cleanRequired(text);
                 if (draft.locality == null) {
-                    send(chatId, "Локація не може бути пустою. Напиши район, місто або адресу.", Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingLocalityRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.LAYOUT;
-                send(chatId, "3/8 Тип житла: room, 1, 2, 3 або 4.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingLayoutPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LAYOUT -> {
                 String layout = normalizeOwnerLayout(text);
                 if (layout == null) {
-                    send(chatId, "Не зрозумів тип. Напиши: room, 1, 2, 3 або 4.", Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingLayoutInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.layout = layout;
                 draft.step = OwnerListingDraft.Step.PRICE;
-                send(chatId, "4/8 Ціна в Kč. Наприклад: 12990.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingPricePromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case PRICE -> {
                 Integer price = parseOwnerPrice(text);
                 if (price == null) {
-                    send(chatId, "Ціна має бути числом. Наприклад: 12990.", Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingPriceInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.priceCzk = price;
                 draft.step = OwnerListingDraft.Step.TITLE;
-                send(chatId, "5/8 Назва оголошення. Наприклад: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingTitlePromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case TITLE -> {
                 draft.title = cleanRequired(text);
                 if (draft.title == null) {
-                    send(chatId, "Назва не може бути пустою.", Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingTitleRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.DESCRIPTION;
-                send(chatId, "6/8 Опис. Можна коротко: меблі, депозит, доступність. Якщо опису немає, напиши -", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingDescriptionPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case DESCRIPTION -> {
                 draft.description = "-".equals(text.trim()) ? null : text.trim();
                 draft.step = OwnerListingDraft.Step.CONTACT;
-                send(chatId, "7/8 Контакт власника: телефон, Telegram або інший спосіб зв'язку.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingContactPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case CONTACT -> {
                 draft.contact = cleanRequired(text);
                 if (draft.contact == null) {
-                    send(chatId, "Контакт не може бути пустим.", Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingContactRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.PHOTO;
@@ -771,7 +888,7 @@ Bazoš: %d
 
                 send(chatId,
                         ownerListingConfirmHelpText(lang),
-                        Keyboards.ownerListingConfirmKeyboard());
+                        Keyboards.ownerListingConfirmKeyboard(lang));
             }
         }
     }
@@ -856,7 +973,7 @@ Bazoš: %d
                                          OwnerListingDraft draft,
                                          Language lang) throws TelegramApiException {
         if (draft == null || !draft.readyToPublish()) {
-            send(chatId, "Чернетка не готова або вже скасована. Почни з /add_owner_listing.", Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingDraftNotReadyText(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -878,7 +995,7 @@ Bazoš: %d
             saved = ownerListingService.savePending(listing);
         } catch (Exception e) {
             System.out.println("Owner listing save failed for user=" + userId + ", error=" + e.getMessage());
-            send(chatId, ownerListingSubmitFailedText(lang), Keyboards.ownerListingConfirmKeyboard());
+            send(chatId, ownerListingSubmitFailedText(lang), Keyboards.ownerListingConfirmKeyboard(lang));
             return;
         }
 
@@ -904,14 +1021,35 @@ Bazoš: %d
 
     private String ownerListingSubmitFailedText(Language lang) {
         return switch (lang) {
-            case RU -> "Не смог сохранить объявление. Попробуйте нажать ✅ Надіслати ещё раз чуть позже.";
-            case CZ -> "Nabídku se nepodařilo uložit. Zkuste prosím stisknout ✅ Надіслати znovu za chvíli.";
-            case EN -> "Could not save the listing. Please press ✅ Надіслати again in a moment.";
+            case RU -> "Не смог сохранить объявление. Попробуйте нажать ✅ Отправить ещё раз чуть позже.";
+            case CZ -> "Nabídku se nepodařilo uložit. Zkuste prosím stisknout ✅ Odeslat znovu za chvíli.";
+            case EN -> "Could not save the listing. Please press ✅ Send again in a moment.";
             default -> "Не вдалося зберегти оголошення. Спробуйте натиснути ✅ Надіслати ще раз трохи пізніше.";
         };
     }
 
+    private String ownerListingDraftNotReadyText(Language lang) {
+        return switch (lang) {
+            case RU -> "Черновик не готов или уже отменён. Начните с /add_owner_listing.";
+            case CZ -> "Koncept není hotový nebo už byl zrušen. Začněte pomocí /add_owner_listing.";
+            case EN -> "The draft is not ready or was already cancelled. Start with /add_owner_listing.";
+            default -> "Чернетка не готова або вже скасована. Почніть з /add_owner_listing.";
+        };
+    }
+
     private boolean isOwnerListingSubmitText(String text) {
+        String lower = text == null ? "" : text.trim().toLowerCase();
+        if (lower.equals("так")
+                || lower.equals("та")
+                || lower.equals("да")
+                || lower.equals("отправить")
+                || lower.equals("надіслати")
+                || lower.equals("відправити")
+                || lower.equals("відправ")
+                || lower.equals("odeslat")) {
+            return true;
+        }
+
         String normalized = normalizeSearch(text);
         return normalized.equals("tak")
                 || normalized.equals("ta")
@@ -924,10 +1062,22 @@ Bazoš: %d
                 || normalized.equals("submit")
                 || normalized.equals("nadislat")
                 || normalized.equals("vidpravyty")
+                || normalized.equals("odeslat")
                 || normalized.equals("otpravit");
     }
 
     private boolean isOwnerListingCancelText(String text) {
+        String lower = text == null ? "" : text.trim().toLowerCase();
+        if (lower.equals("ні")
+                || lower.equals("нет")
+                || lower.equals("скасувати")
+                || lower.equals("отмена")
+                || lower.equals("отменить")
+                || lower.equals("zrušit")
+                || lower.equals("zrusit")) {
+            return true;
+        }
+
         String normalized = normalizeSearch(text);
         return normalized.equals("ni")
                 || normalized.equals("no")
@@ -940,28 +1090,94 @@ Bazoš: %d
 
     private String ownerListingConfirmHelpText(Language lang) {
         return switch (lang) {
-            case RU -> "Чтобы отправить объявление на проверку, нажмите ✅ Надіслати или напишите Да.";
-            case CZ -> "Pro odeslání nabídky ke kontrole stiskněte ✅ Nadíslati nebo napište Ano.";
-            case EN -> "To send the listing for review, press ✅ Nadíslati or type Yes.";
+            case RU -> "Чтобы отправить объявление на проверку, нажмите ✅ Отправить или напишите Да.";
+            case CZ -> "Pro odeslání nabídky ke kontrole stiskněte ✅ Odeslat nebo napište Ano.";
+            case EN -> "To send the listing for review, press ✅ Send or type Yes.";
             default -> "Щоб надіслати оголошення на перевірку, натисніть ✅ Надіслати або напишіть Так.";
         };
     }
 
-    private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft) throws TelegramApiException {
-        String preview = """
-                🏠 Оголошення від власника
+    private String ownerListingPreviewText(Language lang) {
+        return switch (lang) {
+            case RU -> """
+                    🏠 Объявление от владельца
 
-                Місто/округ: %s
-                Локація: %s
-                Тип: %s
-                Ціна: %s
-                Назва: %s
-                Опис: %s
-                Контакт: %s
-                Фото: %s
+                    Город/округ: %s
+                    Локация: %s
+                    Тип: %s
+                    Цена: %s
+                    Название: %s
+                    Описание: %s
+                    Контакт: %s
+                    Фото: %s
 
-                Опублікувати це оголошення?
-                """.formatted(
+                    Отправить это объявление на проверку?
+                    """;
+            case CZ -> """
+                    🏠 Nabídka od majitele
+
+                    Město/okres: %s
+                    Lokalita: %s
+                    Typ: %s
+                    Cena: %s
+                    Název: %s
+                    Popis: %s
+                    Kontakt: %s
+                    Foto: %s
+
+                    Odeslat tuto nabídku ke kontrole?
+                    """;
+            case EN -> """
+                    🏠 Owner listing
+
+                    City/district: %s
+                    Location: %s
+                    Type: %s
+                    Price: %s
+                    Title: %s
+                    Description: %s
+                    Contact: %s
+                    Photo: %s
+
+                    Send this listing for review?
+                    """;
+            default -> """
+                    🏠 Оголошення від власника
+
+                    Місто/округ: %s
+                    Локація: %s
+                    Тип: %s
+                    Ціна: %s
+                    Назва: %s
+                    Опис: %s
+                    Контакт: %s
+                    Фото: %s
+
+                    Надіслати це оголошення на перевірку?
+                    """;
+        };
+    }
+
+    private String ownerListingHasPhotoText(Language lang) {
+        return switch (lang) {
+            case RU -> "есть";
+            case CZ -> "ano";
+            case EN -> "yes";
+            default -> "є";
+        };
+    }
+
+    private String ownerListingNoPhotoText(Language lang) {
+        return switch (lang) {
+            case RU -> "нет";
+            case CZ -> "ne";
+            case EN -> "no";
+            default -> "немає";
+        };
+    }
+
+    private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft, Language lang) throws TelegramApiException {
+        String preview = ownerListingPreviewText(lang).formatted(
                 draft.region == null ? "—" : draft.region.getTitle(),
                 nvl(draft.locality),
                 nvl(draft.layout),
@@ -969,10 +1185,10 @@ Bazoš: %d
                 nvl(draft.title),
                 nvl(draft.description),
                 nvl(draft.contact),
-                draft.photoFileId == null ? "немає" : "є"
+                draft.photoFileId == null ? ownerListingNoPhotoText(lang) : ownerListingHasPhotoText(lang)
         );
 
-        send(chatId, preview, Keyboards.ownerListingConfirmKeyboard());
+        send(chatId, preview, Keyboards.ownerListingConfirmKeyboard(lang));
     }
 
     private void sendOwnerListingsList(long chatId, int limit) throws TelegramApiException {
@@ -1229,7 +1445,7 @@ Bazoš: %d
         if (data.equals("OWNER:SUBMIT")) {
             OwnerListingDraft draft = ownerListingDrafts.get(userId);
             if (draft == null || !draft.readyToPublish()) {
-                send(chatId, "Чернетка не готова або вже скасована. Почни з /add_owner_listing.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingDraftNotReadyText(lang), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
@@ -2131,7 +2347,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
 
         String caption =
                 "🏠 " + nvl(l.title()) + "\n" +
-                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + displaySource(l.source(), lang) + "\n" +
                         "💰 " + formatPrice(l.priceCzk()) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality());
 
@@ -2169,7 +2385,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
 
         String caption =
                 "🏠 " + nvl(fav.getTitle()) + "\n" +
-                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(fav.getSource()) + "\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + displaySource(fav.getSource(), lang) + "\n" +
                         "💰 " + formatPrice(fav.getPriceCzk() != null ? fav.getPriceCzk() : 0) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(fav.getLocality());
 
@@ -2244,6 +2460,24 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
 
     private String nvl(String s) {
         return (s == null || s.isBlank()) ? "—" : s;
+    }
+
+    private String displaySource(String source, Language lang) {
+        if (source == null || source.isBlank()) {
+            return "—";
+        }
+
+        String normalized = source.trim().toLowerCase();
+        if (normalized.equals("owner") || normalized.equals("власник")) {
+            return switch (lang) {
+                case RU -> "Владелец";
+                case CZ -> "Majitel";
+                case EN -> "Owner";
+                default -> "Власник";
+            };
+        }
+
+        return source;
     }
 
     private String formatPrice(int price) {
@@ -2331,7 +2565,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                         "💰 " + formatPrice(l.priceCzk()) + pricePeriod(lang) + "\n" +
                         "📍 " + msg(userId, "listing.location") + ": " + nvl(l.locality()) + "\n" +
                         freshnessIcon(l.foundAt()) + " " + addedLabel(lang) + ": " + formatTimeAgo(l.foundAt(), lang) + "\n" +
-                        "🏷 " + msg(userId, "listing.source") + ": " + nvl(l.source()) + "\n\n" +
+                        "🏷 " + msg(userId, "listing.source") + ": " + displaySource(l.source(), lang) + "\n\n" +
                         "📄 " + listingLabel(lang) + " " + (index + 1) + " / " + total;
 
         String tokenValue = listingCacheService.put(l);
@@ -2473,17 +2707,62 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                     && photoFileId != null;
         }
 
-        private String stepLabel() {
+        private String stepLabel(Language lang) {
             return switch (step) {
-                case CITY -> "місто";
-                case LOCALITY -> "локація";
-                case LAYOUT -> "тип житла";
-                case PRICE -> "ціна";
-                case TITLE -> "назва";
-                case DESCRIPTION -> "опис";
-                case CONTACT -> "контакт";
-                case PHOTO -> "фото";
-                case CONFIRM -> "підтвердження";
+                case CITY -> switch (lang) {
+                    case RU -> "город";
+                    case CZ -> "město";
+                    case EN -> "city";
+                    default -> "місто";
+                };
+                case LOCALITY -> switch (lang) {
+                    case RU -> "локация";
+                    case CZ -> "lokalita";
+                    case EN -> "location";
+                    default -> "локація";
+                };
+                case LAYOUT -> switch (lang) {
+                    case RU -> "тип жилья";
+                    case CZ -> "typ bydlení";
+                    case EN -> "housing type";
+                    default -> "тип житла";
+                };
+                case PRICE -> switch (lang) {
+                    case RU -> "цена";
+                    case CZ -> "cena";
+                    case EN -> "price";
+                    default -> "ціна";
+                };
+                case TITLE -> switch (lang) {
+                    case RU -> "название";
+                    case CZ -> "název";
+                    case EN -> "title";
+                    default -> "назва";
+                };
+                case DESCRIPTION -> switch (lang) {
+                    case RU -> "описание";
+                    case CZ -> "popis";
+                    case EN -> "description";
+                    default -> "опис";
+                };
+                case CONTACT -> switch (lang) {
+                    case RU -> "контакт";
+                    case CZ -> "kontakt";
+                    case EN -> "contact";
+                    default -> "контакт";
+                };
+                case PHOTO -> switch (lang) {
+                    case RU -> "фото";
+                    case CZ -> "foto";
+                    case EN -> "photo";
+                    default -> "фото";
+                };
+                case CONFIRM -> switch (lang) {
+                    case RU -> "подтверждение";
+                    case CZ -> "potvrzení";
+                    case EN -> "confirmation";
+                    default -> "підтвердження";
+                };
             };
         }
     }

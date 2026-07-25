@@ -648,9 +648,23 @@ public class Keyboards {
     }
 
     public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {
+        return ownerListingConfirmKeyboard(Language.UA);
+    }
+
+    public static InlineKeyboardMarkup ownerListingConfirmKeyboard(Language lang) {
         InlineKeyboardRow row = new InlineKeyboardRow();
-        row.add(button("✅ Надіслати", "OWNER:SUBMIT"));
-        row.add(button("❌ Скасувати", "OWNER:CANCEL"));
+        row.add(button(switch (lang) {
+            case RU -> "✅ Отправить";
+            case CZ -> "✅ Odeslat";
+            case EN -> "✅ Send";
+            default -> "✅ Надіслати";
+        }, "OWNER:SUBMIT"));
+        row.add(button(switch (lang) {
+            case RU -> "❌ Отменить";
+            case CZ -> "❌ Zrušit";
+            case EN -> "❌ Cancel";
+            default -> "❌ Скасувати";
+        }, "OWNER:CANCEL"));
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row))

@@ -70,7 +70,7 @@ public class NotificationService {
 
         String caption =
                 "🏠 " + nvl(listing.title()) + "\n" +
-                        "🏷 " + sourceLabel + ": " + nvl(listing.source()) + "\n" +
+                        "🏷 " + sourceLabel + ": " + displaySource(listing.source(), lang) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
                         "📍 " + locationLabel + ": " + nvl(listing.locality()) + "\n" +
                         "🕒 " + formatAddedAt(listing.foundAt(), lang);
@@ -208,6 +208,24 @@ public class NotificationService {
 
     private String nvl(String s) {
         return (s == null || s.isBlank()) ? "—" : s;
+    }
+
+    private String displaySource(String source, Language lang) {
+        if (source == null || source.isBlank()) {
+            return "—";
+        }
+
+        String normalized = source.trim().toLowerCase();
+        if (normalized.equals("owner") || normalized.equals("власник")) {
+            return switch (lang) {
+                case RU -> "Владелец";
+                case CZ -> "Majitel";
+                case EN -> "Owner";
+                default -> "Власник";
+            };
+        }
+
+        return source;
     }
 
     public long countSent() {

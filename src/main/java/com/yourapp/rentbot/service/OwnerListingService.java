@@ -87,7 +87,7 @@ public class OwnerListingService {
                 ? ""
                 : "\n" + listing.getDescription().trim();
 
-        String title = listing.getTitle() + description + "\nКонтакт: " + listing.getContact();
+        String title = listing.getTitle() + description + "\nKontakt / Contact: " + listing.getContact();
 
         return new ListingDto(
                 title,
@@ -96,7 +96,7 @@ public class OwnerListingService {
                 listing.getLayout(),
                 listing.getLocality(),
                 listing.getPhotoFileId(),
-                "Власник",
+                "Owner",
                 LocalDateTime.ofInstant(
                         listing.getApprovedAt() == null ? Instant.now() : listing.getApprovedAt(),
                         ZoneId.systemDefault())
