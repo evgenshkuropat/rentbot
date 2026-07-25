@@ -33,7 +33,7 @@ public class OwnerListingService {
     }
 
     public OwnerListing savePending(OwnerListing listing) {
-        listing.setStatus(OwnerListing.Status.PENDING);
+        listing.setStatus(OwnerListing.Status.ARCHIVED);
         if (listing.getCreatedAt() == null) {
             listing.setCreatedAt(Instant.now());
         }
@@ -42,7 +42,7 @@ public class OwnerListingService {
     }
 
     public Optional<OwnerListing> findPending(Long id) {
-        return ownerListingRepo.findByIdAndStatus(id, OwnerListing.Status.PENDING);
+        return ownerListingRepo.findByIdAndStatusAndApprovedAtIsNull(id, OwnerListing.Status.ARCHIVED);
     }
 
     public OwnerListing approve(OwnerListing listing) {
@@ -53,6 +53,9 @@ public class OwnerListingService {
 
     public OwnerListing archive(OwnerListing listing) {
         listing.setStatus(OwnerListing.Status.ARCHIVED);
+        if (listing.getApprovedAt() == null) {
+            listing.setApprovedAt(Instant.now());
+        }
         return ownerListingRepo.save(listing);
     }
 

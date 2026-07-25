@@ -9,7 +9,6 @@ import java.time.Instant;
 public class OwnerListing {
 
     public enum Status {
-        PENDING,
         APPROVED,
         ARCHIVED
     }

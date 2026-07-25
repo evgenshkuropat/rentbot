@@ -840,7 +840,15 @@ Bazoš: %d
         listing.setPhotoFileId(draft.photoFileId);
         listing.setCreatedAt(Instant.now());
 
-        OwnerListing saved = ownerListingService.savePending(listing);
+        OwnerListing saved;
+        try {
+            saved = ownerListingService.savePending(listing);
+        } catch (Exception e) {
+            System.out.println("Owner listing save failed for user=" + userId + ", error=" + e.getMessage());
+            send(chatId, ownerListingSubmitFailedText(lang), Keyboards.ownerListingConfirmKeyboard());
+            return;
+        }
+
         ownerListingDrafts.remove(userId);
 
         send(chatId,
@@ -852,7 +860,22 @@ Bazoš: %d
                 },
                 Keyboards.persistentNavKeyboard(lang));
 
-        sendOwnerListingToAdmin(saved);
+        try {
+            sendOwnerListingToAdmin(saved);
+        } catch (Exception e) {
+            System.out.println("Owner listing admin notification failed for listing="
+                    + saved.getId()
+                    + ", error=" + e.getMessage());
+        }
+    }
+
+    private String ownerListingSubmitFailedText(Language lang) {
+        return switch (lang) {
+            case RU -> "Не смог сохранить объявление. Попробуйте нажать ✅ Надіслати ещё раз чуть позже.";
+            case CZ -> "Nabídku se nepodařilo uložit. Zkuste prosím stisknout ✅ Надіслати znovu za chvíli.";
+            case EN -> "Could not save the listing. Please press ✅ Надіслати again in a moment.";
+            default -> "Не вдалося зберегти оголошення. Спробуйте натиснути ✅ Надіслати ще раз трохи пізніше.";
+        };
     }
 
     private boolean isOwnerListingSubmitText(String text) {
@@ -951,15 +974,21 @@ Bazoš: %d
         );
 
         if (hasUsablePhotoUrl(listing.getPhotoFileId())) {
-            telegramClient.execute(
-                    SendPhoto.builder()
-                            .chatId(ADMIN_ID)
-                            .photo(new InputFile(listing.getPhotoFileId()))
-                            .caption(trimCaption(text))
-                            .replyMarkup(Keyboards.ownerListingModerationKeyboard(listing.getId()))
-                            .build()
-            );
-            return;
+            try {
+                telegramClient.execute(
+                        SendPhoto.builder()
+                                .chatId(ADMIN_ID)
+                                .photo(new InputFile(listing.getPhotoFileId()))
+                                .caption(trimCaption(text))
+                                .replyMarkup(Keyboards.ownerListingModerationKeyboard(listing.getId()))
+                                .build()
+                );
+                return;
+            } catch (Exception e) {
+                System.out.println("Owner listing photo notification failed for listing="
+                        + listing.getId()
+                        + ", fallback=text, error=" + e.getMessage());
+            }
         }
 
         send(ADMIN_ID, text, Keyboards.ownerListingModerationKeyboard(listing.getId()));
@@ -1023,34 +1052,10 @@ Bazoš: %d
                 return;
             }
 
-            OwnerListing listing = new OwnerListing();
-            listing.setCreatedByTelegramId(userId);
-            listing.setCreatedByUsername(draft.createdByUsername);
-            listing.setRegion(draft.region);
-            listing.setLocality(draft.locality);
-            listing.setLayout(draft.layout);
-            listing.setPriceCzk(draft.priceCzk);
-            listing.setTitle(draft.title);
-            listing.setDescription(draft.description);
-            listing.setContact(draft.contact);
-            listing.setPhotoFileId(draft.photoFileId);
-            listing.setCreatedAt(Instant.now());
-
-            OwnerListing saved = ownerListingService.savePending(listing);
-            ownerListingDrafts.remove(userId);
-
-            send(chatId,
-                    switch (lang) {
-                        case RU -> "✅ Объявление отправлено на проверку.\n\nПосле модерации оно сможет появиться в выдаче.";
-                        case CZ -> "✅ Nabídka byla odeslána ke kontrole.\n\nPo schválení se může zobrazit ve výsledcích.";
-                        case EN -> "✅ Listing sent for review.\n\nAfter approval it can appear in search results.";
-                        default -> "✅ Оголошення надіслано на перевірку.\n\nПісля модерації воно зможе зʼявитися у видачі.";
-                    },
-                    Keyboards.persistentNavKeyboard(lang));
-
-            sendOwnerListingToAdmin(saved);
+            submitOwnerListingDraft(chatId, userId, draft, lang);
             return;
         }
+
         if (data.equals("OWNER:CANCEL")) {
             ownerListingDrafts.remove(userId);
             send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
