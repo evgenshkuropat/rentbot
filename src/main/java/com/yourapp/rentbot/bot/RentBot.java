@@ -2011,12 +2011,16 @@ Bazoš: %d
     }
 
     private Long parseAdminIdArgument(String text) {
-        String[] parts = text.trim().split("\\s+");
-        if (parts.length < 2) {
+        if (text == null || text.isBlank()) {
             return null;
         }
 
-        return parseLongOrNull(parts[1]);
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return null;
+        }
+
+        return parseLongOrNull(digits);
     }
 
     private Long parseLongOrNull(String value) {
