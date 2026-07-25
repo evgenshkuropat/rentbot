@@ -5,7 +5,6 @@ import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.repo.OwnerListingRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -48,14 +47,12 @@ public class OwnerListingService {
     }
 
     public Optional<OwnerListing> findById(Long id) {
-        return ownerListingRepo.findById(id);
+        return ownerListingRepo.findFullById(id);
     }
 
     public List<OwnerListing> listRecent(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 50));
-        return ownerListingRepo.findAll(
-                        PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt")))
-                .getContent();
+        return ownerListingRepo.findRecentFull(PageRequest.of(0, safeLimit));
     }
 
     public OwnerListing approve(OwnerListing listing) {
