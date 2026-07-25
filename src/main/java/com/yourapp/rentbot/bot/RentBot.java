@@ -724,7 +724,22 @@ Bazoš: %d
             case PHOTO -> {
                 send(chatId, ownerListingPhotoRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
             }
-            case CONFIRM -> sendOwnerListingPreview(chatId, draft);
+            case CONFIRM -> {
+                if (isOwnerListingSubmitText(text)) {
+                    submitOwnerListingDraft(chatId, userId, draft, lang);
+                    return;
+                }
+
+                if (isOwnerListingCancelText(text)) {
+                    ownerListingDrafts.remove(userId);
+                    send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
+                    return;
+                }
+
+                send(chatId,
+                        ownerListingConfirmHelpText(lang),
+                        Keyboards.ownerListingConfirmKeyboard());
+            }
         }
     }
 
@@ -801,6 +816,79 @@ Bazoš: %d
             return null;
         }
         return text.trim();
+    }
+
+    private void submitOwnerListingDraft(long chatId,
+                                         long userId,
+                                         OwnerListingDraft draft,
+                                         Language lang) throws TelegramApiException {
+        if (draft == null || !draft.readyToPublish()) {
+            send(chatId, "Чернетка не готова або вже скасована. Почни з /add_owner_listing.", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        OwnerListing listing = new OwnerListing();
+        listing.setCreatedByTelegramId(userId);
+        listing.setCreatedByUsername(draft.createdByUsername);
+        listing.setRegion(draft.region);
+        listing.setLocality(draft.locality);
+        listing.setLayout(draft.layout);
+        listing.setPriceCzk(draft.priceCzk);
+        listing.setTitle(draft.title);
+        listing.setDescription(draft.description);
+        listing.setContact(draft.contact);
+        listing.setPhotoFileId(draft.photoFileId);
+        listing.setCreatedAt(Instant.now());
+
+        OwnerListing saved = ownerListingService.savePending(listing);
+        ownerListingDrafts.remove(userId);
+
+        send(chatId,
+                switch (lang) {
+                    case RU -> "✅ Объявление отправлено на проверку.\n\nПосле модерации оно сможет появиться в выдаче.";
+                    case CZ -> "✅ Nabídka byla odeslána ke kontrole.\n\nPo schválení se může zobrazit ve výsledcích.";
+                    case EN -> "✅ Listing sent for review.\n\nAfter approval it can appear in search results.";
+                    default -> "✅ Оголошення надіслано на перевірку.\n\nПісля модерації воно зможе зʼявитися у видачі.";
+                },
+                Keyboards.persistentNavKeyboard(lang));
+
+        sendOwnerListingToAdmin(saved);
+    }
+
+    private boolean isOwnerListingSubmitText(String text) {
+        String normalized = normalizeSearch(text);
+        return normalized.equals("tak")
+                || normalized.equals("ta")
+                || normalized.equals("yes")
+                || normalized.equals("y")
+                || normalized.equals("da")
+                || normalized.equals("ano")
+                || normalized.equals("ok")
+                || normalized.equals("send")
+                || normalized.equals("submit")
+                || normalized.equals("nadislat")
+                || normalized.equals("vidpravyty")
+                || normalized.equals("otpravit");
+    }
+
+    private boolean isOwnerListingCancelText(String text) {
+        String normalized = normalizeSearch(text);
+        return normalized.equals("ni")
+                || normalized.equals("no")
+                || normalized.equals("ne")
+                || normalized.equals("net")
+                || normalized.equals("cancel")
+                || normalized.equals("skasuvaty")
+                || normalized.equals("otmena");
+    }
+
+    private String ownerListingConfirmHelpText(Language lang) {
+        return switch (lang) {
+            case RU -> "Чтобы отправить объявление на проверку, нажмите ✅ Надіслати или напишите Да.";
+            case CZ -> "Pro odeslání nabídky ke kontrole stiskněte ✅ Nadíslati nebo napište Ano.";
+            case EN -> "To send the listing for review, press ✅ Nadíslati or type Yes.";
+            default -> "Щоб надіслати оголошення на перевірку, натисніть ✅ Надіслати або напишіть Так.";
+        };
     }
 
     private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft) throws TelegramApiException {
