@@ -612,7 +612,7 @@ Bazoš: %d
         send(chatId,
                 switch (lang) {
                     case RU -> """
-                            🏠 Добавить жильё от собственника
+                            🏠 Добавить жильё
 
                             Заполните короткую анкету. После проверки объявление сможет появиться в боте для людей, которым оно подходит по фильтру.
 
@@ -621,7 +621,7 @@ Bazoš: %d
                             Отменить: /cancel
                             """;
                     case CZ -> """
-                            🏠 Přidat bydlení od majitele
+                            🏠 Přidat bydlení
 
                             Vyplňte krátký formulář. Po kontrole se nabídka může zobrazit lidem, kterým odpovídá podle filtru.
 
@@ -630,7 +630,7 @@ Bazoš: %d
                             Zrušit: /cancel
                             """;
                     case EN -> """
-                            🏠 Add owner listing
+                            🏠 Add listing
 
                             Fill in a short form. After review, the listing can appear in the bot for people whose filter matches it.
 
@@ -639,7 +639,7 @@ Bazoš: %d
                             Cancel: /cancel
                             """;
                     default -> """
-                            🏠 Додати житло від власника
+                            🏠 Додати житло
 
                             Заповніть коротку анкету. Після перевірки оголошення може зʼявитися в боті для людей, яким воно підходить за фільтром.
 
