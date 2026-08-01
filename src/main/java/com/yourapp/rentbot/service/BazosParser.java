@@ -368,22 +368,34 @@ public class BazosParser {
 
         List<String> urls = new ArrayList<>();
 
-        for (String zip : zipCodes) {
+        String zip = zipCodes.get(0);
+        int radiusKm = bazosRadiusKm(code);
 
-            urls.add(
-                    BASE_URL + "/pronajmu/byt/?hlokalita="
-                            + zip
-                            + "&humkreis=15"
-            );
+        urls.add(buildSearchUrl("/pronajmu/byt/", zip, radiusKm));
+        urls.add(buildSearchUrl("/pronajmu/podnajem/", zip, radiusKm));
 
-            urls.add(
-                    BASE_URL + "/pronajmu/podnajem/?hlokalita="
-                            + zip
-                            + "&humkreis=15"
-            );
-        }
 
         return urls;
+    }
+
+    private String buildSearchUrl(String path, String zip, int radiusKm) {
+        return BASE_URL + path
+                + "?hledat="
+                + "&rubriky=reality"
+                + "&hlokalita=" + zip
+                + "&humkreis=" + radiusKm
+                + "&cenaod="
+                + "&cenado="
+                + "&order="
+                + "&crp="
+                + "&kitx=ano";
+    }
+
+    private int bazosRadiusKm(String regionCode) {
+        if ("LIBEREC".equals(regionCode)) {
+            return 10;
+        }
+        return 15;
     }
 
     private Element findReasonableContainer(Element linkEl) {
