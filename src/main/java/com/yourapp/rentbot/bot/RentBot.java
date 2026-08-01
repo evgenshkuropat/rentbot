@@ -2134,74 +2134,94 @@ Bazoš: %d
             case RU -> """
 💎 Премиум
 
-Для тех, кто хочет искать жильё быстрее и сразу в нескольких направлениях.
+Для тех, кто хочет искать жильё активнее и получать больше подходящих вариантов.
 
-Что планируем добавить:
+Цена раннего доступа: 99 Kč / месяц.
+
+Что будет в Премиум:
 
 ✅ несколько поисков одновременно
-Например: Praha 1+kk, Brno 2+kk, Plzeň комната.
+Например: Praha 1+kk, Brno 2+kk и Plzeň комната.
 
-🔎 больше подходящих предложений
-Расширенный поиск по Sreality, iDNES, Bezrealitky и Bazoš.
+🔎 больше вариантов в выдаче
+Больше подходящих предложений из Sreality, iDNES, Bezrealitky и Bazoš.
 
 🏠 больше вариантов без риелтора
 Отдельный акцент на объявления от собственников и Bezrealitky.
 
-Премиум сейчас в разработке. Если хочешь попасть в список первых пользователей — напиши автору.
+⚡ приоритет в новых функциях
+Первые пользователи помогают выбрать, что добавить дальше.
+
+Премиум запускается в тестовом режиме. Чтобы подключить — напишите автору.
 """;
             case CZ -> """
 💎 Premium
 
-Pro ty, kteří chtějí hledat bydlení rychleji a ve více směrech najednou.
+Pro ty, kteří chtějí hledat bydlení aktivněji a dostávat více relevantních nabídek.
 
-Co plánujeme přidat:
+Cena předběžného přístupu: 99 Kč / měsíc.
+
+Co bude v Premium:
 
 ✅ více hledání najednou
-Například: Praha 1+kk, Brno 2+kk, Plzeň pokoj.
+Například: Praha 1+kk, Brno 2+kk a Plzeň pokoj.
 
-🔎 více relevantních nabídek
-Rozšířené hledání přes Sreality, iDNES, Bezrealitky a Bazoš.
+🔎 více nabídek ve výsledcích
+Více relevantních nabídek ze Sreality, iDNES, Bezrealitky a Bazoš.
 
 🏠 více nabídek bez realitky
 Větší důraz na nabídky od majitelů a Bezrealitky.
 
-Premium je zatím ve vývoji. Pokud chcete být mezi prvními uživateli, napište autorovi.
+⚡ priorita u nových funkcí
+První uživatelé pomohou vybrat, co přidat dál.
+
+Premium se spouští v testovacím režimu. Pro aktivaci napište autorovi.
 """;
             case EN -> """
 💎 Premium
 
-For people who want to search faster and track several apartment searches at once.
+For people who want to search more actively and get more relevant listings.
 
-What we plan to add:
+Early access price: 99 Kč / month.
+
+What Premium will include:
 
 ✅ multiple searches at once
-For example: Praha 1+kk, Brno 2+kk, Plzeň room.
+For example: Praha 1+kk, Brno 2+kk and Plzeň room.
 
-🔎 more relevant listings
-Expanded search across Sreality, iDNES, Bezrealitky and Bazoš.
+🔎 more listings in results
+More relevant listings from Sreality, iDNES, Bezrealitky and Bazoš.
 
 🏠 more no-agent options
 More focus on owner listings and Bezrealitky.
 
-Premium is still in development. If you want early access, contact the author.
+⚡ priority for new features
+Early users help decide what to add next.
+
+Premium is launching in test mode. To activate it, contact the author.
 """;
             default -> """
 💎 Преміум
 
-Для тих, хто хоче шукати житло швидше й одразу в кількох напрямках.
+Для тих, хто хоче шукати житло активніше й отримувати більше відповідних варіантів.
 
-Що плануємо додати:
+Ціна раннього доступу: 99 Kč / місяць.
+
+Що буде в Преміум:
 
 ✅ кілька пошуків одночасно
-Наприклад: Praha 1+kk, Brno 2+kk, Plzeň кімната.
+Наприклад: Praha 1+kk, Brno 2+kk і Plzeň кімната.
 
-🔎 більше релевантних пропозицій
-Розширений пошук по Sreality, iDNES, Bezrealitky та Bazoš.
+🔎 більше варіантів у видачі
+Більше відповідних пропозицій із Sreality, iDNES, Bezrealitky та Bazoš.
 
 🏠 більше варіантів без рієлтора
 Більший акцент на оголошеннях від власників і Bezrealitky.
 
-Преміум зараз у розробці. Якщо хочеш потрапити до перших користувачів — напиши автору.
+⚡ пріоритет у нових функціях
+Перші користувачі допомагають обрати, що додати далі.
+
+Преміум запускається в тестовому режимі. Щоб підключити — напишіть автору.
 """;
         };
     }
