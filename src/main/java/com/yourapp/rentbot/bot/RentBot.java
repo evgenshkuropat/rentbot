@@ -476,6 +476,18 @@ Bazoš: %d
             return;
         }
 
+        if (text.equals("🏠 Додати житло")
+                || text.equals("🏠 Добавить жильё")
+                || text.equals("🏠 Přidat bydlení")
+                || text.equals("🏠 Add listing")
+                || text.equals("🏠 Додати житло від власника")
+                || text.equals("🏠 Добавить жильё от собственника")
+                || text.equals("🏠 Přidat nabídku od majitele")
+                || text.equals("🏠 Add owner listing")) {
+            startOwnerListingDraft(chatId, userId, update.getMessage().getFrom().getUserName(), lang);
+            return;
+        }
+
         if (text.equals("💎 Преміум")
                 || text.equals("💎 Премиум")
                 || text.equals("💎 Premium")) {

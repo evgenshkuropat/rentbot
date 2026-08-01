@@ -272,24 +272,30 @@ public class Keyboards {
 
         KeyboardRow row3 = new KeyboardRow();
         row3.add(switch (lang) {
+            case RU -> "🏠 Добавить жильё";
+            case CZ -> "🏠 Přidat bydlení";
+            case EN -> "🏠 Add listing";
+            default -> "🏠 Додати житло";
+        });
+        row3.add(switch (lang) {
+            case RU -> "💎 Премиум";
+            case CZ -> "💎 Premium";
+            case EN -> "💎 Premium";
+            default -> "💎 Преміум";
+        });
+
+        KeyboardRow row4 = new KeyboardRow();
+        row4.add(switch (lang) {
             case RU -> "🌐 Язык / Language";
             case CZ -> "🌐 Jazyk / Language";
             case EN -> "🌐 Language";
             default -> "🌐 Мова / Language";
         });
-        row3.add(switch (lang) {
+        row4.add(switch (lang) {
             case RU -> "🤝 Другие сервисы";
             case CZ -> "🤝 Další služby";
             case EN -> "🤝 Other services";
             default -> "🤝 Інші сервіси";
-        });
-
-        KeyboardRow row4 = new KeyboardRow();
-        row4.add(switch (lang) {
-            case RU -> "💎 Премиум";
-            case CZ -> "💎 Premium";
-            case EN -> "💎 Premium";
-            default -> "💎 Преміум";
         });
 
         List<KeyboardRow> keyboard = new ArrayList<>();
