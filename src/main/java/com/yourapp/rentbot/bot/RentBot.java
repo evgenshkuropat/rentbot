@@ -2121,36 +2121,36 @@ Bazoš: %d
 
                     Спасибо, что пользуетесь ботом для поиска жилья в Чехии.
 
-                    Если бот помогает вам искать квартиру, поделитесь им с друзьями — возможно, кому-то это тоже сэкономит время.
+                    Если бот помогает вам, поделитесь им с друзьями — возможно, кому-то это тоже сэкономит время.
 
-                    А если хотите поддержать развитие проекта, можно посмотреть Premium.
+                    А если хотите поддержать развитие проекта, можно сделать это кнопкой ниже 💙
                     """;
             case CZ -> """
                     🎉 V Zhytlo CZ je nás už 1500!
 
                     Děkuji, že používáte bot pro hledání bydlení v Česku.
 
-                    Pokud vám bot pomáhá hledat byt, sdílejte ho s přáteli — možná někomu také ušetří čas.
+                    Pokud vám bot pomáhá, sdílejte ho s přáteli — možná někomu také ušetří čas.
 
-                    Pokud chcete podpořit rozvoj projektu, můžete se podívat na Premium.
+                    Pokud chcete podpořit rozvoj projektu, můžete to udělat tlačítkem níže 💙
                     """;
             case EN -> """
                     🎉 There are already 1500 of us in Zhytlo CZ!
 
                     Thank you for using the bot to search for housing in Czechia.
 
-                    If the bot helps you look for an apartment, share it with friends — it may save someone time too.
+                    If the bot helps you, share it with friends — it may save someone time too.
 
-                    You can also check Premium if you want to support the project.
+                    If you want to support the project, you can do it with the button below 💙
                     """;
             default -> """
                     🎉 Нас уже 1500 у Zhytlo CZ!
 
                     Дякую, що користуєтесь ботом для пошуку житла в Чехії.
 
-                    Якщо бот допомагає вам шукати квартиру, поділіться ним з друзями — можливо, комусь це теж зекономить час.
+                    Якщо бот допомагає вам, поділіться ним з друзями — можливо, комусь це теж зекономить час.
 
-                    А якщо хочете підтримати розвиток проєкту, можна переглянути Преміум.
+                    А якщо хочете підтримати розвиток проєкту, можете зробити це кнопкою нижче 💙
                     """;
         };
     }
