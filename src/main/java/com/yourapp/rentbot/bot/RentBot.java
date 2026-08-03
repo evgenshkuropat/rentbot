@@ -19,6 +19,7 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -129,6 +130,15 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         return this;
     }
 
+    @PostConstruct
+    public void logMilestone1500AutoConfig() {
+        log.info(
+                "Milestone 1500 auto broadcast config: enabled={}, batchSize={}",
+                milestone1500AutoEnabled,
+                milestone1500AutoBatchSize
+        );
+    }
+
     @Scheduled(
             fixedDelayString = "${rentbot.milestone1500.auto-delay-ms:600000}",
             initialDelayString = "${rentbot.milestone1500.auto-initial-delay-ms:120000}"
@@ -146,16 +156,14 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         try {
             ReactivationResult result = sendMilestone1500Messages(milestone1500AutoBatchSize);
 
-            if (result.checked > 0 || result.failed > 0 || result.deactivated > 0) {
-                log.info(
-                        "Milestone 1500 auto broadcast: checked={}, sent={}, skipped={}, deactivated={}, failed={}",
-                        result.checked,
-                        result.sent,
-                        result.skipped,
-                        result.deactivated,
-                        result.failed
-                );
-            }
+            log.info(
+                    "Milestone 1500 auto broadcast: checked={}, sent={}, skipped={}, deactivated={}, failed={}",
+                    result.checked,
+                    result.sent,
+                    result.skipped,
+                    result.deactivated,
+                    result.failed
+            );
         } catch (Exception e) {
             log.error("Milestone 1500 auto broadcast failed", e);
         } finally {
