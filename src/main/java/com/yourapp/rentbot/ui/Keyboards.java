@@ -464,6 +464,14 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(button(switch (lang) {
+            case RU -> "💙 Поддержать проект";
+            case CZ -> "💙 Podpořit projekt";
+            case EN -> "💙 Support project";
+            default -> "💙 Підтримати проєкт";
+        }, "SERVICE:SUPPORT"));
+
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(button(switch (lang) {
             case RU -> "💎 Premium";
             case CZ -> "💎 Premium";
             case EN -> "💎 Premium";
@@ -471,7 +479,7 @@ public class Keyboards {
         }, "SERVICE:NO_AGENT"));
 
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2))
+                .keyboard(List.of(row1, row2, row3))
                 .build();
     }
 
