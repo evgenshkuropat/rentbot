@@ -48,6 +48,9 @@ public class UserFilter {
     @Column(name = "reactivation_sent_at")
     private Instant reactivationSentAt;
 
+    @Column(name = "milestone_1500_sent_at")
+    private Instant milestone1500SentAt;
+
     public Long getTelegramUserId() {
         return telegramUserId;
     }
@@ -134,5 +137,13 @@ public class UserFilter {
 
     public void setReactivationSentAt(Instant reactivationSentAt) {
         this.reactivationSentAt = reactivationSentAt;
+    }
+
+    public Instant getMilestone1500SentAt() {
+        return milestone1500SentAt;
+    }
+
+    public void setMilestone1500SentAt(Instant milestone1500SentAt) {
+        this.milestone1500SentAt = milestone1500SentAt;
     }
 }

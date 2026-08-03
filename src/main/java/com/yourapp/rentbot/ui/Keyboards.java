@@ -450,6 +450,31 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup milestone1500Keyboard(Language lang) {
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        row1.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "📤 Поделиться ботом";
+                    case CZ -> "📤 Sdílet bot";
+                    case EN -> "📤 Share bot";
+                    default -> "📤 Поширити бота";
+                })
+                .url("https://t.me/share/url?url=https%3A%2F%2Ft.me%2FzhytloCZ_bot")
+                .build());
+
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        row2.add(button(switch (lang) {
+            case RU -> "💎 Premium";
+            case CZ -> "💎 Premium";
+            case EN -> "💎 Premium";
+            default -> "💎 Преміум";
+        }, "SERVICE:NO_AGENT"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row1, row2))
+                .build();
+    }
+
     public static InlineKeyboardMarkup addToFavoritesKeyboard(String token, Language lang) {
         InlineKeyboardRow row = new InlineKeyboardRow();
         row.add(InlineKeyboardButton.builder()

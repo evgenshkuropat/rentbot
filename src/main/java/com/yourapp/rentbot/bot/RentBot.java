@@ -358,6 +358,36 @@ Bazoš: %d
             return;
         }
 
+        if (text.toLowerCase().startsWith("/admin_milestone1500")) {
+            if (chatId != ADMIN_ID) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            int limit = parseAdminLimit(text, 50, 100);
+            ReactivationResult result = sendMilestone1500Messages(limit);
+
+            send(chatId,
+                    """
+                    🎉 Milestone 1500 finished
+
+                    Candidates checked: %d
+                    Sent: %d
+                    Skipped: %d
+                    Deactivated: %d
+                    Failed: %d
+                    """
+                            .formatted(
+                                    result.checked,
+                                    result.sent,
+                                    result.skipped,
+                                    result.deactivated,
+                                    result.failed
+                            ),
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
         if (text.toLowerCase().startsWith("/admin_owner_list")) {
             if (chatId != ADMIN_ID) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
@@ -1989,6 +2019,93 @@ Bazoš: %d
         }
 
         return result;
+    }
+
+    private ReactivationResult sendMilestone1500Messages(int limit) {
+        ReactivationResult result = new ReactivationResult();
+        Instant now = Instant.now();
+
+        List<UserFilter> candidates = userFilterRepo.findMilestone1500Candidates(PageRequest.of(0, limit));
+        result.checked = candidates.size();
+
+        for (UserFilter user : candidates) {
+            if (user.getTelegramUserId() == null) {
+                result.skipped++;
+                continue;
+            }
+
+            Language userLang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
+
+            try {
+                send(user.getTelegramUserId(),
+                        milestone1500Text(userLang),
+                        Keyboards.milestone1500Keyboard(userLang));
+
+                user.setMilestone1500SentAt(now);
+                userFilterRepo.save(user);
+                result.sent++;
+
+            } catch (TelegramApiException e) {
+                if (isUnreachableTelegramUser(e.getMessage())) {
+                    user.setActive(false);
+                    userFilterRepo.save(user);
+                    result.deactivated++;
+                } else {
+                    result.failed++;
+                    System.out.println("Milestone 1500 message failed for user="
+                            + user.getTelegramUserId()
+                            + ", error=" + e.getMessage());
+                }
+            } catch (Exception e) {
+                result.failed++;
+                System.out.println("Unexpected milestone 1500 failure for user="
+                        + user.getTelegramUserId()
+                        + ", error=" + e.getMessage());
+            }
+        }
+
+        return result;
+    }
+
+    private String milestone1500Text(Language lang) {
+        return switch (lang) {
+            case RU -> """
+                    🎉 Нас уже 1500 в Zhytlo CZ!
+
+                    Спасибо, что пользуетесь ботом для поиска жилья в Чехии.
+
+                    Если бот помогает вам искать квартиру, поделитесь им с друзьями — возможно, кому-то это тоже сэкономит время.
+
+                    А если хотите поддержать развитие проекта, можно посмотреть Premium.
+                    """;
+            case CZ -> """
+                    🎉 V Zhytlo CZ je nás už 1500!
+
+                    Děkuji, že používáte bot pro hledání bydlení v Česku.
+
+                    Pokud vám bot pomáhá hledat byt, sdílejte ho s přáteli — možná někomu také ušetří čas.
+
+                    Pokud chcete podpořit rozvoj projektu, můžete se podívat na Premium.
+                    """;
+            case EN -> """
+                    🎉 There are already 1500 of us in Zhytlo CZ!
+
+                    Thank you for using the bot to search for housing in Czechia.
+
+                    If the bot helps you look for an apartment, share it with friends — it may save someone time too.
+
+                    You can also check Premium if you want to support the project.
+                    """;
+            default -> """
+                    🎉 Нас уже 1500 у Zhytlo CZ!
+
+                    Дякую, що користуєтесь ботом для пошуку житла в Чехії.
+
+                    Якщо бот допомагає вам шукати квартиру, поділіться ним з друзями — можливо, комусь це теж зекономить час.
+
+                    А якщо хочете підтримати розвиток проєкту, можна переглянути Преміум.
+                    """;
+        };
     }
 
     private String reactivationText(UserFilter user, Language lang) {

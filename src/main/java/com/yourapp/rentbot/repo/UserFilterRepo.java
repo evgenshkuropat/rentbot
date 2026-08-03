@@ -76,4 +76,14 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     List<UserFilter> findReactivationCandidates(@Param("staleBefore") Instant staleBefore,
                                                 @Param("canSendAgainBefore") Instant canSendAgainBefore,
                                                 Pageable pageable);
+
+    @Query("""
+        select uf
+        from UserFilter uf
+        where uf.active = true
+          and uf.milestone1500SentAt is null
+          and uf.telegramUserId is not null
+        order by uf.updatedAt desc
+    """)
+    List<UserFilter> findMilestone1500Candidates(Pageable pageable);
 }
