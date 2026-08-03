@@ -19,8 +19,11 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
@@ -45,9 +48,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Component
 public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(RentBot.class);
 
     private final TelegramClient telegramClient;
     private final FlowService flowService;
@@ -62,6 +68,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final MessageService messageService;
 
     private final String token;
+    private final boolean milestone1500AutoEnabled;
+    private final int milestone1500AutoBatchSize;
+    private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
 
     private static final long ADMIN_ID = 1246486851L;
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
@@ -90,7 +99,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             OwnerListingService ownerListingService,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
-            MessageService messageService
+            MessageService messageService,
+            @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
+            @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize
     ) {
         this.token = token;
         this.flowService = flowService;
@@ -103,6 +114,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
+        this.milestone1500AutoEnabled = milestone1500AutoEnabled;
+        this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
         this.telegramClient = new OkHttpTelegramClient(token);
     }
 
@@ -114,6 +127,40 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     @Override
     public LongPollingUpdateConsumer getUpdatesConsumer() {
         return this;
+    }
+
+    @Scheduled(
+            fixedDelayString = "${rentbot.milestone1500.auto-delay-ms:600000}",
+            initialDelayString = "${rentbot.milestone1500.auto-initial-delay-ms:120000}"
+    )
+    public void sendMilestone1500Automatically() {
+        if (!milestone1500AutoEnabled) {
+            return;
+        }
+
+        if (!milestone1500AutoRunning.compareAndSet(false, true)) {
+            log.warn("Milestone 1500 auto broadcast already running, skipping...");
+            return;
+        }
+
+        try {
+            ReactivationResult result = sendMilestone1500Messages(milestone1500AutoBatchSize);
+
+            if (result.checked > 0 || result.failed > 0 || result.deactivated > 0) {
+                log.info(
+                        "Milestone 1500 auto broadcast: checked={}, sent={}, skipped={}, deactivated={}, failed={}",
+                        result.checked,
+                        result.sent,
+                        result.skipped,
+                        result.deactivated,
+                        result.failed
+                );
+            }
+        } catch (Exception e) {
+            log.error("Milestone 1500 auto broadcast failed", e);
+        } finally {
+            milestone1500AutoRunning.set(false);
+        }
     }
 
     @Override
