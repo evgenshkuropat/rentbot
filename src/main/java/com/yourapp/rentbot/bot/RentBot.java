@@ -2481,28 +2481,28 @@ Premium is launching in test mode. To activate it, contact the author.
             case RU -> """
 🇺🇦 Запись в ДП Документ Прага
 
-Неофициальный канал, где отслеживают электронную очередь и доступные места для записи в центре ДП «Документ» в Праге.
+Неофициальный канал, где отслеживают электронную очередь и доступные места для записи в центре ДП «Документ» в Праге и других городах.
 
 Проверяйте информацию самостоятельно — бот только делится полезным источником.
 """;
             case CZ -> """
 🇺🇦 Rezervace DP Dokument Praha
 
-Neoficiální kanál, kde sledují elektronickou frontu a volná místa pro rezervaci v centru DP „Dokument“ v Praze.
+Neoficiální kanál, kde sledují elektronickou frontu a volná místa pro rezervaci v centru DP „Dokument“ v Praze a dalších městech.
 
 Informace si prosím ověřujte sami — bot pouze sdílí užitečný zdroj.
 """;
             case EN -> """
 🇺🇦 DP Document Prague appointments
 
-An unofficial channel that tracks the electronic queue and available appointment slots at the DP Document center in Prague.
+An unofficial channel that tracks the electronic queue and available appointment slots at the DP Document center in Prague and other cities.
 
 Please verify the information yourself — the bot only shares a useful source.
 """;
             default -> """
 🇺🇦 Запис у ДП Документ Прага
 
-Неофіційний канал, де відстежують електронну чергу та доступні місця для запису в центрі ДП «Документ» у Празі.
+Неофіційний канал, де відстежують електронну чергу та доступні місця для запису в центрі ДП «Документ» у Празі та інших містах.
 
 Перевіряйте інформацію самостійно — бот лише ділиться корисним джерелом.
 """;
