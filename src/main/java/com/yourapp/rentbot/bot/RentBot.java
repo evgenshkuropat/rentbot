@@ -324,14 +324,14 @@ Bazoš raw: %d
 By link: %d
 By signature: %d
 
-🧪 Останній фільтр/ручний пошук до diversify:
+🧪 Останній цикл до diversify:
 Всього: %d
 Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
 
-🎯 Останній фільтр/ручний пошук у видачі:
+🎯 Останній цикл у видачі:
 Всього: %d
 Sreality: %d
 iDNES: %d
