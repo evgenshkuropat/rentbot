@@ -203,9 +203,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             return;
         }
 
-        if (ownerListingDrafts.containsKey(userId)) {
+        if (ownerListingDrafts.containsKey(userId) && !isPersistentMenuText(text)) {
             handleOwnerListingText(chatId, userId, text, lang);
             return;
+        }
+
+        if (ownerListingDrafts.containsKey(userId)) {
+            ownerListingDrafts.remove(userId);
         }
 
         if (text.equalsIgnoreCase("/admin")) {
@@ -687,6 +691,48 @@ Bazoš: %d
         }
 
         send(chatId, msg(userId, "unknown.command"), Keyboards.persistentNavKeyboard(lang));
+    }
+
+    private boolean isPersistentMenuText(String text) {
+        return text.equalsIgnoreCase("/start")
+                || text.equalsIgnoreCase("/menu")
+                || text.equalsIgnoreCase("/language")
+                || text.equalsIgnoreCase("/test")
+                || text.equals("🔄 Новий пошук")
+                || text.equals("🔄 Новый поиск")
+                || text.equals("🔄 Nové hledání")
+                || text.equals("🔄 New search")
+                || text.equals("📋 Мій фільтр")
+                || text.equals("📋 Мой фильтр")
+                || text.equals("📋 Můj filtr")
+                || text.equals("📋 My filter")
+                || text.equals("🔍 Нові квартири")
+                || text.equals("🔍 Новые квартиры")
+                || text.equals("🔍 Nové byty")
+                || text.equals("🔍 New listings")
+                || text.equals("⭐ Обране")
+                || text.equals("⭐ Избранное")
+                || text.equals("⭐ Oblíbené")
+                || text.equals("⭐ Favorites")
+                || text.equals("🏠 Додати житло")
+                || text.equals("🏠 Добавить жильё")
+                || text.equals("🏠 Přidat bydlení")
+                || text.equals("🏠 Add listing")
+                || text.equals("💎 Преміум")
+                || text.equals("💎 Премиум")
+                || text.equals("💎 Premium")
+                || text.equals("🌐 Мова / Language")
+                || text.equals("🌐 Язык / Language")
+                || text.equals("🌐 Jazyk / Language")
+                || text.equals("🌐 Language")
+                || text.equals("🤝 Інші сервіси")
+                || text.equals("🤝 Другие сервисы")
+                || text.equals("🤝 Další služby")
+                || text.equals("🤝 Other services")
+                || text.equals("📦 Інші сервіси")
+                || text.equals("📦 Другие сервисы")
+                || text.equals("📦 Další služby")
+                || text.equals("📦 Other services");
     }
 
     private void startOwnerListingDraft(long chatId, long userId, String username, Language lang) throws TelegramApiException {
