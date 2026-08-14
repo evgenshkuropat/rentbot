@@ -17,6 +17,7 @@ import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
+import com.yourapp.rentbot.service.SchedulerService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
 import jakarta.annotation.PostConstruct;
@@ -41,6 +42,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
+import com.yourapp.rentbot.service.dto.SchedulerRunStats;
 
 import java.text.Normalizer;
 import java.time.Instant;
@@ -62,6 +64,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final RegionGroupRepo regionGroupRepo;
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
+    private final SchedulerService schedulerService;
     private final NotificationService notificationService;
     private final OwnerListingService ownerListingService;
     private final FavoriteService favoriteService;
@@ -96,6 +99,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             RegionGroupRepo regionGroupRepo,
             UserFilterRepo userFilterRepo,
             ParserService parserService,
+            SchedulerService schedulerService,
             NotificationService notificationService,
             OwnerListingService ownerListingService,
             FavoriteService favoriteService,
@@ -110,6 +114,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.regionGroupRepo = regionGroupRepo;
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
+        this.schedulerService = schedulerService;
         this.notificationService = notificationService;
         this.ownerListingService = ownerListingService;
         this.favoriteService = favoriteService;
@@ -260,6 +265,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             int favoriteCacheSize = favoriteLinkCache.size();
 
             ParserRunStats runStats = parserService.getLastRunStats();
+            SchedulerRunStats schedulerStats = schedulerService.getLastRunStats();
 
             java.time.Instant now = java.time.Instant.now();
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
@@ -308,7 +314,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 📄 Користувачів у paging: %d
 🧷 favoriteLinkCache: %d
 
-📡 Останній запуск парсерів:
+📡 Останній парсинг / ручний пошук:
 Sreality raw: %d
 iDNES raw: %d
 Bezrealitky raw: %d
@@ -318,19 +324,30 @@ Bazoš raw: %d
 By link: %d
 By signature: %d
 
-🧪 Після фільтрів до diversify:
+🧪 Останній фільтр/ручний пошук до diversify:
 Всього: %d
 Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
 
-🎯 У фінальній видачі:
+🎯 Останній фільтр/ручний пошук у видачі:
 Всього: %d
 Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
+
+📬 Останній повний цикл розсилки:
+Оброблено користувачів: %d
+Зі співпадіннями: %d
+Запусків парсерів: %d
+Кандидатів: %d
+Спроб відправки: %d
+Надіслано: %d
+Пропущено через ліміт: %d
+Після фільтрів: %d
+У фінальній видачі: %d
 """
                     .formatted(
                             users,
@@ -380,7 +397,17 @@ Bazoš: %d
                             runStats.finalSreality(),
                             runStats.finalIdnes(),
                             runStats.finalBezrealitky(),
-                            runStats.finalBazos()
+                            runStats.finalBazos(),
+
+                            schedulerStats.usersProcessed(),
+                            schedulerStats.usersWithMatches(),
+                            schedulerStats.parserRuns(),
+                            schedulerStats.totalCandidates(),
+                            schedulerStats.totalSendAttempts(),
+                            schedulerStats.totalSent(),
+                            schedulerStats.totalSkippedByLimit(),
+                            schedulerStats.aggregateFilteredBase(),
+                            schedulerStats.aggregateFinal()
                     );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard(lang));

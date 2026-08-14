@@ -5,6 +5,7 @@ import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
+import com.yourapp.rentbot.service.dto.SchedulerRunStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class SchedulerService {
@@ -22,6 +24,8 @@ public class SchedulerService {
     private static final Logger log = LoggerFactory.getLogger(SchedulerService.class);
 
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicReference<SchedulerRunStats> lastRunStats =
+            new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
@@ -63,6 +67,7 @@ public class SchedulerService {
 
         if (users.isEmpty()) {
             log.info("Scheduler: no active users");
+            updateLastRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0);
             return;
         }
 
@@ -186,6 +191,44 @@ public class SchedulerService {
                 aggregateFilteredBaseTotal,
                 aggregateFinalFiltered
         );
+
+        updateLastRunStats(
+                usersProcessed,
+                usersWithMatches,
+                parserRuns,
+                totalCandidates,
+                totalSendAttempts,
+                totalSent,
+                totalSkippedByLimit,
+                aggregateFilteredBaseTotal,
+                aggregateFinalFiltered
+        );
+    }
+
+    public SchedulerRunStats getLastRunStats() {
+        return lastRunStats.get();
+    }
+
+    private void updateLastRunStats(int usersProcessed,
+                                    int usersWithMatches,
+                                    int parserRuns,
+                                    int totalCandidates,
+                                    int totalSendAttempts,
+                                    int totalSent,
+                                    int totalSkippedByLimit,
+                                    int aggregateFilteredBase,
+                                    int aggregateFinal) {
+        lastRunStats.set(new SchedulerRunStats(
+                usersProcessed,
+                usersWithMatches,
+                parserRuns,
+                totalCandidates,
+                totalSendAttempts,
+                totalSent,
+                totalSkippedByLimit,
+                aggregateFilteredBase,
+                aggregateFinal
+        ));
     }
 
     private String cacheKey(UserFilter user) {
