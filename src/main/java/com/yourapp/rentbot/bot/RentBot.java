@@ -1889,6 +1889,11 @@ Bazoš: %d
             return;
         }
 
+        if (data.startsWith("SERVICE:DP_DOCUMENT")) {
+            send(chatId, dpDocumentInfo(lang), Keyboards.dpDocumentKeyboard(lang));
+            return;
+        }
+
         if (data.startsWith("SERVICE:REAL_ESTATE")) {
             send(chatId, realEstateSearchInfo(lang), Keyboards.authorContactKeyboard(lang));
             return;
@@ -2467,6 +2472,39 @@ Premium is launching in test mode. To activate it, contact the author.
 Перші користувачі допомагають обрати, що додати далі.
 
 Преміум запускається в тестовому режимі. Щоб підключити — напишіть автору.
+""";
+        };
+    }
+
+    private String dpDocumentInfo(Language lang) {
+        return switch (lang) {
+            case RU -> """
+🇺🇦 Запись в ДП Документ Прага
+
+Неофициальный канал, где отслеживают электронную очередь и доступные места для записи в центре ДП «Документ» в Праге.
+
+Проверяйте информацию самостоятельно — бот только делится полезным источником.
+""";
+            case CZ -> """
+🇺🇦 Rezervace DP Dokument Praha
+
+Neoficiální kanál, kde sledují elektronickou frontu a volná místa pro rezervaci v centru DP „Dokument“ v Praze.
+
+Informace si prosím ověřujte sami — bot pouze sdílí užitečný zdroj.
+""";
+            case EN -> """
+🇺🇦 DP Document Prague appointments
+
+An unofficial channel that tracks the electronic queue and available appointment slots at the DP Document center in Prague.
+
+Please verify the information yourself — the bot only shares a useful source.
+""";
+            default -> """
+🇺🇦 Запис у ДП Документ Прага
+
+Неофіційний канал, де відстежують електронну чергу та доступні місця для запису в центрі ДП «Документ» у Празі.
+
+Перевіряйте інформацію самостійно — бот лише ділиться корисним джерелом.
 """;
         };
     }
