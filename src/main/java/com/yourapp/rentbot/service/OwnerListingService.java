@@ -79,6 +79,10 @@ public class OwnerListingService {
                 .toList();
     }
 
+    public long countApprovedListings() {
+        return ownerListingRepo.countByStatus(OwnerListing.Status.APPROVED);
+    }
+
     private ListingDto toDto(OwnerListing listing) {
         String description = listing.getDescription() == null || listing.getDescription().isBlank()
                 ? ""

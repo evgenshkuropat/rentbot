@@ -253,6 +253,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long doneStep = confirmActiveStep;
 
             long favorites = favoriteService.countAll();
+            long approvedOwnerListings = ownerListingService.countApprovedListings();
             java.time.Instant now = java.time.Instant.now();
             long sentLast14Days = notificationService.countSentSince(
                     now.minus(java.time.Duration.ofDays(14))
@@ -315,6 +316,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 🧭 CONFIRM + активна підписка: %d
 
 ⭐ Усього в обраному: %d
+🏡 Унікальних активних оголошень власників: %d
 📩 Успішно надіслано за останні 14 днів: %d
 
 🕒 Оновлювались за 24 год: %d
@@ -343,7 +345,7 @@ Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
-Owner / інші: %d
+Власник — попадань у підбірки: %d
 
 🎯 Сума фінальної видачі для користувачів:
 Всього: %d
@@ -351,7 +353,7 @@ Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
-Owner / інші: %d
+Власник — попадань у підбірки: %d
 
 📬 Останній повний цикл розсилки:
 Оброблено користувачів: %d
@@ -363,6 +365,8 @@ Owner / інші: %d
 Пропущено через ліміт: %d
 Після фільтрів: %d
 У фінальній видачі: %d
+Власницьких попадань у підбірки: %d
+Користувачів зі співпадіннями від власників: %d
 """
                     .formatted(
                             users,
@@ -386,6 +390,7 @@ Owner / інші: %d
                             confirmStep,
                             doneStep,
                             favorites,
+                            approvedOwnerListings,
                             sentLast14Days,
                             updated24h,
                             updated7d,
@@ -424,7 +429,9 @@ Owner / інші: %d
                             schedulerStats.totalSent(),
                             schedulerStats.totalSkippedByLimit(),
                             schedulerStats.aggregateFilteredBase(),
-                            schedulerStats.aggregateFinal()
+                            schedulerStats.aggregateFinal(),
+                            schedulerStats.ownerMatches(),
+                            schedulerStats.usersWithOwnerMatches()
                     );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard(lang));

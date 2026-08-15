@@ -25,7 +25,7 @@ public class SchedulerService {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<SchedulerRunStats> lastRunStats =
-            new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0));
+            new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
 
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
@@ -67,7 +67,7 @@ public class SchedulerService {
 
         if (users.isEmpty()) {
             log.info("Scheduler: no active users");
-            updateLastRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0);
+            updateLastRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             return;
         }
 
@@ -92,6 +92,8 @@ public class SchedulerService {
         int aggregateFinalIdnes = 0;
         int aggregateFinalBezrealitky = 0;
         int aggregateFinalBazos = 0;
+        int ownerMatches = 0;
+        int usersWithOwnerMatches = 0;
 
         for (UserFilter user : users) {
             Long userId = user.getTelegramUserId();
@@ -136,6 +138,14 @@ public class SchedulerService {
 
                 usersWithMatches++;
                 totalCandidates += listings.size();
+
+                int ownerMatchesForUser = (int) listings.stream()
+                        .filter(this::isOwnerListing)
+                        .count();
+                ownerMatches += ownerMatchesForUser;
+                if (ownerMatchesForUser > 0) {
+                    usersWithOwnerMatches++;
+                }
 
                 int sentForUser = 0;
 
@@ -201,7 +211,9 @@ public class SchedulerService {
                 totalSent,
                 totalSkippedByLimit,
                 aggregateFilteredBaseTotal,
-                aggregateFinalFiltered
+                aggregateFinalFiltered,
+                ownerMatches,
+                usersWithOwnerMatches
         );
     }
 
@@ -217,7 +229,9 @@ public class SchedulerService {
                                     int totalSent,
                                     int totalSkippedByLimit,
                                     int aggregateFilteredBase,
-                                    int aggregateFinal) {
+                                    int aggregateFinal,
+                                    int ownerMatches,
+                                    int usersWithOwnerMatches) {
         lastRunStats.set(new SchedulerRunStats(
                 usersProcessed,
                 usersWithMatches,
@@ -227,8 +241,19 @@ public class SchedulerService {
                 totalSent,
                 totalSkippedByLimit,
                 aggregateFilteredBase,
-                aggregateFinal
+                aggregateFinal,
+                ownerMatches,
+                usersWithOwnerMatches
         ));
+    }
+
+    private boolean isOwnerListing(ListingDto listing) {
+        if (listing == null || listing.source() == null) {
+            return false;
+        }
+
+        return listing.source().equalsIgnoreCase("Owner")
+                || listing.source().equalsIgnoreCase("Власник");
     }
 
     private String cacheKey(UserFilter user) {

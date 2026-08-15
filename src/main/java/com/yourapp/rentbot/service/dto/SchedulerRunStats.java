@@ -9,6 +9,8 @@ public record SchedulerRunStats(
         int totalSent,
         int totalSkippedByLimit,
         int aggregateFilteredBase,
-        int aggregateFinal
+        int aggregateFinal,
+        int ownerMatches,
+        int usersWithOwnerMatches
 ) {
 }
