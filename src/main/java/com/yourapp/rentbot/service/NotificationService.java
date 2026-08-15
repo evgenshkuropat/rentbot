@@ -228,8 +228,8 @@ public class NotificationService {
         return source;
     }
 
-    public long countSent() {
-        return sentLogRepo.count();
+    public long countSentSince(java.time.Instant cutoff) {
+        return sentLogRepo.countBySentAtAfter(cutoff);
     }
 
     private String formatAddedAt(java.time.LocalDateTime time, Language lang) {

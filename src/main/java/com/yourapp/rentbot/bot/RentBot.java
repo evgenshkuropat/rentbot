@@ -253,7 +253,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long doneStep = confirmActiveStep;
 
             long favorites = favoriteService.countAll();
-            long sent = notificationService.countSent();
+            java.time.Instant now = java.time.Instant.now();
+            long sentLast14Days = notificationService.countSentSince(
+                    now.minus(java.time.Duration.ofDays(14))
+            );
 
             int cachedSearchUsers = searchCache.size();
             int cachedSearchResults = searchCache.values()
@@ -267,7 +270,17 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             ParserRunStats runStats = parserService.getLastRunStats();
             SchedulerRunStats schedulerStats = schedulerService.getLastRunStats();
 
-            java.time.Instant now = java.time.Instant.now();
+            int filteredBaseOther = runStats.filteredBaseTotal()
+                    - runStats.filteredBaseSreality()
+                    - runStats.filteredBaseIdnes()
+                    - runStats.filteredBaseBezrealitky()
+                    - runStats.filteredBaseBazos();
+            int finalOther = runStats.finalFiltered()
+                    - runStats.finalSreality()
+                    - runStats.finalIdnes()
+                    - runStats.finalBezrealitky()
+                    - runStats.finalBazos();
+
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
 
@@ -298,11 +311,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 🧭 STEP DISTRICT_GROUP: %d
 🧭 STEP LAYOUT: %d
 🧭 STEP MAX_PRICE: %d
-🧭 STEP CONFIRM: %d
-🧭 STEP DONE: %d
+🧭 STEP CONFIRM (неактивні): %d
+🧭 CONFIRM + активна підписка: %d
 
 ⭐ Усього в обраному: %d
-📩 Надіслано за останні 14 днів: %d
+📩 Успішно надіслано за останні 14 днів: %d
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -324,27 +337,29 @@ Bazoš raw: %d
 By link: %d
 By signature: %d
 
-🧪 Останній цикл до diversify:
+🧪 Сума результатів для користувачів до diversify:
 Всього: %d
 Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
+Owner / інші: %d
 
-🎯 Останній цикл у видачі:
+🎯 Сума фінальної видачі для користувачів:
 Всього: %d
 Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
+Owner / інші: %d
 
 📬 Останній повний цикл розсилки:
 Оброблено користувачів: %d
 Зі співпадіннями: %d
 Запусків парсерів: %d
-Кандидатів: %d
-Спроб відправки: %d
-Надіслано: %d
+Кандидатів у фінальній видачі: %d
+Перевірено кандидатів: %d
+Нових успішно надіслано: %d
 Пропущено через ліміт: %d
 Після фільтрів: %d
 У фінальній видачі: %d
@@ -371,7 +386,7 @@ Bazoš: %d
                             confirmStep,
                             doneStep,
                             favorites,
-                            sent,
+                            sentLast14Days,
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -392,12 +407,14 @@ Bazoš: %d
                             runStats.filteredBaseIdnes(),
                             runStats.filteredBaseBezrealitky(),
                             runStats.filteredBaseBazos(),
+                            filteredBaseOther,
 
                             runStats.finalFiltered(),
                             runStats.finalSreality(),
                             runStats.finalIdnes(),
                             runStats.finalBezrealitky(),
                             runStats.finalBazos(),
+                            finalOther,
 
                             schedulerStats.usersProcessed(),
                             schedulerStats.usersWithMatches(),
