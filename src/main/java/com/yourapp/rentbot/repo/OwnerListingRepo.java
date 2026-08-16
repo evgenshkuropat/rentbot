@@ -17,8 +17,6 @@ public interface OwnerListingRepo extends JpaRepository<OwnerListing, Long> {
 
     List<OwnerListing> findByRegionAndStatus(Region region, OwnerListing.Status status);
 
-    Optional<OwnerListing> findByIdAndStatus(Long id, OwnerListing.Status status);
-
     Optional<OwnerListing> findByIdAndStatusAndApprovedAtIsNull(Long id, OwnerListing.Status status);
 
     @Query("""

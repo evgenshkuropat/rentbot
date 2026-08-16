@@ -4,7 +4,6 @@ import com.yourapp.rentbot.domain.FavoriteListing;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface FavoriteListingRepo extends JpaRepository<FavoriteListing, Long> {
 
@@ -12,10 +11,5 @@ public interface FavoriteListingRepo extends JpaRepository<FavoriteListing, Long
 
     boolean existsByTelegramUserIdAndLink(Long telegramUserId, String link);
 
-    Optional<FavoriteListing> findByTelegramUserIdAndLink(Long telegramUserId, String link);
-
     void deleteByTelegramUserIdAndLink(Long telegramUserId, String link);
-
-    long countBy();
-
 }

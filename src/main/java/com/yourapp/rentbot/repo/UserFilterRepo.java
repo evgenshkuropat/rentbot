@@ -23,8 +23,6 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     """)
     List<UserFilter> findAllActiveFull();
 
-    List<UserFilter> findAllByActiveTrue();
-
     @Query("""
         select uf
         from UserFilter uf
@@ -33,8 +31,6 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
         where uf.telegramUserId = :id
     """)
     Optional<UserFilter> findFullById(@Param("id") Long id);
-
-    long countBy();
 
     long countByActiveTrue();
 

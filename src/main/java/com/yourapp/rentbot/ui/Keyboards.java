@@ -200,47 +200,6 @@ public class Keyboards {
                 .build();
     }
 
-    public static InlineKeyboardMarkup confirmKeyboard(Language lang) {
-        List<InlineKeyboardRow> rows = new ArrayList<>();
-
-        rows.add(new InlineKeyboardRow(
-                button(switch (lang) {
-                    case RU -> "🔔 Включить уведомления";
-                    case CZ -> "🔔 Zapnout upozornění";
-                    case EN -> "🔔 Enable notifications";
-                    default -> "🔔 Увімкнути сповіщення";
-                }, "CONFIRM:SUBSCRIBE")
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                button(switch (lang) {
-                    case RU -> "📋 Мой фильтр";
-                    case CZ -> "📋 Můj filtr";
-                    case EN -> "📋 My filter";
-                    default -> "📋 Мій фільтр";
-                }, "CONFIRM:SHOW"),
-                button(switch (lang) {
-                    case RU -> "🔄 Изменить";
-                    case CZ -> "🔄 Změnit";
-                    case EN -> "🔄 Change";
-                    default -> "🔄 Змінити";
-                }, "EDIT:FILTER")
-        ));
-
-        rows.add(new InlineKeyboardRow(
-                button(switch (lang) {
-                    case RU -> "⛔ Остановить";
-                    case CZ -> "⛔ Zastavit";
-                    case EN -> "⛔ Stop";
-                    default -> "⛔ Зупинити";
-                }, "CONFIRM:STOP")
-        ));
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(rows)
-                .build();
-    }
-
     public static ReplyKeyboardMarkup persistentNavKeyboard(Language lang) {
         KeyboardRow row1 = new KeyboardRow();
         row1.add(switch (lang) {
@@ -480,23 +439,6 @@ public class Keyboards {
 
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(row1, row2, row3))
-                .build();
-    }
-
-    public static InlineKeyboardMarkup addToFavoritesKeyboard(String token, Language lang) {
-        InlineKeyboardRow row = new InlineKeyboardRow();
-        row.add(InlineKeyboardButton.builder()
-                .text(switch (lang) {
-                    case RU -> "⭐ В избранное";
-                    case CZ -> "⭐ Do oblíbených";
-                    case EN -> "⭐ Add to favorites";
-                    default -> "⭐ В обране";
-                })
-                .callbackData("FAV:ADD:" + token)
-                .build());
-
-        return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row))
                 .build();
     }
 

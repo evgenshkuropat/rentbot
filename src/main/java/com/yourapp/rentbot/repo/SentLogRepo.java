@@ -14,5 +14,4 @@ public interface SentLogRepo extends JpaRepository<SentLog, Long> {
 
     long countBySentAtAfter(Instant cutoff);
 
-    long countBy();
 }

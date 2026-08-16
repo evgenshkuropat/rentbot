@@ -27,7 +27,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
 import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
@@ -72,11 +71,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final MessageService messageService;
 
     private final String token;
+    private final long adminId;
     private final boolean milestone1500AutoEnabled;
     private final int milestone1500AutoBatchSize;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
 
-    private static final long ADMIN_ID = 1246486851L;
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
     private final Map<Integer, String> favoriteLinkCache = new HashMap<>();
@@ -94,6 +93,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
+            @Value("${rentbot.admin-id}") long adminId,
+            TelegramClient telegramClient,
             FlowService flowService,
             RegionRepo regionRepo,
             RegionGroupRepo regionGroupRepo,
@@ -109,6 +110,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize
     ) {
         this.token = token;
+        this.adminId = adminId;
+        this.telegramClient = telegramClient;
         this.flowService = flowService;
         this.regionRepo = regionRepo;
         this.regionGroupRepo = regionGroupRepo;
@@ -122,7 +125,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.messageService = messageService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
-        this.telegramClient = new OkHttpTelegramClient(token);
     }
 
     @Override
@@ -220,7 +222,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         if (text.equalsIgnoreCase("/admin")) {
             cleanupExpiredInteractionCaches();
 
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -439,7 +441,7 @@ Bazoš: %d
         }
 
         if (text.toLowerCase().startsWith("/admin_reactivate")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -469,7 +471,7 @@ Bazoš: %d
         }
 
         if (text.toLowerCase().startsWith("/admin_milestone1500")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -499,7 +501,7 @@ Bazoš: %d
         }
 
         if (text.toLowerCase().startsWith("/admin_owner_list")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -510,7 +512,7 @@ Bazoš: %d
         }
 
         if (text.toLowerCase().startsWith("/admin_owner_view")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -521,7 +523,7 @@ Bazoš: %d
         }
 
         if (text.toLowerCase().startsWith("/admin_owner_archive")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -1568,7 +1570,7 @@ Bazoš: %d
             try {
                 telegramClient.execute(
                         SendPhoto.builder()
-                                .chatId(ADMIN_ID)
+                                .chatId(adminId)
                                 .photo(new InputFile(listing.getPhotoFileId()))
                                 .caption(trimCaption(text))
                                 .replyMarkup(Keyboards.ownerListingModerationKeyboard(listing.getId()))
@@ -1582,7 +1584,7 @@ Bazoš: %d
             }
         }
 
-        send(ADMIN_ID, text, Keyboards.ownerListingModerationKeyboard(listing.getId()));
+        send(adminId, text, Keyboards.ownerListingModerationKeyboard(listing.getId()));
     }
 
     private void notifyOwnerListingAuthor(OwnerListing listing, boolean approved) {
@@ -1654,7 +1656,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("OWNER:APPROVE:")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -1679,7 +1681,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("OWNER:REJECT:")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -1703,7 +1705,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("OWNER:VIEW:")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
@@ -1714,7 +1716,7 @@ Bazoš: %d
         }
 
         if (data.startsWith("OWNER:ARCHIVE:")) {
-            if (chatId != ADMIN_ID) {
+            if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }

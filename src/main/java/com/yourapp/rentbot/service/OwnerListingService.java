@@ -22,17 +22,6 @@ public class OwnerListingService {
         this.ownerListingRepo = ownerListingRepo;
     }
 
-    public OwnerListing saveApproved(OwnerListing listing) {
-        listing.setStatus(OwnerListing.Status.APPROVED);
-        if (listing.getApprovedAt() == null) {
-            listing.setApprovedAt(Instant.now());
-        }
-        if (listing.getCreatedAt() == null) {
-            listing.setCreatedAt(Instant.now());
-        }
-        return ownerListingRepo.save(listing);
-    }
-
     public OwnerListing savePending(OwnerListing listing) {
         listing.setStatus(OwnerListing.Status.ARCHIVED);
         if (listing.getCreatedAt() == null) {

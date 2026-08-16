@@ -25,7 +25,6 @@ public class ParserService {
 
     private static final Logger log = LoggerFactory.getLogger(ParserService.class);
 
-    private static final long CACHE_TTL_MILLIS = 55_000;
     private static final Set<String> ADDRESS_STOP_WORDS = Set.of(
             "www", "http", "https", "cz", "detail", "reality", "sreality", "idnes",
             "pronajem", "pronajmu", "nabidka", "byt", "bytu", "kk", "m2", "kc", "mesic", "mesicne",
@@ -37,10 +36,6 @@ public class ParserService {
             "pardubice", "jihlava", "kladno", "nymburk", "tabor", "cheb", "most",
             "iv", "iii", "ii", "i"
     );
-
-    private final Object fetchLock = new Object();
-    private volatile List<ListingDto> cachedListings = List.of();
-    private volatile long cachedAtMillis = 0;
 
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
@@ -202,122 +197,6 @@ public class ParserService {
         log.info("All listings region={} count={}", regionTitle(region), all.size());
 
         return all;
-    }
-
-    public List<ListingDto> fetchAllListingsOnce() throws IOException {
-        long now = System.currentTimeMillis();
-
-        if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
-            log.info("Using cached listings count={}", cachedListings.size());
-            return cachedListings;
-        }
-
-        synchronized (fetchLock) {
-            now = System.currentTimeMillis();
-
-            if (!cachedListings.isEmpty() && now - cachedAtMillis < CACHE_TTL_MILLIS) {
-                log.info("Using cached listings count={}", cachedListings.size());
-                return cachedListings;
-            }
-
-            Region defaultRegion = null;
-            RegionGroup defaultGroup = null;
-            Integer defaultSrealityRegionId = 10;
-
-            List<ListingDto> all = new ArrayList<>();
-
-            int srealityRaw = 0;
-            int idnesRaw = 0;
-            int bezrealitkyRaw = 0;
-            int bazosRaw = 0;
-
-            try {
-                List<ListingDto> sreality = srealityParser.fetchListings(defaultSrealityRegionId);
-                srealityRaw = sreality.size();
-                log.info("Sreality listings count={}", srealityRaw);
-                all.addAll(sreality);
-            } catch (Exception e) {
-                log.warn("Sreality parser failed error={}", e.getMessage());
-            }
-
-            try {
-                List<ListingDto> idnes = idnesParser.fetchListings(defaultRegion, defaultGroup);
-                idnesRaw = idnes.size();
-                log.info("iDNES listings count={}", idnesRaw);
-                all.addAll(idnes);
-            } catch (Exception e) {
-                log.warn("iDNES parser failed error={}", e.getMessage());
-            }
-
-            try {
-                List<ListingDto> bezrealitky = bezrealitkyParser.fetchListings(defaultRegion);
-                bezrealitkyRaw = bezrealitky.size();
-                log.info("Bezrealitky listings count={}", bezrealitkyRaw);
-                all.addAll(bezrealitky);
-            } catch (Exception e) {
-                log.warn("Bezrealitky parser failed error={}", e.getMessage());
-            }
-
-            try {
-                List<ListingDto> ownerListings = ownerListingService.fetchApprovedListings(defaultRegion);
-                log.info("Owner listings count={}", ownerListings.size());
-                all.addAll(ownerListings);
-            } catch (Exception e) {
-                log.warn("Owner listings failed error={}", e.getMessage());
-            }
-
-            try {
-                if (bazosParser.isRateLimitedForCurrentCycle()) {
-                    log.debug(
-                            "Bazos skipped reason={} cooldownRemainingSeconds={}",
-                            bazosParser.currentSkipReason(),
-                            bazosParser.currentSkipRemainingSeconds()
-                    );
-                } else {
-                    List<ListingDto> bazos = bazosParser.fetchListings(defaultRegion);
-                    bazosRaw = bazos.size();
-                    log.info("Bazos listings count={}", bazosRaw);
-                    all.addAll(bazos);
-                }
-            } catch (Exception e) {
-                log.warn("Bazos parser failed error={}", e.getMessage());
-            }
-
-            all = dedupeByLink(all);
-            int afterDedupeByLink = all.size();
-            log.info("After dedupe by link count={}", afterDedupeByLink);
-
-            all = dedupeBySignature(all);
-            int afterDedupeBySignature = all.size();
-            log.info("After dedupe by signature count={}", afterDedupeBySignature);
-
-            log.info("All listings from all parsers count={}", all.size());
-
-            ParserRunStats previous = lastRunStats.get();
-            lastRunStats.set(new ParserRunStats(
-                    srealityRaw,
-                    idnesRaw,
-                    bezrealitkyRaw,
-                    bazosRaw,
-                    afterDedupeByLink,
-                    afterDedupeBySignature,
-                    previous.filteredBaseTotal(),
-                    previous.filteredBaseSreality(),
-                    previous.filteredBaseIdnes(),
-                    previous.filteredBaseBezrealitky(),
-                    previous.filteredBaseBazos(),
-                    previous.finalFiltered(),
-                    previous.finalSreality(),
-                    previous.finalIdnes(),
-                    previous.finalBezrealitky(),
-                    previous.finalBazos()
-            ));
-
-            cachedListings = all;
-            cachedAtMillis = System.currentTimeMillis();
-
-            return all;
-        }
     }
 
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
