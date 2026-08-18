@@ -645,6 +645,41 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup supportKeyboard(Language lang) {
+        InlineKeyboardRow raiffeisen = new InlineKeyboardRow();
+        raiffeisen.add(button("💳 Raiffeisenbank", "SUPPORT:RAIFFEISEN"));
+
+        InlineKeyboardRow privatBank = new InlineKeyboardRow();
+        privatBank.add(InlineKeyboardButton.builder()
+                .text("PrivatBank")
+                .url("https://www.privat24.ua/send/47m35")
+                .build());
+
+        InlineKeyboardRow paypal = new InlineKeyboardRow();
+        paypal.add(InlineKeyboardButton.builder()
+                .text("PayPal")
+                .url("https://www.paypal.me/YEVHENSHKUROPAT")
+                .build());
+
+        InlineKeyboardRow revolut = new InlineKeyboardRow();
+        revolut.add(InlineKeyboardButton.builder()
+                .text("Revolut")
+                .url("https://revolut.me/evzen13")
+                .build());
+
+        InlineKeyboardRow back = new InlineKeyboardRow();
+        back.add(button(switch (lang) {
+            case RU -> "⬅️ Сервисы";
+            case CZ -> "⬅️ Služby";
+            case EN -> "⬅️ Services";
+            default -> "⬅️ Сервіси";
+        }, "SUPPORT:BACK"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(raiffeisen, privatBank, paypal, revolut, back))
+                .build();
+    }
+
     public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {
         return ownerListingConfirmKeyboard(Language.UA);
     }

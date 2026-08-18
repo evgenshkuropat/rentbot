@@ -638,7 +638,7 @@ Bazoš: %d
         }
 
         if (text.equals(msg(userId, "menu.support.project"))) {
-            send(chatId, msg(userId, "support.text"), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, msg(userId, "support.text"), Keyboards.supportKeyboard(lang));
             return;
         }
 
@@ -1910,8 +1910,23 @@ Bazoš: %d
             return;
         }
 
-        if (data.startsWith("SERVICE:SUPPORT")) {
-            send(chatId, msg(userId, "support.text"), Keyboards.authorContactKeyboard(lang));
+        if (data.equals("SERVICE:SUPPORT")) {
+            send(chatId, msg(userId, "support.text"), Keyboards.supportKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("SUPPORT:RAIFFEISEN")) {
+            send(chatId, raiffeisenSupportInfo(lang), Keyboards.supportKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("SUPPORT:BACK")) {
+            send(chatId, switch (lang) {
+                case RU -> "Другие полезные сервисы:";
+                case CZ -> "Další užitečné služby:";
+                case EN -> "Other useful services:";
+                default -> "Інші корисні сервіси:";
+            }, Keyboards.servicesInlineKeyboard(lang));
             return;
         }
 
@@ -2402,6 +2417,35 @@ Bazoš: %d
             case CZ -> "Toto město nemá výběr oblastí. Můžete změnit město, typ bytu nebo cenu.";
             case EN -> "This city has no district selector. You can change city, apartment type, or price.";
             default -> "У цьому місті немає вибору районів. Можна змінити місто, тип квартири або ціну.";
+        };
+    }
+
+    private String raiffeisenSupportInfo(Language lang) {
+        return switch (lang) {
+            case RU -> """
+                    💳 Raiffeisenbank
+
+                    Счёт: 972026002/5500
+
+                    Откройте приложение своего банка, выберите платёж по реквизитам и укажите этот счёт.""";
+            case CZ -> """
+                    💳 Raiffeisenbank
+
+                    Účet: 972026002/5500
+
+                    Otevřete aplikaci své banky, zvolte platbu na účet a zadejte tento účet.""";
+            case EN -> """
+                    💳 Raiffeisenbank
+
+                    Account: 972026002/5500
+
+                    Open your banking app, choose a bank transfer and enter this account.""";
+            default -> """
+                    💳 Raiffeisenbank
+
+                    Рахунок: 972026002/5500
+
+                    Відкрийте застосунок свого банку, оберіть платіж за реквізитами та вкажіть цей рахунок.""";
         };
     }
 

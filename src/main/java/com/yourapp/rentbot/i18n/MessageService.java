@@ -64,13 +64,9 @@ public class MessageService {
                         "Поділитися ботом можна за цим посиланням:\nhttps://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿"),
                 Map.entry("support.text",
                         """
-                        Дякую, що користуєтесь ботом. Підтримка допомагає оплачувати сервер, парсери та розвиток нових функцій.
+                        Дякую, що користуєтеся ботом. Ваша підтримка допомагає оплачувати сервер, роботу парсерів і розвиток нових функцій.
 
-                        Можна підтримати зручним способом:
-                        • Raiffeisen Bank: 972026002/5500
-                        • PrivatBank: https://www.privat24.ua/send/47m35
-                        • PayPal: https://www.paypal.me/YEVHENSHKUROPAT
-                        • Revolut: https://revolut.me/evzen13"""),
+                        Підтримати проєкт можна зручним для вас способом:"""),
                 Map.entry("menu.title", "Головне меню:"),
 
                 Map.entry("notify.fetch.failed",
@@ -156,7 +152,10 @@ public class MessageService {
                 Map.entry("share.text",
                         "Поделиться ботом можно по этой ссылке:\nhttps://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿"),
                 Map.entry("support.text",
-                        "Поддержать развитие проекта можно здесь 💙\nhttps://revolut.me/evzen13"),
+                        """
+                        Спасибо, что пользуетесь ботом. Ваша поддержка помогает оплачивать сервер, работу парсеров и развитие новых функций.
+
+                        Поддержать проект можно удобным для вас способом:"""),
                 Map.entry("menu.title", "Главное меню:"),
 
                 Map.entry("notify.fetch.failed",
@@ -242,7 +241,10 @@ public class MessageService {
                 Map.entry("share.text",
                         "Sdílet bota můžeš pomocí tohoto odkazu:\nhttps://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿"),
                 Map.entry("support.text",
-                        "Podpořit projekt můžeš tady 💙\nhttps://revolut.me/evzen13"),
+                        """
+                        Děkujeme, že používáte našeho bota. Vaše podpora pomáhá hradit provoz serveru, práci parserů a vývoj nových funkcí.
+
+                        Projekt můžete podpořit způsobem, který vám vyhovuje:"""),
                 Map.entry("menu.title", "Hlavní menu:"),
 
                 Map.entry("notify.fetch.failed",
@@ -328,7 +330,10 @@ public class MessageService {
                 Map.entry("share.text",
                         "You can share the bot using this link:\nhttps://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿"),
                 Map.entry("support.text",
-                        "You can support the project here 💙\nhttps://revolut.me/evzen13"),
+                        """
+                        Thank you for using the bot. Your support helps cover server costs, parser operation, and the development of new features.
+
+                        You can support the project using whichever option is most convenient for you:"""),
                 Map.entry("menu.title", "Main menu:"),
 
                 Map.entry("notify.fetch.failed",
