@@ -63,7 +63,14 @@ public class MessageService {
                 Map.entry("share.text",
                         "Поділитися ботом можна за цим посиланням:\nhttps://t.me/share/url?url=https://t.me/zhytloCZ_bot&text=Знайди житло в Чехії 🇨🇿"),
                 Map.entry("support.text",
-                        "Підтримати розвиток проєкту можна тут 💙\nhttps://revolut.me/evzen13"),
+                        """
+                        Дякую, що користуєтесь ботом. Підтримка допомагає оплачувати сервер, парсери та розвиток нових функцій.
+
+                        Можна підтримати зручним способом:
+                        • Raiffeisen Bank: 972026002/5500
+                        • PrivatBank: https://www.privat24.ua/send/47m35
+                        • PayPal: https://www.paypal.me/YEVHENSHKUROPAT
+                        • Revolut: https://revolut.me/evzen13"""),
                 Map.entry("menu.title", "Головне меню:"),
 
                 Map.entry("notify.fetch.failed",
