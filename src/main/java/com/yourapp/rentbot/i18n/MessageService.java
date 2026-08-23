@@ -76,8 +76,8 @@ public class MessageService {
                 Map.entry("listing.location", "Локація"),
                 Map.entry("listing.link", "Посилання"),
 
-                Map.entry("menu.new.search", "🔄 Новий пошук"),
-                Map.entry("menu.my.filter", "📋 Мій фільтр"),
+                Map.entry("menu.new.search", "⚙️ Налаштувати пошук"),
+                Map.entry("menu.my.filter", "📋 Мій пошук"),
                 Map.entry("menu.favorites", "⭐ Обране"),
                 Map.entry("menu.stop.search", "⛔ Зупинити пошук"),
                 Map.entry("menu.share.bot", "📤 Поширити бота"),
@@ -165,8 +165,8 @@ public class MessageService {
                 Map.entry("listing.location", "Локация"),
                 Map.entry("listing.link", "Ссылка"),
 
-                Map.entry("menu.new.search", "🔄 Новый поиск"),
-                Map.entry("menu.my.filter", "📋 Мой фильтр"),
+                Map.entry("menu.new.search", "⚙️ Настроить поиск"),
+                Map.entry("menu.my.filter", "📋 Мой поиск"),
                 Map.entry("menu.favorites", "⭐ Избранное"),
                 Map.entry("menu.stop.search", "⛔ Остановить поиск"),
                 Map.entry("menu.share.bot", "📤 Поделиться ботом"),
@@ -254,8 +254,8 @@ public class MessageService {
                 Map.entry("listing.location", "Lokalita"),
                 Map.entry("listing.link", "Odkaz"),
 
-                Map.entry("menu.new.search", "🔄 Nové hledání"),
-                Map.entry("menu.my.filter", "📋 Můj filtr"),
+                Map.entry("menu.new.search", "⚙️ Nastavit hledání"),
+                Map.entry("menu.my.filter", "📋 Moje hledání"),
                 Map.entry("menu.favorites", "⭐ Oblíbené"),
                 Map.entry("menu.stop.search", "⛔ Zastavit hledání"),
                 Map.entry("menu.share.bot", "📤 Sdílet bota"),
@@ -343,8 +343,8 @@ public class MessageService {
                 Map.entry("listing.location", "Location"),
                 Map.entry("listing.link", "Link"),
 
-                Map.entry("menu.new.search", "🔄 New search"),
-                Map.entry("menu.my.filter", "📋 My filter"),
+                Map.entry("menu.new.search", "⚙️ Set up search"),
+                Map.entry("menu.my.filter", "📋 My search"),
                 Map.entry("menu.favorites", "⭐ Favorites"),
                 Map.entry("menu.stop.search", "⛔ Stop search"),
                 Map.entry("menu.share.bot", "📤 Share bot"),

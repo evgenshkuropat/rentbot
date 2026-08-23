@@ -563,7 +563,11 @@ Bazoš: %d
             return;
         }
 
-        if (text.equals(msg(userId, "menu.new.search"))) {
+        if (text.equals(msg(userId, "menu.new.search"))
+                || text.equals("🔄 Новий пошук")
+                || text.equals("🔄 Новый поиск")
+                || text.equals("🔄 Nové hledání")
+                || text.equals("🔄 New search")) {
             filterEditMode.remove(userId);
             flowService.reset(userId);
 
@@ -571,7 +575,11 @@ Bazoš: %d
             return;
         }
 
-        if (text.equals(msg(userId, "menu.my.filter"))) {
+        if (text.equals(msg(userId, "menu.my.filter"))
+                || text.equals("📋 Мій фільтр")
+                || text.equals("📋 Мой фильтр")
+                || text.equals("📋 Můj filtr")
+                || text.equals("📋 My filter")) {
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
             send(chatId, flowService.pretty(f, lang), Keyboards.filterActionsKeyboard(lang));
@@ -592,16 +600,14 @@ Bazoš: %d
                 send(chatId, msg(userId, "search.stopped.already"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
-
-            f.setActive(false);
-            flowService.save(f);
-
-            UserFilter fullFilter = userFilterRepo.findFullById(userId)
-                    .orElseGet(() -> f);
-
             send(chatId,
-                    msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter, lang),
-                    Keyboards.persistentNavKeyboard(lang));
+                    switch (lang) {
+                        case RU -> "Остановить автоматический поиск и уведомления?";
+                        case CZ -> "Zastavit automatické hledání a upozornění?";
+                        case EN -> "Stop automatic search and notifications?";
+                        default -> "Зупинити автоматичний пошук і сповіщення?";
+                    },
+                    Keyboards.stopConfirmationKeyboard(lang));
             return;
         }
 
@@ -643,7 +649,7 @@ Bazoš: %d
         }
 
         if (text.equalsIgnoreCase("/menu")) {
-            send(chatId, msg(userId, "menu.title"), Keyboards.mainMenuKeyboard(lang));
+            send(chatId, msg(userId, "menu.title"), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -663,7 +669,11 @@ Bazoš: %d
             return;
         }
 
-        if (text.equals("🔍 Нові квартири")
+        if (text.equals("🔍 Перевірити нові")
+                || text.equals("🔍 Проверить новые")
+                || text.equals("🔍 Zkontrolovat nové")
+                || text.equals("🔍 Check new")
+                || text.equals("🔍 Нові квартири")
                 || text.equals("🔍 Новые квартиры")
                 || text.equals("🔍 Nové byty")
                 || text.equals("🔍 New listings")) {
@@ -755,14 +765,26 @@ Bazoš: %d
                 || text.equals("🔄 Новый поиск")
                 || text.equals("🔄 Nové hledání")
                 || text.equals("🔄 New search")
+                || text.equals("⚙️ Налаштувати пошук")
+                || text.equals("⚙️ Настроить поиск")
+                || text.equals("⚙️ Nastavit hledání")
+                || text.equals("⚙️ Set up search")
                 || text.equals("📋 Мій фільтр")
                 || text.equals("📋 Мой фильтр")
                 || text.equals("📋 Můj filtr")
                 || text.equals("📋 My filter")
+                || text.equals("📋 Мій пошук")
+                || text.equals("📋 Мой поиск")
+                || text.equals("📋 Moje hledání")
+                || text.equals("📋 My search")
                 || text.equals("🔍 Нові квартири")
                 || text.equals("🔍 Новые квартиры")
                 || text.equals("🔍 Nové byty")
                 || text.equals("🔍 New listings")
+                || text.equals("🔍 Перевірити нові")
+                || text.equals("🔍 Проверить новые")
+                || text.equals("🔍 Zkontrolovat nové")
+                || text.equals("🔍 Check new")
                 || text.equals("⭐ Обране")
                 || text.equals("⭐ Избранное")
                 || text.equals("⭐ Oblíbené")
@@ -1838,6 +1860,26 @@ Bazoš: %d
             }
         }
 
+        if (data.equals("STOP:CONFIRM")) {
+            filterEditMode.remove(userId);
+            f.setActive(false);
+            flowService.save(f);
+
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+            send(chatId,
+                    msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter, lang),
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("STOP:CANCEL")) {
+            UserFilter fullFilter = userFilterRepo.findFullById(userId)
+                    .orElseGet(() -> f);
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.filterActionsKeyboard(lang));
+            return;
+        }
+
         if (data.startsWith("MENU:")) {
             String action = data.substring("MENU:".length());
 
@@ -1882,16 +1924,14 @@ Bazoš: %d
                         send(chatId, msg(userId, "search.stopped.already"), Keyboards.mainMenuKeyboard(lang));
                         return;
                     }
-
-                    f.setActive(false);
-                    flowService.save(f);
-
-                    UserFilter fullFilter = userFilterRepo.findFullById(userId)
-                            .orElseGet(() -> f);
-
                     send(chatId,
-                            msg(userId, "search.stopped") + "\n\n" + flowService.pretty(fullFilter, lang),
-                            Keyboards.mainMenuKeyboard(lang));
+                            switch (lang) {
+                                case RU -> "Остановить автоматический поиск и уведомления?";
+                                case CZ -> "Zastavit automatické hledání a upozornění?";
+                                case EN -> "Stop automatic search and notifications?";
+                                default -> "Зупинити автоматичний пошук і сповіщення?";
+                            },
+                            Keyboards.stopConfirmationKeyboard(lang));
                 }
 
                 default -> send(chatId, msg(userId, "menu.unknown.action"), Keyboards.mainMenuKeyboard(lang));

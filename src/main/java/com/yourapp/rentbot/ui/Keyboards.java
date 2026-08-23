@@ -203,30 +203,30 @@ public class Keyboards {
     public static ReplyKeyboardMarkup persistentNavKeyboard(Language lang) {
         KeyboardRow row1 = new KeyboardRow();
         row1.add(switch (lang) {
-            case RU -> "🔄 Новый поиск";
-            case CZ -> "🔄 Nové hledání";
-            case EN -> "🔄 New search";
-            default -> "🔄 Новий пошук";
+            case RU -> "🔍 Проверить новые";
+            case CZ -> "🔍 Zkontrolovat nové";
+            case EN -> "🔍 Check new";
+            default -> "🔍 Перевірити нові";
         });
         row1.add(switch (lang) {
-            case RU -> "📋 Мой фильтр";
-            case CZ -> "📋 Můj filtr";
-            case EN -> "📋 My filter";
-            default -> "📋 Мій фільтр";
+            case RU -> "📋 Мой поиск";
+            case CZ -> "📋 Moje hledání";
+            case EN -> "📋 My search";
+            default -> "📋 Мій пошук";
         });
 
         KeyboardRow row2 = new KeyboardRow();
-        row2.add(switch (lang) {
-            case RU -> "🔍 Новые квартиры";
-            case CZ -> "🔍 Nové byty";
-            case EN -> "🔍 New listings";
-            default -> "🔍 Нові квартири";
-        });
         row2.add(switch (lang) {
             case RU -> "⭐ Избранное";
             case CZ -> "⭐ Oblíbené";
             case EN -> "⭐ Favorites";
             default -> "⭐ Обране";
+        });
+        row2.add(switch (lang) {
+            case RU -> "⚙️ Настроить поиск";
+            case CZ -> "⚙️ Nastavit hledání";
+            case EN -> "⚙️ Set up search";
+            default -> "⚙️ Налаштувати пошук";
         });
 
         KeyboardRow row3 = new KeyboardRow();
@@ -245,16 +245,16 @@ public class Keyboards {
 
         KeyboardRow row4 = new KeyboardRow();
         row4.add(switch (lang) {
-            case RU -> "🌐 Язык / Language";
-            case CZ -> "🌐 Jazyk / Language";
-            case EN -> "🌐 Language";
-            default -> "🌐 Мова / Language";
-        });
-        row4.add(switch (lang) {
             case RU -> "🤝 Другие сервисы";
             case CZ -> "🤝 Další služby";
             case EN -> "🤝 Other services";
             default -> "🤝 Інші сервіси";
+        });
+        row4.add(switch (lang) {
+            case RU -> "🌐 Язык / Language";
+            case CZ -> "🌐 Jazyk / Language";
+            case EN -> "🌐 Language";
+            default -> "🌐 Мова / Language";
         });
 
         List<KeyboardRow> keyboard = new ArrayList<>();
@@ -272,17 +272,17 @@ public class Keyboards {
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
-            case RU -> "🔍 Новые квартиры";
-            case CZ -> "🔍 Nové byty";
-            case EN -> "🔍 New listings";
-            default -> "🔍 Нові квартири";
+            case RU -> "🔍 Проверить новые";
+            case CZ -> "🔍 Zkontrolovat nové";
+            case EN -> "🔍 Check new";
+            default -> "🔍 Перевірити нові";
         }, "MENU:NEW"));
 
         row1.add(button(switch (lang) {
-            case RU -> "📋 Мой фильтр";
-            case CZ -> "📋 Můj filtr";
-            case EN -> "📋 My filter";
-            default -> "📋 Мій фільтр";
+            case RU -> "📋 Мой поиск";
+            case CZ -> "📋 Moje hledání";
+            case EN -> "📋 My search";
+            default -> "📋 Мій пошук";
         }, "MENU:FILTER"));
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
@@ -308,20 +308,22 @@ public class Keyboards {
     public static InlineKeyboardMarkup editFilterKeyboard(boolean hasDistricts, Language lang) {
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
-        rows.add(new InlineKeyboardRow(
-                button(switch (lang) {
-                    case RU -> "🏙 Город";
-                    case CZ -> "🏙 Město";
-                    case EN -> "🏙 City";
-                    default -> "🏙 Місто";
-                }, "EDIT:CITY"),
-                button(switch (lang) {
-                    case RU -> "📍 Район";
-                    case CZ -> "📍 Oblast";
-                    case EN -> "📍 District";
-                    default -> "📍 Район";
-                }, "EDIT:DISTRICT")
-        ));
+        InlineKeyboardRow locationRow = new InlineKeyboardRow();
+        locationRow.add(button(switch (lang) {
+            case RU -> "🏙 Город";
+            case CZ -> "🏙 Město";
+            case EN -> "🏙 City";
+            default -> "🏙 Місто";
+        }, "EDIT:CITY"));
+        if (hasDistricts) {
+            locationRow.add(button(switch (lang) {
+                case RU -> "📍 Район";
+                case CZ -> "📍 Oblast";
+                case EN -> "📍 District";
+                default -> "📍 Район";
+            }, "EDIT:DISTRICT"));
+        }
+        rows.add(locationRow);
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
@@ -340,10 +342,10 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "🔄 Новый поиск";
-                    case CZ -> "🔄 Nové hledání";
-                    case EN -> "🔄 New search";
-                    default -> "🔄 Новий пошук";
+                    case RU -> "⚙️ Настроить заново";
+                    case CZ -> "⚙️ Nastavit znovu";
+                    case EN -> "⚙️ Set up again";
+                    default -> "⚙️ Налаштувати заново";
                 }, "CONFIRM:RESET"),
                 button(switch (lang) {
                     case RU -> "⛔ Остановить";
@@ -361,10 +363,10 @@ public class Keyboards {
     public static InlineKeyboardMarkup filterActionsKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
-            case RU -> "🔄 Новый поиск";
-            case CZ -> "🔄 Nové hledání";
-            case EN -> "🔄 New search";
-            default -> "🔄 Новий пошук";
+            case RU -> "⚙️ Настроить заново";
+            case CZ -> "⚙️ Nastavit znovu";
+            case EN -> "⚙️ Set up again";
+            default -> "⚙️ Налаштувати заново";
         }, "CONFIRM:RESET"));
 
         row1.add(button(switch (lang) {
@@ -387,6 +389,26 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup stopConfirmationKeyboard(Language lang) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(button(switch (lang) {
+            case RU -> "✅ Да, остановить";
+            case CZ -> "✅ Ano, zastavit";
+            case EN -> "✅ Yes, stop";
+            default -> "✅ Так, зупинити";
+        }, "STOP:CONFIRM"));
+        row.add(button(switch (lang) {
+            case RU -> "↩️ Отмена";
+            case CZ -> "↩️ Zrušit";
+            case EN -> "↩️ Cancel";
+            default -> "↩️ Скасувати";
+        }, "STOP:CANCEL"));
+
+        return InlineKeyboardMarkup.builder()
+                .keyboard(List.of(row))
+                .build();
+    }
+
     public static InlineKeyboardMarkup reactivationKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
@@ -398,10 +420,10 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(button(switch (lang) {
-            case RU -> "📋 Мой фильтр";
-            case CZ -> "📋 Můj filtr";
-            case EN -> "📋 My filter";
-            default -> "📋 Мій фільтр";
+            case RU -> "📋 Мой поиск";
+            case CZ -> "📋 Moje hledání";
+            case EN -> "📋 My search";
+            default -> "📋 Мій пошук";
         }, "CONFIRM:SHOW"));
 
         return InlineKeyboardMarkup.builder()
