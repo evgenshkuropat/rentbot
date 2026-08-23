@@ -200,7 +200,7 @@ public class ParserService {
     }
 
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
-        return filterForUserInternal(all, filter, true).listings();
+        return filterForUserInternal(all, filter, false).listings();
     }
 
     public FilterResult filterForScheduler(List<ListingDto> all, UserFilter filter) {
