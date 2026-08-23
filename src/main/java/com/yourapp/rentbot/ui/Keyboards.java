@@ -342,10 +342,10 @@ public class Keyboards {
 
         rows.add(new InlineKeyboardRow(
                 button(switch (lang) {
-                    case RU -> "⚙️ Настроить заново";
-                    case CZ -> "⚙️ Nastavit znovu";
-                    case EN -> "⚙️ Set up again";
-                    default -> "⚙️ Налаштувати заново";
+                    case RU -> "🔄 Начать поиск заново";
+                    case CZ -> "🔄 Začít hledání znovu";
+                    case EN -> "🔄 Start search again";
+                    default -> "🔄 Почати пошук заново";
                 }, "CONFIRM:RESET"),
                 button(switch (lang) {
                     case RU -> "⛔ Остановить";
@@ -363,10 +363,10 @@ public class Keyboards {
     public static InlineKeyboardMarkup filterActionsKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
-            case RU -> "⚙️ Настроить заново";
-            case CZ -> "⚙️ Nastavit znovu";
-            case EN -> "⚙️ Set up again";
-            default -> "⚙️ Налаштувати заново";
+            case RU -> "🔄 Начать поиск заново";
+            case CZ -> "🔄 Začít hledání znovu";
+            case EN -> "🔄 Start search again";
+            default -> "🔄 Почати пошук заново";
         }, "CONFIRM:RESET"));
 
         row1.add(button(switch (lang) {
@@ -378,10 +378,10 @@ public class Keyboards {
 
         InlineKeyboardRow row2 = new InlineKeyboardRow();
         row2.add(button(switch (lang) {
-            case RU -> "⚙️ Изменить";
-            case CZ -> "⚙️ Změnit";
-            case EN -> "⚙️ Change";
-            default -> "⚙️ Змінити";
+            case RU -> "✏️ Изменить параметры";
+            case CZ -> "✏️ Změnit parametry";
+            case EN -> "✏️ Change parameters";
+            default -> "✏️ Змінити параметри";
         }, "EDIT:FILTER"));
 
         return InlineKeyboardMarkup.builder()
@@ -784,10 +784,10 @@ public class Keyboards {
 
         InlineKeyboardRow row3 = new InlineKeyboardRow();
         row3.add(button(switch (lang) {
-            case RU -> "🔄 Изменить";
-            case CZ -> "🔄 Změnit";
-            case EN -> "🔄 Change";
-            default -> "🔄 Змінити";
+            case RU -> "✏️ Изменить параметры";
+            case CZ -> "✏️ Změnit parametry";
+            case EN -> "✏️ Change parameters";
+            default -> "✏️ Змінити параметри";
         }, "EDIT:FILTER"));
 
         row3.add(button(switch (lang) {
