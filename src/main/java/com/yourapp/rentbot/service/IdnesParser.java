@@ -20,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,11 +42,16 @@ public class IdnesParser {
     private static final long MIN_REQUEST_INTERVAL_MS = 750;
     private static final long SEARCH_CACHE_TTL_MS = Duration.ofMinutes(10).toMillis();
     private static final long DETAIL_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
-    private static final long RATE_LIMIT_COOLDOWN_MS = Duration.ofMinutes(10).toMillis();
+    private static final long[] RATE_LIMIT_COOLDOWNS_MS = {
+            Duration.ofHours(1).toMillis(),
+            Duration.ofHours(3).toMillis(),
+            Duration.ofHours(6).toMillis()
+    };
 
     private final Semaphore requestPermit = new Semaphore(1, true);
     private final AtomicLong lastRequestAt = new AtomicLong(0);
     private final AtomicLong rateLimitedUntil = new AtomicLong(0);
+    private final AtomicInteger consecutiveRateLimits = new AtomicInteger(0);
     private final Map<String, CachedListings> searchCache = new ConcurrentHashMap<>();
     private final Map<String, CachedDetail> detailCache = new ConcurrentHashMap<>();
     private final Map<String, Object> searchLocks = new ConcurrentHashMap<>();
@@ -363,7 +369,7 @@ public class IdnesParser {
         }
     }
 
-    private DetailFields fetchDetailFields(String url) {
+    private DetailFields fetchDetailFields(String url) throws IOException {
         if (url == null || url.isBlank()) {
             return DetailFields.EMPTY;
         }
@@ -386,6 +392,8 @@ public class IdnesParser {
             DetailFields fields = new DetailFields(priceCzk, locality, layout, photoUrl);
             detailCache.put(url, new CachedDetail(fields, System.currentTimeMillis()));
             return fields;
+        } catch (RateLimitedException e) {
+            throw e;
         } catch (Exception e) {
             log.debug("iDNES detail fallback failed url={} error={}", url, e.getMessage());
             return DetailFields.EMPTY;
@@ -439,9 +447,15 @@ public class IdnesParser {
 
             int status = response.statusCode();
             if (status == 429) {
-                long blockedUntil = System.currentTimeMillis() + RATE_LIMIT_COOLDOWN_MS;
+                int rateLimitCount = consecutiveRateLimits.incrementAndGet();
+                int cooldownIndex = Math.min(rateLimitCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1);
+                long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[cooldownIndex];
+                long blockedUntil = System.currentTimeMillis() + cooldownMs;
                 rateLimitedUntil.set(blockedUntil);
-                throw new RateLimitedException("iDNES HTTP 429; requests paused for 10 minutes");
+                throw new RateLimitedException(
+                        "iDNES HTTP 429; requests paused for " + formatDuration(cooldownMs),
+                        true
+                );
             }
             if (status >= 500) {
                 throw new RetryableHttpException("iDNES HTTP " + status + " for " + url);
@@ -449,6 +463,8 @@ public class IdnesParser {
             if (status >= 400) {
                 throw new IOException("iDNES HTTP " + status + " for " + url);
             }
+            consecutiveRateLimits.set(0);
+            rateLimitedUntil.set(0);
             return response;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -465,8 +481,25 @@ public class IdnesParser {
         long remainingMs = rateLimitedUntil.get() - System.currentTimeMillis();
         if (remainingMs > 0) {
             long remainingSeconds = Math.max(1, (remainingMs + 999) / 1_000);
-            throw new RateLimitedException("iDNES requests paused for another " + remainingSeconds + " seconds");
+            throw new RateLimitedException(
+                    "iDNES requests paused for another " + formatDuration(remainingSeconds * 1_000),
+                    false
+            );
         }
+    }
+
+    private String formatDuration(long durationMs) {
+        long totalMinutes = Math.max(1, (durationMs + 59_999) / 60_000);
+        long hours = totalMinutes / 60;
+        long minutes = totalMinutes % 60;
+
+        if (hours == 0) {
+            return totalMinutes + " minutes";
+        }
+        if (minutes == 0) {
+            return hours + (hours == 1 ? " hour" : " hours");
+        }
+        return hours + (hours == 1 ? " hour " : " hours ") + minutes + " minutes";
     }
 
     private boolean isRetryable(IOException e) {
@@ -766,9 +799,16 @@ public class IdnesParser {
         }
     }
 
-    private static final class RateLimitedException extends IOException {
-        private RateLimitedException(String message) {
+    public static final class RateLimitedException extends IOException {
+        private final boolean newCooldown;
+
+        private RateLimitedException(String message, boolean newCooldown) {
             super(message);
+            this.newCooldown = newCooldown;
+        }
+
+        public boolean isNewCooldown() {
+            return newCooldown;
         }
     }
 }

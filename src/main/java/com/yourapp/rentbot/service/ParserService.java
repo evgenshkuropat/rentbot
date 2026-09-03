@@ -121,6 +121,12 @@ public class ParserService {
 
             all.addAll(idnes);
 
+        } catch (IdnesParser.RateLimitedException e) {
+            if (e.isNewCooldown()) {
+                log.warn("iDNES rate limit activated region={} error={}", regionTitle(region), e.getMessage());
+            } else {
+                log.debug("iDNES skipped region={} reason={}", regionTitle(region), e.getMessage());
+            }
         } catch (Exception e) {
             log.warn("iDNES parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
