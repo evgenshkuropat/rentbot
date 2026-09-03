@@ -12,14 +12,19 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.time.LocalDateTime;
+import java.time.Duration;
 
 @Service
 public class IdnesParser {
@@ -27,6 +32,23 @@ public class IdnesParser {
     private static final Logger log = LoggerFactory.getLogger(IdnesParser.class);
 
     private static final String BASE_URL = "https://reality.idnes.cz";
+    private static final String USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    private static final int SEARCH_TIMEOUT_MS = 30_000;
+    private static final int DETAIL_TIMEOUT_MS = 15_000;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long MIN_REQUEST_INTERVAL_MS = 750;
+    private static final long SEARCH_CACHE_TTL_MS = Duration.ofMinutes(10).toMillis();
+    private static final long DETAIL_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
+    private static final long RATE_LIMIT_COOLDOWN_MS = Duration.ofMinutes(10).toMillis();
+
+    private final Semaphore requestPermit = new Semaphore(1, true);
+    private final AtomicLong lastRequestAt = new AtomicLong(0);
+    private final AtomicLong rateLimitedUntil = new AtomicLong(0);
+    private final Map<String, CachedListings> searchCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedDetail> detailCache = new ConcurrentHashMap<>();
+    private final Map<String, Object> searchLocks = new ConcurrentHashMap<>();
 
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
@@ -57,11 +79,27 @@ public class IdnesParser {
     public List<ListingDto> fetchListings(Region region, RegionGroup regionGroup) throws IOException {
         String url = buildSearchUrl(region, regionGroup);
 
-        var response = Jsoup.connect(url)
-                .userAgent("Mozilla/5.0")
-                .timeout(15000)
-                .ignoreHttpErrors(true)
-                .execute();
+        CachedListings cached = searchCache.get(url);
+        if (isFresh(cached)) {
+            return cached.listings();
+        }
+
+        Object searchLock = searchLocks.computeIfAbsent(url, ignored -> new Object());
+        synchronized (searchLock) {
+            cached = searchCache.get(url);
+            if (isFresh(cached)) {
+                return cached.listings();
+            }
+
+            List<ListingDto> listings = fetchListingsUncached(region, url);
+            List<ListingDto> snapshot = List.copyOf(listings);
+            searchCache.put(url, new CachedListings(snapshot, System.currentTimeMillis()));
+            return snapshot;
+        }
+    }
+
+    private List<ListingDto> fetchListingsUncached(Region region, String url) throws IOException {
+        var response = executeWithRetry(url, SEARCH_TIMEOUT_MS);
 
         Document doc = Jsoup.parse(
                 response.bodyStream(),
@@ -79,6 +117,7 @@ public class IdnesParser {
         int skippedBlankTitle = 0;
         int skippedNotApartment = 0;
         int detailFetches = 0;
+        int detailCacheHits = 0;
         int detailPriceFilled = 0;
         int detailLocalityFilled = 0;
 
@@ -140,8 +179,13 @@ public class IdnesParser {
             }
 
             if (priceCzk <= 0 || locality.isBlank()) {
+                boolean detailWasCached = isFresh(detailCache.get(absoluteLink));
                 DetailFields detail = fetchDetailFields(absoluteLink);
-                detailFetches++;
+                if (detailWasCached) {
+                    detailCacheHits++;
+                } else {
+                    detailFetches++;
+                }
 
                 if (priceCzk <= 0 && detail.priceCzk() > 0) {
                     priceCzk = detail.priceCzk();
@@ -174,7 +218,7 @@ public class IdnesParser {
         List<ListingDto> deduped = dedupeByLink(result);
 
         log.info(
-                "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={} detailFetches={} detailPriceFilled={} detailLocalityFilled={}",
+                "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={} detailFetches={} detailCacheHits={} detailPriceFilled={} detailLocalityFilled={}",
                 region != null ? region.getTitle() : "default",
                 url,
                 response.statusCode(),
@@ -187,6 +231,7 @@ public class IdnesParser {
                 skippedBlankTitle,
                 skippedNotApartment,
                 detailFetches,
+                detailCacheHits,
                 detailPriceFilled,
                 detailLocalityFilled
         );
@@ -323,12 +368,14 @@ public class IdnesParser {
             return DetailFields.EMPTY;
         }
 
+        CachedDetail cached = detailCache.get(url);
+        if (isFresh(cached)) {
+            return cached.fields();
+        }
+
         try {
-            Document doc = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0")
-                    .timeout(8000)
-                    .ignoreHttpErrors(true)
-                    .get();
+            var response = executeWithRetry(url, DETAIL_TIMEOUT_MS);
+            Document doc = Jsoup.parse(response.bodyStream(), "UTF-8", url);
 
             String text = doc.text();
             int priceCzk = extractPrice(text);
@@ -336,11 +383,114 @@ public class IdnesParser {
             String layout = extractLayout(text);
             String photoUrl = extractMetaImage(doc);
 
-            return new DetailFields(priceCzk, locality, layout, photoUrl);
+            DetailFields fields = new DetailFields(priceCzk, locality, layout, photoUrl);
+            detailCache.put(url, new CachedDetail(fields, System.currentTimeMillis()));
+            return fields;
         } catch (Exception e) {
             log.debug("iDNES detail fallback failed url={} error={}", url, e.getMessage());
             return DetailFields.EMPTY;
         }
+    }
+
+    private org.jsoup.Connection.Response executeWithRetry(String url, int timeoutMs) throws IOException {
+        IOException lastFailure = null;
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                return executeRateLimited(url, timeoutMs);
+            } catch (IOException e) {
+                lastFailure = e;
+                if (attempt == MAX_ATTEMPTS || !isRetryable(e)) {
+                    throw e;
+                }
+
+                long retryDelayMs = e instanceof RetryableHttpException
+                        ? 5_000L * attempt
+                        : 1_000L * attempt;
+                sleep(retryDelayMs);
+            }
+        }
+
+        throw lastFailure != null ? lastFailure : new IOException("iDNES request failed");
+    }
+
+    private org.jsoup.Connection.Response executeRateLimited(String url, int timeoutMs) throws IOException {
+        ensureNotRateLimited();
+
+        boolean acquired = false;
+        try {
+            requestPermit.acquire();
+            acquired = true;
+            ensureNotRateLimited();
+
+            long waitMs = MIN_REQUEST_INTERVAL_MS - (System.currentTimeMillis() - lastRequestAt.get());
+            if (waitMs > 0) {
+                sleep(waitMs);
+            }
+
+            var response = Jsoup.connect(url)
+                    .userAgent(USER_AGENT)
+                    .referrer(BASE_URL + "/")
+                    .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.7")
+                    .timeout(timeoutMs)
+                    .followRedirects(true)
+                    .ignoreHttpErrors(true)
+                    .execute();
+
+            int status = response.statusCode();
+            if (status == 429) {
+                long blockedUntil = System.currentTimeMillis() + RATE_LIMIT_COOLDOWN_MS;
+                rateLimitedUntil.set(blockedUntil);
+                throw new RateLimitedException("iDNES HTTP 429; requests paused for 10 minutes");
+            }
+            if (status >= 500) {
+                throw new RetryableHttpException("iDNES HTTP " + status + " for " + url);
+            }
+            if (status >= 400) {
+                throw new IOException("iDNES HTTP " + status + " for " + url);
+            }
+            return response;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while waiting for iDNES request", e);
+        } finally {
+            if (acquired) {
+                lastRequestAt.set(System.currentTimeMillis());
+                requestPermit.release();
+            }
+        }
+    }
+
+    private void ensureNotRateLimited() throws RateLimitedException {
+        long remainingMs = rateLimitedUntil.get() - System.currentTimeMillis();
+        if (remainingMs > 0) {
+            long remainingSeconds = Math.max(1, (remainingMs + 999) / 1_000);
+            throw new RateLimitedException("iDNES requests paused for another " + remainingSeconds + " seconds");
+        }
+    }
+
+    private boolean isRetryable(IOException e) {
+        return e instanceof RetryableHttpException
+                || e instanceof SocketTimeoutException
+                || (e.getMessage() != null
+                && (e.getMessage().contains("Connection reset") || e.getMessage().contains("timed out")));
+    }
+
+    private void sleep(long millis) throws IOException {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while throttling iDNES requests", e);
+        }
+    }
+
+    private boolean isFresh(CachedListings cached) {
+        return cached != null && System.currentTimeMillis() - cached.cachedAt() < SEARCH_CACHE_TTL_MS;
+    }
+
+    private boolean isFresh(CachedDetail cached) {
+        return cached != null && System.currentTimeMillis() - cached.cachedAt() < DETAIL_CACHE_TTL_MS;
     }
 
     private String extractMetaImage(Document doc) {
@@ -602,5 +752,23 @@ public class IdnesParser {
 
     private record DetailFields(int priceCzk, String locality, String layout, String photoUrl) {
         private static final DetailFields EMPTY = new DetailFields(0, "", null, "");
+    }
+
+    private record CachedListings(List<ListingDto> listings, long cachedAt) {
+    }
+
+    private record CachedDetail(DetailFields fields, long cachedAt) {
+    }
+
+    private static final class RetryableHttpException extends IOException {
+        private RetryableHttpException(String message) {
+            super(message);
+        }
+    }
+
+    private static final class RateLimitedException extends IOException {
+        private RateLimitedException(String message) {
+            super(message);
+        }
     }
 }
