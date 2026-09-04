@@ -45,7 +45,7 @@ public class IdnesParser {
     private static final long[] RATE_LIMIT_COOLDOWNS_MS = {
             Duration.ofHours(1).toMillis(),
             Duration.ofHours(3).toMillis(),
-            Duration.ofHours(6).toMillis()
+            Duration.ofHours(24).toMillis()
     };
 
     private final Semaphore requestPermit = new Semaphore(1, true);
