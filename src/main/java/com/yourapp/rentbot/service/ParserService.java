@@ -8,6 +8,7 @@ import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ public class ParserService {
     private final BazosParser bazosParser;
     private final OwnerListingService ownerListingService;
     private final UserFilterRepo userFilterRepo;
+    private final boolean idnesEnabled;
 
     private final AtomicReference<ParserRunStats> lastRunStats =
             new AtomicReference<>(new ParserRunStats(
@@ -57,13 +59,16 @@ public class ParserService {
                          BezrealitkyParser bezrealitkyParser,
                          BazosParser bazosParser,
                          OwnerListingService ownerListingService,
-                         UserFilterRepo userFilterRepo) {
+                         UserFilterRepo userFilterRepo,
+                         @Value("${rentbot.idnes.enabled:${IDNES_ENABLED:false}}") boolean idnesEnabled) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
         this.bezrealitkyParser = bezrealitkyParser;
         this.bazosParser = bazosParser;
         this.ownerListingService = ownerListingService;
         this.userFilterRepo = userFilterRepo;
+        this.idnesEnabled = idnesEnabled;
+        log.info("iDNES parser enabled={}", idnesEnabled);
     }
 
     @Transactional(readOnly = true)
@@ -113,22 +118,24 @@ public class ParserService {
             log.warn("Sreality parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
-        try {
-            List<ListingDto> idnes = idnesParser.fetchListings(region, null);
-            idnesRaw = idnes.size();
+        if (idnesEnabled) {
+            try {
+                List<ListingDto> idnes = idnesParser.fetchListings(region, null);
+                idnesRaw = idnes.size();
 
-            log.info("iDNES listings region={} count={}", regionTitle(region), idnes.size());
+                log.info("iDNES listings region={} count={}", regionTitle(region), idnes.size());
 
-            all.addAll(idnes);
+                all.addAll(idnes);
 
-        } catch (IdnesParser.RateLimitedException e) {
-            if (e.isNewCooldown()) {
-                log.warn("iDNES rate limit activated region={} error={}", regionTitle(region), e.getMessage());
-            } else {
-                log.debug("iDNES skipped region={} reason={}", regionTitle(region), e.getMessage());
+            } catch (IdnesParser.RateLimitedException e) {
+                if (e.isNewCooldown()) {
+                    log.warn("iDNES rate limit activated region={} error={}", regionTitle(region), e.getMessage());
+                } else {
+                    log.debug("iDNES skipped region={} reason={}", regionTitle(region), e.getMessage());
+                }
+            } catch (Exception e) {
+                log.warn("iDNES parser failed region={} error={}", regionTitle(region), e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("iDNES parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
         try {
