@@ -87,11 +87,13 @@ public class SchedulerService {
         int aggregateFilteredBaseIdnes = 0;
         int aggregateFilteredBaseBezrealitky = 0;
         int aggregateFilteredBaseBazos = 0;
+        int aggregateFilteredBaseDigireality = 0;
         int aggregateFinalFiltered = 0;
         int aggregateFinalSreality = 0;
         int aggregateFinalIdnes = 0;
         int aggregateFinalBezrealitky = 0;
         int aggregateFinalBazos = 0;
+        int aggregateFinalDigireality = 0;
         int ownerMatches = 0;
         int usersWithOwnerMatches = 0;
 
@@ -125,11 +127,13 @@ public class SchedulerService {
                 aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
                 aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
                 aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
+                aggregateFilteredBaseDigireality += userFilterStats.filteredBaseDigireality();
                 aggregateFinalFiltered += userFilterStats.finalFiltered();
                 aggregateFinalSreality += userFilterStats.finalSreality();
                 aggregateFinalIdnes += userFilterStats.finalIdnes();
                 aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
                 aggregateFinalBazos += userFilterStats.finalBazos();
+                aggregateFinalDigireality += userFilterStats.finalDigireality();
 
                 if (listings == null || listings.isEmpty()) {
                     log.debug("User {}: no matching listings", userId);
@@ -181,11 +185,13 @@ public class SchedulerService {
                 aggregateFilteredBaseIdnes,
                 aggregateFilteredBaseBezrealitky,
                 aggregateFilteredBaseBazos,
+                aggregateFilteredBaseDigireality,
                 aggregateFinalFiltered,
                 aggregateFinalSreality,
                 aggregateFinalIdnes,
                 aggregateFinalBezrealitky,
-                aggregateFinalBazos
+                aggregateFinalBazos,
+                aggregateFinalDigireality
         );
 
         log.info(
@@ -252,8 +258,8 @@ public class SchedulerService {
             return false;
         }
 
-        return listing.source().equalsIgnoreCase("Owner")
-                || listing.source().equalsIgnoreCase("Власник");
+        String source = listing.source().toLowerCase();
+        return source.contains("owner") || source.contains("власник");
     }
 
     private String cacheKey(UserFilter user) {

@@ -277,12 +277,14 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                     - runStats.filteredBaseSreality()
                     - runStats.filteredBaseIdnes()
                     - runStats.filteredBaseBezrealitky()
-                    - runStats.filteredBaseBazos();
+                    - runStats.filteredBaseBazos()
+                    - runStats.filteredBaseDigireality();
             int finalOther = runStats.finalFiltered()
                     - runStats.finalSreality()
                     - runStats.finalIdnes()
                     - runStats.finalBezrealitky()
-                    - runStats.finalBazos();
+                    - runStats.finalBazos()
+                    - runStats.finalDigireality();
 
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
@@ -336,6 +338,7 @@ Sreality raw: %d
 iDNES raw: %d
 Bezrealitky raw: %d
 Bazoš raw: %d
+DigiReality owners raw: %d
 
 🔁 Після дедуплікації:
 By link: %d
@@ -347,6 +350,7 @@ Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
+DigiReality owners: %d
 Власник — попадань у підбірки: %d
 
 🎯 Останній повний цикл у фінальній видачі:
@@ -355,6 +359,7 @@ Sreality: %d
 iDNES: %d
 Bezrealitky: %d
 Bazoš: %d
+DigiReality owners: %d
 Власник — попадань у підбірки: %d
 
 📬 Останній повний цикл розсилки:
@@ -406,6 +411,7 @@ Bazoš: %d
                             runStats.idnesRaw(),
                             runStats.bezrealitkyRaw(),
                             runStats.bazosRaw(),
+                            runStats.digirealityRaw(),
                             runStats.afterDedupeByLink(),
                             runStats.afterDedupeBySignature(),
 
@@ -414,6 +420,7 @@ Bazoš: %d
                             runStats.filteredBaseIdnes(),
                             runStats.filteredBaseBezrealitky(),
                             runStats.filteredBaseBazos(),
+                            runStats.filteredBaseDigireality(),
                             filteredBaseOther,
 
                             runStats.finalFiltered(),
@@ -421,6 +428,7 @@ Bazoš: %d
                             runStats.finalIdnes(),
                             runStats.finalBezrealitky(),
                             runStats.finalBazos(),
+                            runStats.finalDigireality(),
                             finalOther,
 
                             schedulerStats.usersProcessed(),
@@ -2897,7 +2905,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         }
 
         String normalized = source.trim().toLowerCase();
-        if (normalized.equals("owner") || normalized.equals("власник")) {
+        if (normalized.contains("owner") || normalized.contains("власник")) {
             return switch (lang) {
                 case RU -> "Владелец";
                 case CZ -> "Majitel";

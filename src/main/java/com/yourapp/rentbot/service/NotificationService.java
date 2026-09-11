@@ -216,7 +216,7 @@ public class NotificationService {
         }
 
         String normalized = source.trim().toLowerCase();
-        if (normalized.equals("owner") || normalized.equals("власник")) {
+        if (normalized.contains("owner") || normalized.contains("власник")) {
             return switch (lang) {
                 case RU -> "Владелец";
                 case CZ -> "Majitel";

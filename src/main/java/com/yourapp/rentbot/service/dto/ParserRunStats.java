@@ -5,6 +5,7 @@ public record ParserRunStats(
         int idnesRaw,
         int bezrealitkyRaw,
         int bazosRaw,
+        int digirealityRaw,
 
         int afterDedupeByLink,
         int afterDedupeBySignature,
@@ -14,11 +15,13 @@ public record ParserRunStats(
         int filteredBaseIdnes,
         int filteredBaseBezrealitky,
         int filteredBaseBazos,
+        int filteredBaseDigireality,
 
         int finalFiltered,
         int finalSreality,
         int finalIdnes,
         int finalBezrealitky,
-        int finalBazos
+        int finalBazos,
+        int finalDigireality
 ) {
 }
