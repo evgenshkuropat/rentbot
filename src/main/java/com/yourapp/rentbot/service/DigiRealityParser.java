@@ -79,7 +79,11 @@ public class DigiRealityParser {
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
         List<ListingDto> result = toListingsForRegion(loadListings(), region);
-        log.info("DigiReality owner listings region={} count={}", regionTitle(region), result.size());
+        if (result.isEmpty()) {
+            log.debug("DigiReality owner listings region={} count=0", regionTitle(region));
+        } else {
+            log.info("DigiReality owner listings region={} count={}", regionTitle(region), result.size());
+        }
         return result;
     }
 
@@ -108,30 +112,59 @@ public class DigiRealityParser {
     }
 
     List<RssListing> parseRss(String xml) {
+        return parseRssWithDiagnostics(xml).listings();
+    }
+
+    private ParseResult parseRssWithDiagnostics(String xml) {
         if (xml == null || xml.isBlank()) {
-            return List.of();
+            return new ParseResult(List.of(), new ParseDiagnostics());
         }
 
         Document document = Jsoup.parse(xml, RSS_URL, Parser.xmlParser());
         List<RssListing> result = new ArrayList<>();
+        ParseDiagnostics diagnostics = new ParseDiagnostics();
 
         for (Element item : document.select("item")) {
+            diagnostics.total++;
             String title = elementText(item, "title");
             String link = elementText(item, "link");
             String descriptionHtml = elementText(item, "description");
             String description = normalizeWhitespace(Jsoup.parse(descriptionHtml).text());
             String searchable = normalizeForMatch(title + " " + description);
 
-            if (!isRentalApartment(searchable)
-                    || !isOwnerListing(searchable)
-                    || searchable.contains("bezrealitky")
-                    || link.isBlank()) {
+            if (link.isBlank()) {
+                diagnostics.blankLink++;
+                continue;
+            }
+            if (!isRentalApartment(searchable)) {
+                diagnostics.notRentalApartment++;
+                continue;
+            }
+            diagnostics.rentalApartments++;
+
+            if (searchable.contains("bezrealitky")) {
+                diagnostics.bezrealitkyDuplicates++;
+                continue;
+            }
+            if (!hasOwnerSignal(searchable)) {
+                diagnostics.withoutOwnerSignal++;
+                continue;
+            }
+            diagnostics.withOwnerSignal++;
+
+            if (hasAgencySignal(searchable)) {
+                diagnostics.agencySignal++;
                 continue;
             }
 
             int price = extractPrice(title + " " + description);
             String layout = extractLayout(title + " " + description);
-            if (price < 3_000 || price > 60_000 || layout == null) {
+            if (price < 3_000 || price > 60_000) {
+                diagnostics.invalidPrice++;
+                continue;
+            }
+            if (layout == null) {
+                diagnostics.missingLayout++;
                 continue;
             }
 
@@ -144,9 +177,10 @@ public class DigiRealityParser {
                     extractPhoto(item),
                     extractFoundAt(item)
             ));
+            diagnostics.accepted++;
         }
 
-        return result;
+        return new ParseResult(List.copyOf(result), diagnostics);
     }
 
     private List<RssListing> loadListings() throws IOException {
@@ -177,9 +211,26 @@ public class DigiRealityParser {
                 }
 
                 String xml = new String(response.bodyAsBytes(), StandardCharsets.UTF_8);
-                List<RssListing> parsed = List.copyOf(parseRss(xml));
+                ParseResult parseResult = parseRssWithDiagnostics(xml);
+                List<RssListing> parsed = parseResult.listings();
                 cache = new CacheEntry(parsed, now);
-                log.info("DigiReality RSS refreshed ownerRentals={}", parsed.size());
+                ParseDiagnostics d = parseResult.diagnostics();
+                log.info(
+                        "DigiReality RSS diagnostics total={} rentalApartments={} notRentalApartment={} bezrealitkyDuplicates={} "
+                                + "withoutOwnerSignal={} withOwnerSignal={} agencySignal={} invalidPrice={} "
+                                + "missingLayout={} blankLink={} accepted={}",
+                        d.total,
+                        d.rentalApartments,
+                        d.notRentalApartment,
+                        d.bezrealitkyDuplicates,
+                        d.withoutOwnerSignal,
+                        d.withOwnerSignal,
+                        d.agencySignal,
+                        d.invalidPrice,
+                        d.missingLayout,
+                        d.blankLink,
+                        d.accepted
+                );
                 return parsed;
             } catch (IOException e) {
                 if (current.loadedAtMillis() > 0) {
@@ -198,13 +249,15 @@ public class DigiRealityParser {
         return rental && apartment && !text.contains("prodej");
     }
 
-    private boolean isOwnerListing(String text) {
-        boolean ownerSignal = OWNER_SIGNALS.stream().anyMatch(text::contains);
+    private boolean hasOwnerSignal(String text) {
+        return OWNER_SIGNALS.stream().anyMatch(text::contains);
+    }
+
+    private boolean hasAgencySignal(String text) {
         String agencyCheckText = text
                 .replace("bez provize realitni kancelari", "")
                 .replace("bez provize rk", "");
-        boolean agencySignal = AGENCY_SIGNALS.stream().anyMatch(agencyCheckText::contains);
-        return ownerSignal && !agencySignal;
+        return AGENCY_SIGNALS.stream().anyMatch(agencyCheckText::contains);
     }
 
     private String localityForRegion(RssListing listing, Region region) {
@@ -299,5 +352,22 @@ public class DigiRealityParser {
     }
 
     private record CacheEntry(List<RssListing> listings, long loadedAtMillis) {
+    }
+
+    private record ParseResult(List<RssListing> listings, ParseDiagnostics diagnostics) {
+    }
+
+    private static final class ParseDiagnostics {
+        private int total;
+        private int rentalApartments;
+        private int notRentalApartment;
+        private int bezrealitkyDuplicates;
+        private int withoutOwnerSignal;
+        private int withOwnerSignal;
+        private int agencySignal;
+        private int invalidPrice;
+        private int missingLayout;
+        private int blankLink;
+        private int accepted;
     }
 }
