@@ -4,6 +4,7 @@ import com.yourapp.rentbot.domain.FavoriteListing;
 import com.yourapp.rentbot.domain.OwnerListing;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
+import com.yourapp.rentbot.domain.SupportEvent;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowService;
 import com.yourapp.rentbot.flow.FlowStep;
@@ -18,6 +19,7 @@ import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.SchedulerService;
+import com.yourapp.rentbot.service.SupportMetricsService;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.ui.Keyboards;
 import jakarta.annotation.PostConstruct;
@@ -69,11 +71,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
+    private final SupportMetricsService supportMetricsService;
 
     private final String token;
     private final long adminId;
     private final boolean milestone1500AutoEnabled;
     private final int milestone1500AutoBatchSize;
+    private final int supportMonthlyGoalCzk;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
 
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
@@ -106,8 +110,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
+            SupportMetricsService supportMetricsService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
-            @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize
+            @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
+            @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
     ) {
         this.token = token;
         this.adminId = adminId;
@@ -123,8 +129,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
+        this.supportMetricsService = supportMetricsService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
+        this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
     }
 
     @Override
@@ -260,6 +268,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long sentLast14Days = notificationService.countSentSince(
                     now.minus(java.time.Duration.ofDays(14))
             );
+            SupportMetricsService.SupportMetrics supportMetrics = supportMetricsService.since(
+                    now.minus(java.time.Duration.ofDays(14))
+            );
 
             int cachedSearchUsers = searchCache.size();
             int cachedSearchResults = searchCache.values()
@@ -322,6 +333,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 ⭐ Усього в обраному: %d
 🏡 Унікальних активних оголошень власників: %d
 📩 Успішно надіслано за останні 14 днів: %d
+
+💙 Підтримка за 14 днів:
+Відкрили екран: %d (%d користувачів)
+Обрали спосіб: Raiffeisen %d · PrivatBank %d · PayPal %d · Revolut %d
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -399,6 +414,12 @@ DigiReality owners: %d
                             favorites,
                             approvedOwnerListings,
                             sentLast14Days,
+                            supportMetrics.opened(),
+                            supportMetrics.uniqueOpenedUsers(),
+                            supportMetrics.raiffeisen(),
+                            supportMetrics.privatBank(),
+                            supportMetrics.paypal(),
+                            supportMetrics.revolut(),
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -652,7 +673,7 @@ DigiReality owners: %d
         }
 
         if (text.equals(msg(userId, "menu.support.project"))) {
-            send(chatId, msg(userId, "support.text"), Keyboards.supportKeyboard(lang));
+            showSupport(chatId, userId, lang);
             return;
         }
 
@@ -1802,6 +1823,9 @@ DigiReality owners: %d
 
             if (added) {
                 answerCallback(callbackId, msg(userId, "favorites.added"));
+                if (favoriteService.countForUser(userId) == 3) {
+                    send(chatId, supportPromptText(lang), Keyboards.supportPromptKeyboard(lang));
+                }
             } else {
                 answerCallback(callbackId, msg(userId, "favorites.already.exists"));
             }
@@ -1959,12 +1983,31 @@ DigiReality owners: %d
         }
 
         if (data.equals("SERVICE:SUPPORT")) {
-            send(chatId, msg(userId, "support.text"), Keyboards.supportKeyboard(lang));
+            showSupport(chatId, userId, lang);
             return;
         }
 
         if (data.equals("SUPPORT:RAIFFEISEN")) {
+            supportMetricsService.record(userId, SupportEvent.Type.RAIFFEISEN);
             send(chatId, raiffeisenSupportInfo(lang), Keyboards.supportKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("SUPPORT:PRIVATBANK")) {
+            showSupportPayment(chatId, userId, lang, SupportEvent.Type.PRIVATBANK,
+                    "PrivatBank", "https://www.privat24.ua/send/47m35");
+            return;
+        }
+
+        if (data.equals("SUPPORT:PAYPAL")) {
+            showSupportPayment(chatId, userId, lang, SupportEvent.Type.PAYPAL,
+                    "PayPal", "https://www.paypal.me/YEVHENSHKUROPAT");
+            return;
+        }
+
+        if (data.equals("SUPPORT:REVOLUT")) {
+            showSupportPayment(chatId, userId, lang, SupportEvent.Type.REVOLUT,
+                    "Revolut", "https://revolut.me/evzen13");
             return;
         }
 
@@ -2494,6 +2537,65 @@ DigiReality owners: %d
                     Рахунок: 972026002/5500
 
                     Відкрийте застосунок свого банку, оберіть платіж за реквізитами та вкажіть цей рахунок.""";
+        };
+    }
+
+    private void showSupport(long chatId, long userId, Language lang) throws TelegramApiException {
+        supportMetricsService.record(userId, SupportEvent.Type.OPENED);
+        send(chatId, supportText(lang), Keyboards.supportKeyboard(lang));
+    }
+
+    private void showSupportPayment(long chatId,
+                                    long userId,
+                                    Language lang,
+                                    SupportEvent.Type type,
+                                    String paymentMethod,
+                                    String url) throws TelegramApiException {
+        supportMetricsService.record(userId, type);
+        String text = switch (lang) {
+            case RU -> "Спасибо за поддержку 💙\n\nМожно выбрать сумму 50, 100 или 200 Kč — любая помощь приближает месячную цель.";
+            case CZ -> "Děkujeme za podporu 💙\n\nMůžete zvolit částku 50, 100 nebo 200 Kč — každá pomoc přibližuje měsíční cíl.";
+            case EN -> "Thank you for your support 💙\n\nYou can choose 50, 100, or 200 Kč — every contribution helps reach the monthly goal.";
+            default -> "Дякуємо за підтримку 💙\n\nМожна обрати 50, 100 або 200 Kč — кожна допомога наближає місячну ціль.";
+        };
+        send(chatId, text, Keyboards.supportPaymentKeyboard(paymentMethod, url, lang));
+    }
+
+    private String supportText(Language lang) {
+        return switch (lang) {
+            case RU -> """
+                    Спасибо, что пользуетесь ботом 💙
+
+                    Ежемесячная цель на сервер, парсеры и развитие: %d Kč.
+
+                    Даже 50, 100 или 200 Kč помогают боту работать дальше. Выберите удобный способ поддержки:""".formatted(supportMonthlyGoalCzk);
+            case CZ -> """
+                    Děkujeme, že používáte bota 💙
+
+                    Měsíční cíl na server, parsery a vývoj: %d Kč.
+
+                    Už 50, 100 nebo 200 Kč pomůže botovi fungovat dál. Vyberte si způsob podpory:""".formatted(supportMonthlyGoalCzk);
+            case EN -> """
+                    Thank you for using the bot 💙
+
+                    Monthly goal for the server, parsers, and development: %d Kč.
+
+                    Even 50, 100, or 200 Kč helps keep the bot running. Choose a convenient support option:""".formatted(supportMonthlyGoalCzk);
+            default -> """
+                    Дякую, що користуєтеся ботом 💙
+
+                    Щомісячна ціль на сервер, парсери та розвиток: %d Kč.
+
+                    Навіть 50, 100 або 200 Kč допомагають боту працювати далі. Оберіть зручний спосіб підтримки:""".formatted(supportMonthlyGoalCzk);
+        };
+    }
+
+    private String supportPromptText(Language lang) {
+        return switch (lang) {
+            case RU -> "⭐ Вы добавили несколько объявлений в избранное. Если бот помогает с поиском, его можно поддержать любой суммой.";
+            case CZ -> "⭐ Uložili jste několik inzerátů do oblíbených. Pokud vám bot pomáhá s hledáním, můžete jej podpořit libovolnou částkou.";
+            case EN -> "⭐ You saved several listings. If the bot is helping with your search, you can support it with any amount.";
+            default -> "⭐ Ви додали кілька оголошень в обране. Якщо бот допомагає у пошуку, його можна підтримати будь-якою сумою.";
         };
     }
 

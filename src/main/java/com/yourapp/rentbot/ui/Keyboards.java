@@ -672,22 +672,13 @@ public class Keyboards {
         raiffeisen.add(button("💳 Raiffeisenbank", "SUPPORT:RAIFFEISEN"));
 
         InlineKeyboardRow privatBank = new InlineKeyboardRow();
-        privatBank.add(InlineKeyboardButton.builder()
-                .text("PrivatBank")
-                .url("https://www.privat24.ua/send/47m35")
-                .build());
+        privatBank.add(button("PrivatBank", "SUPPORT:PRIVATBANK"));
 
         InlineKeyboardRow paypal = new InlineKeyboardRow();
-        paypal.add(InlineKeyboardButton.builder()
-                .text("PayPal")
-                .url("https://www.paypal.me/YEVHENSHKUROPAT")
-                .build());
+        paypal.add(button("PayPal", "SUPPORT:PAYPAL"));
 
         InlineKeyboardRow revolut = new InlineKeyboardRow();
-        revolut.add(InlineKeyboardButton.builder()
-                .text("Revolut")
-                .url("https://revolut.me/evzen13")
-                .build());
+        revolut.add(button("Revolut", "SUPPORT:REVOLUT"));
 
         InlineKeyboardRow back = new InlineKeyboardRow();
         back.add(button(switch (lang) {
@@ -700,6 +691,40 @@ public class Keyboards {
         return InlineKeyboardMarkup.builder()
                 .keyboard(List.of(raiffeisen, privatBank, paypal, revolut, back))
                 .build();
+    }
+
+    public static InlineKeyboardMarkup supportPaymentKeyboard(String paymentMethod, String url, Language lang) {
+        InlineKeyboardRow open = new InlineKeyboardRow();
+        open.add(InlineKeyboardButton.builder()
+                .text(switch (lang) {
+                    case RU -> "Открыть " + paymentMethod;
+                    case CZ -> "Otevřít " + paymentMethod;
+                    case EN -> "Open " + paymentMethod;
+                    default -> "Відкрити " + paymentMethod;
+                })
+                .url(url)
+                .build());
+
+        InlineKeyboardRow back = new InlineKeyboardRow();
+        back.add(button(switch (lang) {
+            case RU -> "⬅️ Способы поддержки";
+            case CZ -> "⬅️ Možnosti podpory";
+            case EN -> "⬅️ Support options";
+            default -> "⬅️ Способи підтримки";
+        }, "SERVICE:SUPPORT"));
+
+        return InlineKeyboardMarkup.builder().keyboard(List.of(open, back)).build();
+    }
+
+    public static InlineKeyboardMarkup supportPromptKeyboard(Language lang) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        row.add(button(switch (lang) {
+            case RU -> "💙 Поддержать бота";
+            case CZ -> "💙 Podpořit bota";
+            case EN -> "💙 Support the bot";
+            default -> "💙 Підтримати бота";
+        }, "SERVICE:SUPPORT"));
+        return InlineKeyboardMarkup.builder().keyboard(List.of(row)).build();
     }
 
     public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {

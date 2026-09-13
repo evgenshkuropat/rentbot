@@ -11,5 +11,7 @@ public interface FavoriteListingRepo extends JpaRepository<FavoriteListing, Long
 
     boolean existsByTelegramUserIdAndLink(Long telegramUserId, String link);
 
+    long countByTelegramUserId(Long telegramUserId);
+
     void deleteByTelegramUserIdAndLink(Long telegramUserId, String link);
 }

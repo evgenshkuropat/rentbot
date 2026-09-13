@@ -63,4 +63,8 @@ public class FavoriteService {
     public long countAll() {
         return favoriteListingRepo.count();
     }
+
+    public long countForUser(Long userId) {
+        return favoriteListingRepo.countByTelegramUserId(userId);
+    }
 }
