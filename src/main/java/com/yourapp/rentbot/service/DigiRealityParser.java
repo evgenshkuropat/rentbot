@@ -35,6 +35,10 @@ public class DigiRealityParser {
     private static final Pattern LAYOUT_PATTERN = Pattern.compile(
             "(?iu)\\b(\\d+\\s*\\+\\s*(?:kk|1))\\b"
     );
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("(?i)\\b[\\w.+-]+@[\\w.-]+\\.[a-z]{2,}\\b");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)(?:\\+?\\d[\\d ()-]{7,}\\d)(?!\\d)");
+    private static final int DIAGNOSTIC_SAMPLE_LIMIT = 3;
+    private static final int DIAGNOSTIC_SAMPLE_MAX_LENGTH = 240;
 
     private static final List<String> OWNER_SIGNALS = List.of(
             "primo od majitele",
@@ -148,6 +152,7 @@ public class DigiRealityParser {
             }
             if (!hasOwnerSignal(searchable)) {
                 diagnostics.withoutOwnerSignal++;
+                diagnostics.addWithoutOwnerSample(title, description);
                 continue;
             }
             diagnostics.withOwnerSignal++;
@@ -217,13 +222,14 @@ public class DigiRealityParser {
                 ParseDiagnostics d = parseResult.diagnostics();
                 log.info(
                         "DigiReality RSS diagnostics total={} rentalApartments={} notRentalApartment={} bezrealitkyDuplicates={} "
-                                + "withoutOwnerSignal={} withOwnerSignal={} agencySignal={} invalidPrice={} "
+                                + "withoutOwnerSignal={} withoutOwnerSamples={} withOwnerSignal={} agencySignal={} invalidPrice={} "
                                 + "missingLayout={} blankLink={} accepted={}",
                         d.total,
                         d.rentalApartments,
                         d.notRentalApartment,
                         d.bezrealitkyDuplicates,
                         d.withoutOwnerSignal,
+                        d.withoutOwnerSamples,
                         d.withOwnerSignal,
                         d.agencySignal,
                         d.invalidPrice,
@@ -332,8 +338,17 @@ public class DigiRealityParser {
                 .replace('ď', 'd').replace('ť', 't').replace('ó', 'o');
     }
 
-    private String normalizeWhitespace(String text) {
+    private static String normalizeWhitespace(String text) {
         return text == null ? "" : text.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private static String safeDiagnosticSample(String title, String description) {
+        String combined = normalizeWhitespace(title + " — " + description);
+        combined = EMAIL_PATTERN.matcher(combined).replaceAll("[email hidden]");
+        combined = PHONE_PATTERN.matcher(combined).replaceAll("[phone hidden]");
+        return combined.length() <= DIAGNOSTIC_SAMPLE_MAX_LENGTH
+                ? combined
+                : combined.substring(0, DIAGNOSTIC_SAMPLE_MAX_LENGTH - 1) + "…";
     }
 
     private String regionTitle(Region region) {
@@ -369,5 +384,12 @@ public class DigiRealityParser {
         private int missingLayout;
         private int blankLink;
         private int accepted;
+        private final List<String> withoutOwnerSamples = new ArrayList<>();
+
+        private void addWithoutOwnerSample(String title, String description) {
+            if (withoutOwnerSamples.size() < DIAGNOSTIC_SAMPLE_LIMIT) {
+                withoutOwnerSamples.add(safeDiagnosticSample(title, description));
+            }
+        }
     }
 }
