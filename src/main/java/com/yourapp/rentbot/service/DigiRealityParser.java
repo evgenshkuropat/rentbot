@@ -67,6 +67,9 @@ public class DigiRealityParser {
             "kontaktujte maklere",
             "zprostredkujeme",
             "zprostredkuji",
+            "nase spolecnost vam zprostredkuje",
+            "nabizime pronajem",
+            "k pronajmu nabizime",
             "v zastoupeni majitele",
             "vyhradnim zastoupeni"
     );
@@ -150,17 +153,16 @@ public class DigiRealityParser {
                 diagnostics.bezrealitkyDuplicates++;
                 continue;
             }
+            if (hasAgencySignal(searchable)) {
+                diagnostics.agencySignal++;
+                continue;
+            }
             if (!hasOwnerSignal(searchable)) {
                 diagnostics.withoutOwnerSignal++;
                 diagnostics.addWithoutOwnerSample(title, description);
                 continue;
             }
             diagnostics.withOwnerSignal++;
-
-            if (hasAgencySignal(searchable)) {
-                diagnostics.agencySignal++;
-                continue;
-            }
 
             int price = extractPrice(title + " " + description);
             String layout = extractLayout(title + " " + description);

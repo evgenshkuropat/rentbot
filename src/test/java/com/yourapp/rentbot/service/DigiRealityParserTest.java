@@ -35,8 +35,13 @@ class DigiRealityParserTest {
                 "Cena: 13 000 Kč, Pronajímám svůj byt přímo bez RK.",
                 "https://www.digireality.cz/inzerat/duplicate"
         );
+        String agencyWordingFromFeed = item(
+                "Pronájem bytu 1+kk, Pardubice",
+                "Cena: 11 800 Kč, K pronájmu nabízíme byt 1+kk. Naše společnost Vám zprostředkuje prohlídku.",
+                "https://www.digireality.cz/inzerat/agency-wording"
+        );
 
-        assertThat(parser.parseRss(rss(agency + duplicate))).isEmpty();
+        assertThat(parser.parseRss(rss(agency + duplicate + agencyWordingFromFeed))).isEmpty();
     }
 
     @Test
