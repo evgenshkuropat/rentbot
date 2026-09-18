@@ -672,7 +672,11 @@ DigiReality owners: %d
             return;
         }
 
-        if (text.equals(msg(userId, "menu.support.project"))) {
+        if (text.equals(msg(userId, "menu.support.project"))
+                || text.equals("💙 Підтримати бота")
+                || text.equals("💙 Поддержать бота")
+                || text.equals("💙 Podpořit bota")
+                || text.equals("💙 Support the bot")) {
             showSupport(chatId, userId, lang);
             return;
         }
@@ -825,6 +829,10 @@ DigiReality owners: %d
                 || text.equals("💎 Преміум")
                 || text.equals("💎 Премиум")
                 || text.equals("💎 Premium")
+                || text.equals("💙 Підтримати бота")
+                || text.equals("💙 Поддержать бота")
+                || text.equals("💙 Podpořit bota")
+                || text.equals("💙 Support the bot")
                 || text.equals("🌐 Мова / Language")
                 || text.equals("🌐 Язык / Language")
                 || text.equals("🌐 Jazyk / Language")
@@ -1949,6 +1957,8 @@ DigiReality owners: %d
                 }
 
                 case "FAVORITES" -> showFavorites(chatId, userId);
+
+                case "SUPPORT" -> showSupport(chatId, userId, lang);
 
                 case "STOP" -> {
                     filterEditMode.remove(userId);

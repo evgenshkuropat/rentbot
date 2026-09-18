@@ -250,6 +250,14 @@ public class Keyboards {
             case EN -> "🤝 Other services";
             default -> "🤝 Інші сервіси";
         });
+
+        KeyboardRow row5 = new KeyboardRow();
+        row5.add(switch (lang) {
+            case RU -> "💙 Поддержать бота";
+            case CZ -> "💙 Podpořit bota";
+            case EN -> "💙 Support the bot";
+            default -> "💙 Підтримати бота";
+        });
         row4.add(switch (lang) {
             case RU -> "🌐 Язык / Language";
             case CZ -> "🌐 Jazyk / Language";
@@ -262,6 +270,7 @@ public class Keyboards {
         keyboard.add(row2);
         keyboard.add(row3);
         keyboard.add(row4);
+        keyboard.add(row5);
 
         return ReplyKeyboardMarkup.builder()
                 .keyboard(keyboard)
@@ -300,8 +309,16 @@ public class Keyboards {
             default -> "⛔ Зупинити";
         }, "MENU:STOP"));
 
+        InlineKeyboardRow row3 = new InlineKeyboardRow();
+        row3.add(button(switch (lang) {
+            case RU -> "💙 Поддержать бота";
+            case CZ -> "💙 Podpořit bota";
+            case EN -> "💙 Support the bot";
+            default -> "💙 Підтримати бота";
+        }, "MENU:SUPPORT"));
+
         return InlineKeyboardMarkup.builder()
-                .keyboard(List.of(row1, row2))
+                .keyboard(List.of(row1, row2, row3))
                 .build();
     }
 
