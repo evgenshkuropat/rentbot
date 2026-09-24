@@ -45,6 +45,7 @@ public class ParserService {
     private final DigiRealityParser digiRealityParser;
     private final OwnerListingService ownerListingService;
     private final UserFilterRepo userFilterRepo;
+    private final PremiumService premiumService;
     private final boolean idnesEnabled;
     private final boolean digiRealityEnabled;
 
@@ -63,6 +64,7 @@ public class ParserService {
                          DigiRealityParser digiRealityParser,
                          OwnerListingService ownerListingService,
                          UserFilterRepo userFilterRepo,
+                         PremiumService premiumService,
                          @Value("${rentbot.idnes.enabled:${IDNES_ENABLED:false}}") boolean idnesEnabled,
                          @Value("${rentbot.digireality.enabled:${RENTBOT_DIGIREALITY_ENABLED:true}}") boolean digiRealityEnabled) {
         this.srealityParser = srealityParser;
@@ -72,6 +74,7 @@ public class ParserService {
         this.digiRealityParser = digiRealityParser;
         this.ownerListingService = ownerListingService;
         this.userFilterRepo = userFilterRepo;
+        this.premiumService = premiumService;
         this.idnesEnabled = idnesEnabled;
         this.digiRealityEnabled = digiRealityEnabled;
         log.info("iDNES parser enabled={}", idnesEnabled);
@@ -83,8 +86,39 @@ public class ParserService {
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
-        List<ListingDto> all = fetchListingsForFilter(filter);
-        return filterForUser(all, filter);
+        List<ListingDto> mainListings = filterForUser(fetchListingsForFilter(filter), filter);
+
+        if (!premiumService.isActive(filter)) {
+            return mainListings;
+        }
+
+        return premiumService.findActiveSearch(telegramUserId)
+                .map(search -> {
+                    try {
+                        UserFilter premiumFilter = premiumService.asFilter(filter, search);
+                        List<ListingDto> premiumListings = filterForUser(fetchListingsForFilter(premiumFilter), premiumFilter);
+                        return mergeUnique(premiumListings, mainListings);
+                    } catch (IOException e) {
+                        log.warn("Manual Premium search failed user={}", telegramUserId, e);
+                        return mainListings;
+                    }
+                })
+                .orElse(mainListings);
+    }
+
+    private List<ListingDto> mergeUnique(List<ListingDto> first, List<ListingDto> second) {
+        Map<String, ListingDto> unique = new LinkedHashMap<>();
+        for (ListingDto listing : first) {
+            if (listing != null && listing.link() != null && !listing.link().isBlank()) {
+                unique.putIfAbsent(listing.link(), listing);
+            }
+        }
+        for (ListingDto listing : second) {
+            if (listing != null && listing.link() != null && !listing.link().isBlank()) {
+                unique.putIfAbsent(listing.link(), listing);
+            }
+        }
+        return new ArrayList<>(unique.values());
     }
 
     public List<ListingDto> fetchListingsForFilter(UserFilter filter) throws IOException {

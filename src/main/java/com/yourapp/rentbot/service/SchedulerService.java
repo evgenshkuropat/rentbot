@@ -14,10 +14,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -147,8 +149,10 @@ public class SchedulerService {
                 aggregateFinalBazos += userFilterStats.finalBazos();
                 aggregateFinalDigireality += userFilterStats.finalDigireality();
 
+                List<ListingDto> premiumMatches = List.of();
                 if (premiumUser) {
-                    premiumService.findActiveSearch(userId).ifPresent(extraSearch -> {
+                    PremiumSearch extraSearch = premiumService.findActiveSearch(userId).orElse(null);
+                    if (extraSearch != null) {
                         try {
                             UserFilter premiumFilter = premiumService.asFilter(user, extraSearch);
                             String premiumCacheKey = cacheKey(premiumFilter);
@@ -156,17 +160,16 @@ public class SchedulerService {
                             if (premiumListings == null) {
                                 premiumListings = parserService.fetchListingsForFilter(premiumFilter);
                                 listingsCache.put(premiumCacheKey, premiumListings);
+                                parserRuns++;
                                 log.info("Scheduler: parsed premium key={} listings={}", premiumCacheKey, premiumListings.size());
                             }
-                            for (ListingDto listing : parserService.filterForUser(premiumListings, premiumFilter)) {
-                                if (listings.stream().noneMatch(existing -> existing.link().equals(listing.link()))) {
-                                    listings.add(listing);
-                                }
-                            }
+                            premiumMatches = parserService.filterForUser(premiumListings, premiumFilter);
+                            listings = interleaveUnique(premiumMatches, listings);
+                            log.info("Scheduler: premium search user={} candidates={}", userId, premiumMatches.size());
                         } catch (Exception e) {
                             log.error("Error processing premium search for user {}", userId, e);
                         }
-                    });
+                    }
                 }
 
                 if (listings == null || listings.isEmpty()) {
@@ -186,6 +189,11 @@ public class SchedulerService {
                 }
 
                 int sentForUser = 0;
+                int premiumSentForUser = 0;
+                Set<String> premiumLinks = premiumMatches.stream()
+                        .map(ListingDto::link)
+                        .filter(link -> link != null && !link.isBlank())
+                        .collect(java.util.stream.Collectors.toSet());
                 int notificationLimit = premiumUser
                         ? maxPremiumNotificationsPerUserPerCycle
                         : maxNotificationsPerUserPerCycle;
@@ -205,10 +213,17 @@ public class SchedulerService {
                         if (notificationService.sendIfNotSent(user, listing)) {
                             sentForUser++;
                             totalSent++;
+                            if (premiumLinks.contains(listing.link())) {
+                                premiumSentForUser++;
+                            }
                         }
                     } catch (Exception e) {
                         log.error("Error sending listing to user {} link={}", userId, listing.link(), e);
                     }
+                }
+
+                if (premiumUser && !premiumMatches.isEmpty()) {
+                    log.info("Scheduler: premium search user={} candidates={} sent={}", userId, premiumMatches.size(), premiumSentForUser);
                 }
 
             } catch (Exception e) {
@@ -308,5 +323,25 @@ public class SchedulerService {
         }
 
         return region.getCode();
+    }
+
+    private List<ListingDto> interleaveUnique(List<ListingDto> first, List<ListingDto> second) {
+        List<ListingDto> result = new ArrayList<>();
+        Set<String> links = new HashSet<>();
+        int firstIndex = 0;
+        int secondIndex = 0;
+
+        while (firstIndex < first.size() || secondIndex < second.size()) {
+            if (firstIndex < first.size()) addIfNew(result, links, first.get(firstIndex++));
+            if (secondIndex < second.size()) addIfNew(result, links, second.get(secondIndex++));
+        }
+        return result;
+    }
+
+    private void addIfNew(List<ListingDto> target, Set<String> links, ListingDto listing) {
+        if (listing == null || listing.link() == null || listing.link().isBlank() || !links.add(listing.link())) {
+            return;
+        }
+        target.add(listing);
     }
 }
