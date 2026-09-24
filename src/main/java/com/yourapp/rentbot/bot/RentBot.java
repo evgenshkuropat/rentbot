@@ -616,7 +616,7 @@ DigiReality owners: %d
                 || text.equals("📋 My filter")) {
             UserFilter f = userFilterRepo.findFullById(userId)
                     .orElseGet(() -> flowService.getOrCreate(userId));
-            send(chatId, flowService.pretty(f, lang), Keyboards.filterActionsKeyboard(lang));
+            showSearches(chatId, f, lang);
             return;
         }
 
@@ -1744,6 +1744,27 @@ DigiReality owners: %d
             return;
         }
 
+        if (data.equals("SEARCH:LIST")) {
+            showSearches(chatId, f, lang);
+            return;
+        }
+
+        if (data.equals("SEARCH:MAIN")) {
+            UserFilter fullFilter = userFilterRepo.findFullById(userId).orElseGet(() -> f);
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.filterActionsKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("SEARCH:PREMIUM")) {
+            PremiumSearch search = premiumService.findActiveSearch(userId).orElse(null);
+            if (search == null) {
+                send(chatId, premiumSearchNotConfiguredText(lang), Keyboards.searchesKeyboard(false, lang));
+            } else {
+                send(chatId, premiumSearchReadyText(lang, search), Keyboards.premiumSearchActionsKeyboard(lang));
+            }
+            return;
+        }
+
         if (data.startsWith("PREMIUM:REGION:")) {
             if (!premiumService.isActive(f)) return;
             String code = data.substring("PREMIUM:REGION:".length());
@@ -1751,8 +1772,25 @@ DigiReality owners: %d
             if (region == null) return;
             PremiumSearch search = premiumService.getOrCreateSearch(f);
             search.setRegion(region);
-            search.setRegionGroup("PRAHA".equalsIgnoreCase(region.getCode())
-                    ? regionGroupRepo.findByCode("PRAHA_ALL").orElse(null) : null);
+            search.setRegionGroup(null);
+            premiumService.save(search);
+            List<RegionGroup> groups = region.isHasDistricts()
+                    ? regionGroupRepo.findByRegionId(region.getId()) : List.of();
+            if (groups.isEmpty()) {
+                send(chatId, premiumChooseLayoutText(lang), Keyboards.premiumLayoutKeyboard(lang));
+            } else {
+                send(chatId, premiumChooseDistrictText(lang), Keyboards.premiumRegionGroupsKeyboard(groups));
+            }
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:GROUP:")) {
+            if (!premiumService.isActive(f)) return;
+            RegionGroup group = regionGroupRepo.findByCode(data.substring("PREMIUM:GROUP:".length())).orElse(null);
+            if (group == null) return;
+            PremiumSearch search = premiumService.getOrCreateSearch(f);
+            if (search.getRegion() == null || !search.getRegion().getId().equals(group.getRegion().getId())) return;
+            search.setRegionGroup(group);
             premiumService.save(search);
             send(chatId, premiumChooseLayoutText(lang), Keyboards.premiumLayoutKeyboard(lang));
             return;
@@ -1775,7 +1813,7 @@ DigiReality owners: %d
             search.setMaxPrice(price);
             search.setActive(true);
             premiumService.save(search);
-            send(chatId, premiumSearchReadyText(lang, search), Keyboards.premiumActiveKeyboard(lang));
+            send(chatId, premiumSearchReadyText(lang, search), Keyboards.premiumSearchActionsKeyboard(lang));
             return;
         }
 
@@ -2823,10 +2861,44 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private void showPremium(long chatId, long userId, UserFilter user, Language lang) throws TelegramApiException {
         if (premiumService.isActive(user)) {
-            send(chatId, premiumActivatedText(lang), Keyboards.premiumActiveKeyboard(lang));
+            showSearches(chatId, user, lang);
         } else {
             send(chatId, premiumTrialInfo(lang), Keyboards.premiumRequestKeyboard(lang));
         }
+    }
+
+    private void showSearches(long chatId, UserFilter user, Language lang) throws TelegramApiException {
+        if (!premiumService.isActive(user)) {
+            send(chatId, flowService.pretty(user, lang), Keyboards.filterActionsKeyboard(lang));
+            return;
+        }
+
+        PremiumSearch secondSearch = premiumService.findActiveSearch(user.getTelegramUserId()).orElse(null);
+        String mainLabel = switch (lang) {
+            case RU -> "1️⃣ Основной поиск";
+            case CZ -> "1️⃣ Hlavní hledání";
+            case EN -> "1️⃣ Main search";
+            default -> "1️⃣ Основний пошук";
+        };
+        String premiumLabel = switch (lang) {
+            case RU -> "2️⃣ Premium-поиск";
+            case CZ -> "2️⃣ Premium hledání";
+            case EN -> "2️⃣ Premium search";
+            default -> "2️⃣ Premium-пошук";
+        };
+        String secondDetails = secondSearch == null
+                ? premiumSearchNotConfiguredText(lang)
+                : premiumSearchReadyText(lang, secondSearch);
+
+        send(chatId,
+                "📋 " + switch (lang) {
+                    case RU -> "Мои поиски";
+                    case CZ -> "Moje hledání";
+                    case EN -> "My searches";
+                    default -> "Мої пошуки";
+                } + "\n\n" + mainLabel + "\n" + flowService.pretty(user, lang)
+                        + "\n\n" + premiumLabel + "\n" + secondDetails,
+                Keyboards.searchesKeyboard(secondSearch != null, lang));
     }
 
     private String premiumTrialInfo(Language lang) {
@@ -2873,14 +2945,28 @@ Please verify the information yourself — the bot only shares a useful source.
         return switch (lang) { case RU -> "💎 Второй поиск: выберите тип жилья."; case CZ -> "💎 Druhé hledání: vyberte typ bydlení."; case EN -> "💎 Second search: choose a property type."; default -> "💎 Другий пошук: оберіть тип житла."; };
     }
 
+    private String premiumChooseDistrictText(Language lang) {
+        return switch (lang) { case RU -> "💎 Второй поиск: выберите район."; case CZ -> "💎 Druhé hledání: vyberte oblast."; case EN -> "💎 Second search: choose a district."; default -> "💎 Другий пошук: оберіть район."; };
+    }
+
     private String premiumChoosePriceText(Language lang) {
         return switch (lang) { case RU -> "💎 Второй поиск: выберите максимальную цену."; case CZ -> "💎 Druhé hledání: vyberte maximální cenu."; case EN -> "💎 Second search: choose the maximum price."; default -> "💎 Другий пошук: оберіть максимальну ціну."; };
     }
 
     private String premiumSearchReadyText(Language lang, PremiumSearch search) {
         String price = search.getMaxPrice() != null && search.getMaxPrice() > 0 ? search.getMaxPrice() + " Kč" : "—";
+        String district = search.getRegionGroup() == null ? "" : "\n📍 " + search.getRegionGroup().getTitle();
         return "✅ " + switch (lang) { case RU -> "Второй поиск активен"; case CZ -> "Druhé hledání je aktivní"; case EN -> "Second search is active"; default -> "Другий пошук активний"; }
-                + ":\n🏙 " + search.getRegion().getTitle() + "\n🏠 " + search.getLayout() + "\n💰 " + price;
+                + ":\n🏙 " + search.getRegion().getTitle() + district + "\n🏠 " + search.getLayout() + "\n💰 " + price;
+    }
+
+    private String premiumSearchNotConfiguredText(Language lang) {
+        return switch (lang) {
+            case RU -> "Второй Premium-поиск ещё не настроен.";
+            case CZ -> "Druhé Premium hledání ještě není nastaveno.";
+            case EN -> "Your second Premium search is not set up yet.";
+            default -> "Другий Premium-пошук ще не налаштований.";
+        };
     }
 
     private Integer parsePrice(String value) {

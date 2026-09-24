@@ -291,6 +291,47 @@ public class Keyboards {
         return InlineKeyboardMarkup.builder().keyboard(rows).build();
     }
 
+    public static InlineKeyboardMarkup premiumRegionGroupsKeyboard(List<RegionGroup> groups) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        for (RegionGroup group : groups) {
+            rows.add(new InlineKeyboardRow(button(group.getTitle(), "PREMIUM:GROUP:" + group.getCode())));
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    public static InlineKeyboardMarkup searchesKeyboard(boolean secondSearchConfigured, Language lang) {
+        InlineKeyboardRow main = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "1️⃣ Основной поиск";
+            case CZ -> "1️⃣ Hlavní hledání";
+            case EN -> "1️⃣ Main search";
+            default -> "1️⃣ Основний пошук";
+        }, "SEARCH:MAIN"));
+        InlineKeyboardRow premium = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> secondSearchConfigured ? "2️⃣ Premium-поиск" : "➕ Настроить Premium-поиск";
+            case CZ -> secondSearchConfigured ? "2️⃣ Premium hledání" : "➕ Nastavit Premium hledání";
+            case EN -> secondSearchConfigured ? "2️⃣ Premium search" : "➕ Set up Premium search";
+            default -> secondSearchConfigured ? "2️⃣ Premium-пошук" : "➕ Налаштувати Premium-пошук";
+        }, secondSearchConfigured ? "SEARCH:PREMIUM" : "PREMIUM:SETUP"));
+        return InlineKeyboardMarkup.builder().keyboard(List.of(main, premium)).build();
+    }
+
+    public static InlineKeyboardMarkup premiumSearchActionsKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(
+                new InlineKeyboardRow(button(switch (lang) {
+                    case RU -> "✏️ Изменить Premium-поиск";
+                    case CZ -> "✏️ Změnit Premium hledání";
+                    case EN -> "✏️ Edit Premium search";
+                    default -> "✏️ Змінити Premium-пошук";
+                }, "PREMIUM:SETUP")),
+                new InlineKeyboardRow(button(switch (lang) {
+                    case RU -> "↩️ Все поиски";
+                    case CZ -> "↩️ Všechna hledání";
+                    case EN -> "↩️ All searches";
+                    default -> "↩️ Усі пошуки";
+                }, "SEARCH:LIST"))
+        )).build();
+    }
+
     public static InlineKeyboardMarkup premiumLayoutKeyboard(Language lang) {
         return InlineKeyboardMarkup.builder().keyboard(List.of(
                 new InlineKeyboardRow(button("🚪 " + switch (lang) { case RU -> "Комната"; case CZ -> "Pokoj"; case EN -> "Room"; default -> "Кімната"; }, "PREMIUM:LAYOUT:ROOM")),

@@ -33,6 +33,10 @@ public class PremiumService {
         return premiumSearchRepo.findByTelegramUserIdAndActiveTrue(userId);
     }
 
+    public Optional<PremiumSearch> findSearch(Long userId) {
+        return premiumSearchRepo.findByTelegramUserId(userId);
+    }
+
     public PremiumSearch getOrCreateSearch(UserFilter user) {
         return premiumSearchRepo.findByTelegramUserId(user.getTelegramUserId()).orElseGet(() -> {
             PremiumSearch search = new PremiumSearch();
