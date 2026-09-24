@@ -474,6 +474,24 @@ DigiReality owners: %d
             return;
         }
 
+        if (text.toLowerCase().startsWith("/admin_premium_status")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long targetUserId = parseAdminIdArgument(text);
+            if (targetUserId == null) {
+                send(chatId,
+                        "Вкажи Telegram ID. Приклад: /admin_premium_status 123456789",
+                        Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            send(chatId, premiumStatusText(targetUserId), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
         if (text.toLowerCase().startsWith("/admin_reactivate")) {
             if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
@@ -2545,6 +2563,63 @@ DigiReality owners: %d
         }
 
         return parseLongOrNull(digits);
+    }
+
+    private String premiumStatusText(Long telegramUserId) {
+        UserFilter user = userFilterRepo.findFullById(telegramUserId).orElse(null);
+        if (user == null) {
+            return "❌ Користувача " + telegramUserId + " не знайдено.";
+        }
+
+        PremiumSearch search = premiumService.findSearch(telegramUserId).orElse(null);
+        boolean premiumActive = premiumService.isActive(user);
+        boolean secondSearchActive = search != null && search.isActive();
+        boolean schedulerEligible = user.isActive() && premiumActive && secondSearchActive;
+
+        String mainSearch = "🏠 Основний пошук\n"
+                + "Активний: " + yesNo(user.isActive())
+                + "\nОнбординг: " + yesNo(user.isOnboarded())
+                + "\nКрок: " + user.getStep()
+                + "\nМісто: " + regionTitle(user.getRegion())
+                + "\nРайон: " + regionGroupTitle(user.getRegionGroup())
+                + "\nТип: " + valueOrDash(user.getLayout())
+                + "\nБюджет: " + priceText(user.getMaxPrice());
+
+        String premiumSearch = search == null
+                ? "💎 Другий Premium-пошук\nНе створений"
+                : "💎 Другий Premium-пошук\n"
+                        + "Активний: " + yesNo(search.isActive())
+                        + "\nМісто: " + regionTitle(search.getRegion())
+                        + "\nРайон: " + regionGroupTitle(search.getRegionGroup())
+                        + "\nТип: " + valueOrDash(search.getLayout())
+                        + "\nБюджет: " + priceText(search.getMaxPrice());
+
+        return "🔎 Premium status\n\n"
+                + "Telegram ID: " + telegramUserId
+                + "\nPremium активний: " + yesNo(premiumActive)
+                + "\nДіє до: " + (user.getPremiumUntil() == null ? "—" : user.getPremiumUntil())
+                + "\nПотрапить у наступний цикл: " + yesNo(schedulerEligible)
+                + "\n\n" + mainSearch + "\n\n" + premiumSearch;
+    }
+
+    private String yesNo(boolean value) {
+        return value ? "✅ так" : "❌ ні";
+    }
+
+    private String regionTitle(Region region) {
+        return region == null ? "—" : valueOrDash(region.getTitle());
+    }
+
+    private String regionGroupTitle(RegionGroup regionGroup) {
+        return regionGroup == null ? "—" : valueOrDash(regionGroup.getTitle());
+    }
+
+    private String priceText(Integer price) {
+        return price == null || price == 0 ? "без ліміту" : price + " Kč";
+    }
+
+    private String valueOrDash(String value) {
+        return value == null || value.isBlank() ? "—" : value;
     }
 
     private Long parseLongOrNull(String value) {
