@@ -2831,10 +2831,10 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private String premiumTrialInfo(Language lang) {
         return switch (lang) {
-            case RU -> "💎 Premium — ранний доступ\n\nСейчас тестируем второй независимый поиск: можно получать уведомления по двум разным настройкам одновременно. Доступ выдаётся бесплатно на время теста.";
-            case CZ -> "💎 Premium — předběžný přístup\n\nNyní testujeme druhé samostatné hledání: upozornění můžete dostávat pro dvě různá nastavení zároveň. Přístup je během testu zdarma.";
-            case EN -> "💎 Premium — early access\n\nWe are testing a second independent search: you can receive alerts for two different search settings at the same time. Access is free during the test.";
-            default -> "💎 Premium — ранній доступ\n\nЗараз тестуємо другий незалежний пошук: сповіщення можна отримувати для двох різних налаштувань одночасно. Доступ безкоштовний на час тесту.";
+            case RU -> "💎 Premium — ранний доступ\n\nДля тех, кому важно не пропускать новые варианты: второй независимый поиск, приоритетная обработка и до 10 новых уведомлений за цикл. Доступ бесплатный на время теста.";
+            case CZ -> "💎 Premium — předběžný přístup\n\nPro ty, kteří nechtějí přijít o nové nabídky: druhé samostatné hledání, prioritní zpracování a až 10 nových upozornění za cyklus. Přístup je během testu zdarma.";
+            case EN -> "💎 Premium — early access\n\nFor those who do not want to miss new listings: a second independent search, priority processing, and up to 10 new alerts per cycle. Access is free during the test.";
+            default -> "💎 Premium — ранній доступ\n\nДля тих, кому важливо не пропускати нові варіанти: другий незалежний пошук, пріоритетна обробка та до 10 нових сповіщень за цикл. Доступ безкоштовний на час тестування.";
         };
     }
 
@@ -2849,10 +2849,10 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private String premiumActivatedText(Language lang) {
         return switch (lang) {
-            case RU -> "🎉 Premium-доступ активен на 30 дней. Настройте второй независимый поиск ниже.";
-            case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Níže si nastavte druhé samostatné hledání.";
-            case EN -> "🎉 Premium access is active for 30 days. Set up your second independent search below.";
-            default -> "🎉 Premium-доступ активний на 30 днів. Нижче налаштуйте другий незалежний пошук.";
+            case RU -> "🎉 Premium-доступ активен на 30 дней. У вас до 10 новых уведомлений за цикл и приоритетная обработка. Настройте второй независимый поиск ниже.";
+            case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Máte až 10 nových upozornění za cyklus a prioritní zpracování. Níže si nastavte druhé samostatné hledání.";
+            case EN -> "🎉 Premium access is active for 30 days. You have up to 10 new alerts per cycle and priority processing. Set up your second independent search below.";
+            default -> "🎉 Premium-доступ активний на 30 днів. У вас до 10 нових сповіщень за цикл і пріоритетна обробка. Нижче налаштуйте другий незалежний пошук.";
         };
     }
 

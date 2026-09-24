@@ -14,6 +14,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,17 +35,21 @@ public class SchedulerService {
     private final NotificationService notificationService;
     private final PremiumService premiumService;
     private final int maxNotificationsPerUserPerCycle;
+    private final int maxPremiumNotificationsPerUserPerCycle;
 
     public SchedulerService(UserFilterRepo userFilterRepo,
                             ParserService parserService,
                             NotificationService notificationService,
                             PremiumService premiumService,
-                            @Value("${rentbot.notifications.max-per-user-per-cycle:5}") int maxNotificationsPerUserPerCycle) {
+                            @Value("${rentbot.notifications.max-per-user-per-cycle:5}") int maxNotificationsPerUserPerCycle,
+                            @Value("${rentbot.premium.max-notifications-per-user-per-cycle:10}") int maxPremiumNotificationsPerUserPerCycle) {
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
         this.premiumService = premiumService;
         this.maxNotificationsPerUserPerCycle = Math.max(1, maxNotificationsPerUserPerCycle);
+        this.maxPremiumNotificationsPerUserPerCycle = Math.max(this.maxNotificationsPerUserPerCycle,
+                maxPremiumNotificationsPerUserPerCycle);
     }
 
     @Scheduled(
@@ -67,7 +73,7 @@ public class SchedulerService {
         parserService.resetBazosRateLimitCycle();
         parserService.resetSrealityTemporaryUnavailableCycle();
 
-        List<UserFilter> users = userFilterRepo.findAllActiveFull();
+        List<UserFilter> users = new ArrayList<>(userFilterRepo.findAllActiveFull());
 
         if (users.isEmpty()) {
             log.info("Scheduler: no active users");
@@ -75,7 +81,8 @@ public class SchedulerService {
             return;
         }
 
-        log.info("Scheduler: checking {} users", users.size());
+        users.sort(Comparator.comparing(premiumService::isActive).reversed());
+        log.info("Scheduler: checking {} users; premium users are processed first", users.size());
 
         Map<String, List<ListingDto>> listingsCache = new HashMap<>();
 
@@ -106,6 +113,7 @@ public class SchedulerService {
 
             try {
                 usersProcessed++;
+                boolean premiumUser = premiumService.isActive(user);
 
                 String cacheKey = cacheKey(user);
 
@@ -139,7 +147,7 @@ public class SchedulerService {
                 aggregateFinalBazos += userFilterStats.finalBazos();
                 aggregateFinalDigireality += userFilterStats.finalDigireality();
 
-                if (premiumService.isActive(user)) {
+                if (premiumUser) {
                     premiumService.findActiveSearch(userId).ifPresent(extraSearch -> {
                         try {
                             UserFilter premiumFilter = premiumService.asFilter(user, extraSearch);
@@ -178,13 +186,16 @@ public class SchedulerService {
                 }
 
                 int sentForUser = 0;
+                int notificationLimit = premiumUser
+                        ? maxPremiumNotificationsPerUserPerCycle
+                        : maxNotificationsPerUserPerCycle;
 
                 for (ListingDto listing : listings) {
                     if (!user.isActive()) {
                         break;
                     }
 
-                    if (sentForUser >= maxNotificationsPerUserPerCycle) {
+                    if (sentForUser >= notificationLimit) {
                         totalSkippedByLimit++;
                         continue;
                     }
@@ -221,7 +232,7 @@ public class SchedulerService {
         );
 
         log.info(
-                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, maxNotificationsPerUserPerCycle={}, aggregateFilteredBase={}, aggregateFinal={}",
+                "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, freeNotificationLimit={}, premiumNotificationLimit={}, aggregateFilteredBase={}, aggregateFinal={}",
                 usersProcessed,
                 usersWithMatches,
                 parserRuns,
@@ -230,6 +241,7 @@ public class SchedulerService {
                 totalSent,
                 totalSkippedByLimit,
                 maxNotificationsPerUserPerCycle,
+                maxPremiumNotificationsPerUserPerCycle,
                 aggregateFilteredBaseTotal,
                 aggregateFinalFiltered
         );
