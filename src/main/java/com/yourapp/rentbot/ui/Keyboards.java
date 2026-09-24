@@ -278,6 +278,61 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup premiumRegionsKeyboard(List<Region> regions) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        List<Region> sorted = new ArrayList<>(regions);
+        sorted.sort(Comparator.comparing(Region::getTitle));
+        for (int i = 0; i < sorted.size(); i += 2) {
+            InlineKeyboardRow row = new InlineKeyboardRow();
+            row.add(button(sorted.get(i).getTitle(), "PREMIUM:REGION:" + sorted.get(i).getCode()));
+            if (i + 1 < sorted.size()) row.add(button(sorted.get(i + 1).getTitle(), "PREMIUM:REGION:" + sorted.get(i + 1).getCode()));
+            rows.add(row);
+        }
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    public static InlineKeyboardMarkup premiumLayoutKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(
+                new InlineKeyboardRow(button("🚪 " + switch (lang) { case RU -> "Комната"; case CZ -> "Pokoj"; case EN -> "Room"; default -> "Кімната"; }, "PREMIUM:LAYOUT:ROOM")),
+                new InlineKeyboardRow(button("🏠 1+kk / 1+1", "PREMIUM:LAYOUT:1"), button("🏠 2+kk / 2+1", "PREMIUM:LAYOUT:2")),
+                new InlineKeyboardRow(button("🏠 3+kk / 3+1", "PREMIUM:LAYOUT:3"), button("🏠 4+", "PREMIUM:LAYOUT:4"))
+        )).build();
+    }
+
+    public static InlineKeyboardMarkup premiumPriceKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(
+                new InlineKeyboardRow(button(switch (lang) { case RU -> "Без лимита"; case CZ -> "Bez limitu"; case EN -> "No limit"; default -> "Без ліміту"; }, "PREMIUM:PRICE:0")),
+                new InlineKeyboardRow(button("15 000 Kč", "PREMIUM:PRICE:15000"), button("18 000 Kč", "PREMIUM:PRICE:18000")),
+                new InlineKeyboardRow(button("20 000 Kč", "PREMIUM:PRICE:20000"), button("25 000 Kč", "PREMIUM:PRICE:25000")),
+                new InlineKeyboardRow(button("30 000 Kč", "PREMIUM:PRICE:30000"))
+        )).build();
+    }
+
+    public static InlineKeyboardMarkup premiumActiveKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "➕ Настроить второй поиск";
+            case CZ -> "➕ Nastavit druhé hledání";
+            case EN -> "➕ Set up second search";
+            default -> "➕ Налаштувати другий пошук";
+        }, "PREMIUM:SETUP")))).build();
+    }
+
+    public static InlineKeyboardMarkup premiumRequestKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "✨ Запросить тестовый доступ";
+            case CZ -> "✨ Požádat o testovací přístup";
+            case EN -> "✨ Request test access";
+            default -> "✨ Запросити тестовий доступ";
+        }, "PREMIUM:REQUEST")))).build();
+    }
+
+    public static InlineKeyboardMarkup premiumAdminKeyboard(long userId) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(
+                button("✅ Активувати на 30 днів", "PREMIUM:APPROVE:" + userId),
+                button("❌ Відхилити", "PREMIUM:REJECT:" + userId)
+        ))).build();
+    }
+
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {

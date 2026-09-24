@@ -51,6 +51,9 @@ public class UserFilter {
     @Column(name = "milestone_1500_sent_at")
     private Instant milestone1500SentAt;
 
+    @Column(name = "premium_until")
+    private Instant premiumUntil;
+
     public Long getTelegramUserId() {
         return telegramUserId;
     }
@@ -146,4 +149,8 @@ public class UserFilter {
     public void setMilestone1500SentAt(Instant milestone1500SentAt) {
         this.milestone1500SentAt = milestone1500SentAt;
     }
+
+    public Instant getPremiumUntil() { return premiumUntil; }
+
+    public void setPremiumUntil(Instant premiumUntil) { this.premiumUntil = premiumUntil; }
 }

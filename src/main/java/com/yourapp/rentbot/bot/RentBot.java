@@ -2,6 +2,7 @@ package com.yourapp.rentbot.bot;
 
 import com.yourapp.rentbot.domain.FavoriteListing;
 import com.yourapp.rentbot.domain.OwnerListing;
+import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.SupportEvent;
@@ -18,6 +19,7 @@ import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
+import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.SchedulerService;
 import com.yourapp.rentbot.service.SupportMetricsService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -72,6 +74,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
     private final SupportMetricsService supportMetricsService;
+    private final PremiumService premiumService;
 
     private final String token;
     private final long adminId;
@@ -111,6 +114,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             ListingCacheService listingCacheService,
             MessageService messageService,
             SupportMetricsService supportMetricsService,
+            PremiumService premiumService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
@@ -130,6 +134,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
         this.supportMetricsService = supportMetricsService;
+        this.premiumService = premiumService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
@@ -668,7 +673,7 @@ DigiReality owners: %d
         if (text.equals("💎 Преміум")
                 || text.equals("💎 Премиум")
                 || text.equals("💎 Premium")) {
-            send(chatId, premiumInfo(lang), Keyboards.authorContactKeyboard(lang));
+            showPremium(chatId, userId, flowService.getOrCreate(userId), lang);
             return;
         }
 
@@ -1697,6 +1702,83 @@ DigiReality owners: %d
 
         Language lang = getUserLanguage(userId);
 
+        if (data.equals("PREMIUM:REQUEST")) {
+            String username = update.getCallbackQuery().getFrom().getUserName();
+            String requester = username == null || username.isBlank() ? String.valueOf(userId) : "@" + username + " / " + userId;
+            send(adminId, "💎 Запит на тестовий Premium\nКористувач: " + requester,
+                    Keyboards.premiumAdminKeyboard(userId));
+            send(chatId, premiumRequestSentText(lang), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:APPROVE:")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+            Long targetUserId = parseLongOrNull(data.substring("PREMIUM:APPROVE:".length()));
+            if (targetUserId == null) return;
+            UserFilter target = userFilterRepo.findFullById(targetUserId).orElseGet(() -> flowService.getOrCreate(targetUserId));
+            premiumService.activate(target, 30);
+            Language targetLang = getUserLanguage(targetUserId);
+            send(targetUserId, premiumActivatedText(targetLang), Keyboards.premiumActiveKeyboard(targetLang));
+            send(chatId, "✅ Premium активовано на 30 днів для " + targetUserId, Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:REJECT:")) {
+            if (chatId == adminId) {
+                Long targetUserId = parseLongOrNull(data.substring("PREMIUM:REJECT:".length()));
+                if (targetUserId != null) send(targetUserId, premiumRejectedText(getUserLanguage(targetUserId)), Keyboards.persistentNavKeyboard(getUserLanguage(targetUserId)));
+            }
+            return;
+        }
+
+        if (data.equals("PREMIUM:SETUP")) {
+            if (!premiumService.isActive(f)) {
+                send(chatId, premiumTrialInfo(lang), Keyboards.premiumRequestKeyboard(lang));
+                return;
+            }
+            premiumService.getOrCreateSearch(f);
+            send(chatId, premiumChooseRegionText(lang), Keyboards.premiumRegionsKeyboard(regionRepo.findAll()));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:REGION:")) {
+            if (!premiumService.isActive(f)) return;
+            String code = data.substring("PREMIUM:REGION:".length());
+            Region region = regionRepo.findByCode(code).orElse(null);
+            if (region == null) return;
+            PremiumSearch search = premiumService.getOrCreateSearch(f);
+            search.setRegion(region);
+            search.setRegionGroup("PRAHA".equalsIgnoreCase(region.getCode())
+                    ? regionGroupRepo.findByCode("PRAHA_ALL").orElse(null) : null);
+            premiumService.save(search);
+            send(chatId, premiumChooseLayoutText(lang), Keyboards.premiumLayoutKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:LAYOUT:")) {
+            if (!premiumService.isActive(f)) return;
+            PremiumSearch search = premiumService.getOrCreateSearch(f);
+            search.setLayout(data.substring("PREMIUM:LAYOUT:".length()));
+            premiumService.save(search);
+            send(chatId, premiumChoosePriceText(lang), Keyboards.premiumPriceKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:PRICE:")) {
+            if (!premiumService.isActive(f)) return;
+            Integer price = parsePrice(data.substring("PREMIUM:PRICE:".length()));
+            PremiumSearch search = premiumService.getOrCreateSearch(f);
+            if (price == null || search.getRegion() == null || search.getLayout() == null) return;
+            search.setMaxPrice(price);
+            search.setActive(true);
+            premiumService.save(search);
+            send(chatId, premiumSearchReadyText(lang, search), Keyboards.premiumActiveKeyboard(lang));
+            return;
+        }
+
         if (data.equals("OWNER:SUBMIT")) {
             OwnerListingDraft draft = ownerListingDrafts.get(userId);
             if (draft == null || !draft.readyToPublish()) {
@@ -1983,7 +2065,7 @@ DigiReality owners: %d
         }
 
         if (data.startsWith("SERVICE:NO_AGENT")) {
-            send(chatId, premiumInfo(lang), Keyboards.authorContactKeyboard(lang));
+            showPremium(chatId, userId, f, lang);
             return;
         }
 
@@ -2737,6 +2819,77 @@ Please verify the information yourself — the bot only shares a useful source.
 Перевіряйте інформацію самостійно — бот лише ділиться корисним джерелом.
 """;
         };
+    }
+
+    private void showPremium(long chatId, long userId, UserFilter user, Language lang) throws TelegramApiException {
+        if (premiumService.isActive(user)) {
+            send(chatId, premiumActivatedText(lang), Keyboards.premiumActiveKeyboard(lang));
+        } else {
+            send(chatId, premiumTrialInfo(lang), Keyboards.premiumRequestKeyboard(lang));
+        }
+    }
+
+    private String premiumTrialInfo(Language lang) {
+        return switch (lang) {
+            case RU -> "💎 Premium — ранний доступ\n\nСейчас тестируем второй независимый поиск: можно получать уведомления по двум разным настройкам одновременно. Доступ выдаётся бесплатно на время теста.";
+            case CZ -> "💎 Premium — předběžný přístup\n\nNyní testujeme druhé samostatné hledání: upozornění můžete dostávat pro dvě různá nastavení zároveň. Přístup je během testu zdarma.";
+            case EN -> "💎 Premium — early access\n\nWe are testing a second independent search: you can receive alerts for two different search settings at the same time. Access is free during the test.";
+            default -> "💎 Premium — ранній доступ\n\nЗараз тестуємо другий незалежний пошук: сповіщення можна отримувати для двох різних налаштувань одночасно. Доступ безкоштовний на час тесту.";
+        };
+    }
+
+    private String premiumRequestSentText(Language lang) {
+        return switch (lang) {
+            case RU -> "✅ Запрос отправлен. Я сообщу, когда тестовый доступ будет активирован.";
+            case CZ -> "✅ Žádost byla odeslána. Ozvu se vám, až bude testovací přístup aktivní.";
+            case EN -> "✅ Your request was sent. I will let you know when test access is active.";
+            default -> "✅ Запит надіслано. Я повідомлю, коли тестовий доступ буде активовано.";
+        };
+    }
+
+    private String premiumActivatedText(Language lang) {
+        return switch (lang) {
+            case RU -> "🎉 Premium-доступ активен на 30 дней. Настройте второй независимый поиск ниже.";
+            case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Níže si nastavte druhé samostatné hledání.";
+            case EN -> "🎉 Premium access is active for 30 days. Set up your second independent search below.";
+            default -> "🎉 Premium-доступ активний на 30 днів. Нижче налаштуйте другий незалежний пошук.";
+        };
+    }
+
+    private String premiumRejectedText(Language lang) {
+        return switch (lang) {
+            case RU -> "Сейчас тестовый доступ недоступен. Спасибо за интерес к Premium.";
+            case CZ -> "Testovací přístup nyní není k dispozici. Děkujeme za zájem o Premium.";
+            case EN -> "Test access is not available right now. Thank you for your interest in Premium.";
+            default -> "Наразі тестовий доступ недоступний. Дякуємо за інтерес до Premium.";
+        };
+    }
+
+    private String premiumChooseRegionText(Language lang) {
+        return switch (lang) { case RU -> "💎 Второй поиск: выберите город."; case CZ -> "💎 Druhé hledání: vyberte město."; case EN -> "💎 Second search: choose a city."; default -> "💎 Другий пошук: оберіть місто."; };
+    }
+
+    private String premiumChooseLayoutText(Language lang) {
+        return switch (lang) { case RU -> "💎 Второй поиск: выберите тип жилья."; case CZ -> "💎 Druhé hledání: vyberte typ bydlení."; case EN -> "💎 Second search: choose a property type."; default -> "💎 Другий пошук: оберіть тип житла."; };
+    }
+
+    private String premiumChoosePriceText(Language lang) {
+        return switch (lang) { case RU -> "💎 Второй поиск: выберите максимальную цену."; case CZ -> "💎 Druhé hledání: vyberte maximální cenu."; case EN -> "💎 Second search: choose the maximum price."; default -> "💎 Другий пошук: оберіть максимальну ціну."; };
+    }
+
+    private String premiumSearchReadyText(Language lang, PremiumSearch search) {
+        String price = search.getMaxPrice() != null && search.getMaxPrice() > 0 ? search.getMaxPrice() + " Kč" : "—";
+        return "✅ " + switch (lang) { case RU -> "Второй поиск активен"; case CZ -> "Druhé hledání je aktivní"; case EN -> "Second search is active"; default -> "Другий пошук активний"; }
+                + ":\n🏙 " + search.getRegion().getTitle() + "\n🏠 " + search.getLayout() + "\n💰 " + price;
+    }
+
+    private Integer parsePrice(String value) {
+        try {
+            int price = Integer.parseInt(value);
+            return price >= 0 && price <= 100_000 ? price : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String realEstateSearchInfo(Language lang) {

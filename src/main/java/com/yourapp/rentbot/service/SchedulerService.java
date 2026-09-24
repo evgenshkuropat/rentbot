@@ -1,6 +1,7 @@
 package com.yourapp.rentbot.service;
 
 import com.yourapp.rentbot.domain.Region;
+import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -30,15 +31,18 @@ public class SchedulerService {
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
     private final NotificationService notificationService;
+    private final PremiumService premiumService;
     private final int maxNotificationsPerUserPerCycle;
 
     public SchedulerService(UserFilterRepo userFilterRepo,
                             ParserService parserService,
                             NotificationService notificationService,
+                            PremiumService premiumService,
                             @Value("${rentbot.notifications.max-per-user-per-cycle:5}") int maxNotificationsPerUserPerCycle) {
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
+        this.premiumService = premiumService;
         this.maxNotificationsPerUserPerCycle = Math.max(1, maxNotificationsPerUserPerCycle);
     }
 
@@ -120,7 +124,7 @@ public class SchedulerService {
                 }
 
                 ParserService.FilterResult filterResult = parserService.filterForScheduler(allListings, user);
-                List<ListingDto> listings = filterResult.listings();
+                List<ListingDto> listings = new java.util.ArrayList<>(filterResult.listings());
                 ParserRunStats userFilterStats = filterResult.stats();
                 aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
                 aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
@@ -134,6 +138,28 @@ public class SchedulerService {
                 aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
                 aggregateFinalBazos += userFilterStats.finalBazos();
                 aggregateFinalDigireality += userFilterStats.finalDigireality();
+
+                if (premiumService.isActive(user)) {
+                    premiumService.findActiveSearch(userId).ifPresent(extraSearch -> {
+                        try {
+                            UserFilter premiumFilter = premiumService.asFilter(user, extraSearch);
+                            String premiumCacheKey = cacheKey(premiumFilter);
+                            List<ListingDto> premiumListings = listingsCache.get(premiumCacheKey);
+                            if (premiumListings == null) {
+                                premiumListings = parserService.fetchListingsForFilter(premiumFilter);
+                                listingsCache.put(premiumCacheKey, premiumListings);
+                                log.info("Scheduler: parsed premium key={} listings={}", premiumCacheKey, premiumListings.size());
+                            }
+                            for (ListingDto listing : parserService.filterForUser(premiumListings, premiumFilter)) {
+                                if (listings.stream().noneMatch(existing -> existing.link().equals(listing.link()))) {
+                                    listings.add(listing);
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("Error processing premium search for user {}", userId, e);
+                        }
+                    });
+                }
 
                 if (listings == null || listings.isEmpty()) {
                     log.debug("User {}: no matching listings", userId);
