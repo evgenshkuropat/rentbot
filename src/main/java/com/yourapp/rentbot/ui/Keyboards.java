@@ -98,14 +98,7 @@ public class Keyboards {
     }
 
     public static InlineKeyboardMarkup regionGroupsKeyboard(List<RegionGroup> groups) {
-        List<RegionGroup> sorted = new ArrayList<>(groups);
-
-        sorted.sort((a, b) -> {
-            int leftOrder = prahaGroupOrder(a.getCode());
-            int rightOrder = prahaGroupOrder(b.getCode());
-            if (leftOrder != rightOrder) return Integer.compare(leftOrder, rightOrder);
-            return a.getTitle().compareToIgnoreCase(b.getTitle());
-        });
+        List<RegionGroup> sorted = sortedRegionGroups(groups);
 
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
@@ -307,10 +300,36 @@ public class Keyboards {
 
     public static InlineKeyboardMarkup premiumRegionGroupsKeyboard(List<RegionGroup> groups) {
         List<InlineKeyboardRow> rows = new ArrayList<>();
-        for (RegionGroup group : groups) {
+        for (RegionGroup group : sortedRegionGroups(groups)) {
             rows.add(new InlineKeyboardRow(button(group.getTitle(), "PREMIUM:GROUP:" + group.getCode())));
         }
         return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
+    private static List<RegionGroup> sortedRegionGroups(List<RegionGroup> groups) {
+        List<RegionGroup> sorted = new ArrayList<>(groups);
+        sorted.sort((a, b) -> {
+            int leftOrder = regionGroupOrder(a.getCode());
+            int rightOrder = regionGroupOrder(b.getCode());
+            if (leftOrder != rightOrder) return Integer.compare(leftOrder, rightOrder);
+            return a.getTitle().compareToIgnoreCase(b.getTitle());
+        });
+        return sorted;
+    }
+
+    private static int regionGroupOrder(String code) {
+        if (code != null && code.startsWith("BRNO_")) {
+            return switch (code) {
+                case "BRNO_ALL" -> 0;
+                case "BRNO_CENTER" -> 1;
+                case "BRNO_NORTH" -> 2;
+                case "BRNO_EAST" -> 3;
+                case "BRNO_SOUTH" -> 4;
+                case "BRNO_WEST" -> 5;
+                default -> 100;
+            };
+        }
+        return prahaGroupOrder(code);
     }
 
     public static InlineKeyboardMarkup searchesKeyboard(boolean secondSearchConfigured, Language lang) {

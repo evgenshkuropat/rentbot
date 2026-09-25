@@ -610,6 +610,10 @@ public class ParserService {
     private boolean matchesRegionGroup(String locality, String groupCode) {
         if (groupCode == null || groupCode.isBlank()) return true;
 
+        if (groupCode.startsWith("BRNO_")) {
+            return matchesBrnoGroup(locality, groupCode);
+        }
+
         if ("PRAHA_ALL".equals(groupCode)) {
             return isPrahaListing(locality);
         }
@@ -631,6 +635,47 @@ public class ParserService {
             case "PRAHA_19_22" -> district >= 19 && district <= 22;
             default -> true;
         };
+    }
+
+    private boolean matchesBrnoGroup(String locality, String groupCode) {
+        if (!isBrnoListing(locality)) {
+            return false;
+        }
+
+        String normalized = normalizeLocality(locality);
+        return switch (groupCode) {
+            case "BRNO_ALL" -> true;
+            case "BRNO_CENTER" -> containsAny(normalized,
+                    "brno stred", "brno mesto", "stare brno", "veveri", "trnita", "zabrdovice", "styrice", "stranice", "pisarky");
+            case "BRNO_NORTH" -> containsAny(normalized,
+                    "zabovresky", "kralovo pole", "brno sever", "cerna pole", "medlanky", "reckovice", "mokra hora", "malomerice", "obrany");
+            case "BRNO_EAST" -> containsAny(normalized,
+                    "zidenice", "cernovice", "vinohrady", "lisen", "slatina", "turany", "brnenske ivanovice", "holasky", "dvorska");
+            case "BRNO_SOUTH" -> containsAny(normalized,
+                    "bohunice", "stary liskovec", "novy liskovec", "strellice", "chrlice", "prizrenice");
+            case "BRNO_WEST" -> containsAny(normalized,
+                    "bystrc", "komin", "jundrov", "kohoutovice", "bosonohy", "ivanovice", "jehnice");
+            default -> false;
+        };
+    }
+
+    private boolean isBrnoListing(String locality) {
+        if (locality == null || locality.isBlank()) {
+            return false;
+        }
+        String normalized = normalizeLocality(locality);
+        return normalized.contains("brno") || containsAny(normalized,
+                "zabovresky", "kralovo pole", "zidenice", "cernovice", "vinohrady", "lisen", "slatina",
+                "bystrc", "bohunice", "stary liskovec", "novy liskovec", "komin", "jundrov", "kohoutovice");
+    }
+
+    private boolean containsAny(String value, String... parts) {
+        for (String part : parts) {
+            if (value.contains(part)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isPrahaListing(String locality) {

@@ -23,11 +23,12 @@ public class DataInitializer implements CommandLineRunner {
         if (regionRepo.findByCode("PRAHA").isPresent()) {
             ensurePopularRegions();
             ensurePrahaGroups();
+            ensureBrnoGroups();
             return;
         }
 
         Region praha = saveRegion("PRAHA", "Praha", true, true, 10);
-        saveRegion("BRNO", "Brno", false, true, 14);
+        Region brno = saveRegion("BRNO", "Brno", true, true, 14);
         saveRegion("OSTRAVA", "Ostrava", false, true, 78);
         saveRegion("PLZEN", "Plzeň", false, true, 43);
         saveRegion("LIBEREC", "Liberec", false, true, 51);
@@ -50,6 +51,7 @@ public class DataInitializer implements CommandLineRunner {
         saveGroup(praha, "PRAHA_11_15", "Praha 11-15");
         saveGroup(praha, "PRAHA_16_18", "Praha 16-18");
         saveGroup(praha, "PRAHA_19_22", "Praha 19-22");
+        createBrnoGroups(brno);
 
         System.out.println("✅ Regions and Praha groups initialized");
     }
@@ -77,6 +79,24 @@ public class DataInitializer implements CommandLineRunner {
         Region praha = regionRepo.findByCode("PRAHA").orElseThrow();
         saveGroupIfMissing(praha, "PRAHA_16_18", "Praha 16-18");
         saveGroupIfMissing(praha, "PRAHA_19_22", "Praha 19-22");
+    }
+
+    private void ensureBrnoGroups() {
+        Region brno = regionRepo.findByCode("BRNO").orElseThrow();
+        if (!brno.isHasDistricts()) {
+            brno.setHasDistricts(true);
+            regionRepo.save(brno);
+        }
+        createBrnoGroups(brno);
+    }
+
+    private void createBrnoGroups(Region brno) {
+        saveGroupIfMissing(brno, "BRNO_ALL", "Celé Brno");
+        saveGroupIfMissing(brno, "BRNO_CENTER", "Brno — centrum");
+        saveGroupIfMissing(brno, "BRNO_NORTH", "Brno — sever");
+        saveGroupIfMissing(brno, "BRNO_EAST", "Brno — východ");
+        saveGroupIfMissing(brno, "BRNO_SOUTH", "Brno — jih");
+        saveGroupIfMissing(brno, "BRNO_WEST", "Brno — západ");
     }
 
     private void markPopular(String code) {
