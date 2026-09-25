@@ -101,8 +101,9 @@ public class Keyboards {
         List<RegionGroup> sorted = new ArrayList<>(groups);
 
         sorted.sort((a, b) -> {
-            if ("PRAHA_ALL".equals(a.getCode())) return -1;
-            if ("PRAHA_ALL".equals(b.getCode())) return 1;
+            int leftOrder = prahaGroupOrder(a.getCode());
+            int rightOrder = prahaGroupOrder(b.getCode());
+            if (leftOrder != rightOrder) return Integer.compare(leftOrder, rightOrder);
             return a.getTitle().compareToIgnoreCase(b.getTitle());
         });
 
@@ -120,6 +121,19 @@ public class Keyboards {
         return InlineKeyboardMarkup.builder()
                 .keyboard(rows)
                 .build();
+    }
+
+    private static int prahaGroupOrder(String code) {
+        return switch (code) {
+            case "PRAHA_ALL" -> 0;
+            case "PRAHA_1_3" -> 1;
+            case "PRAHA_4_6" -> 2;
+            case "PRAHA_7_10" -> 3;
+            case "PRAHA_11_15" -> 4;
+            case "PRAHA_16_18" -> 5;
+            case "PRAHA_19_22" -> 6;
+            default -> 100;
+        };
     }
 
     public static InlineKeyboardMarkup layoutKeyboard(Language lang) {
