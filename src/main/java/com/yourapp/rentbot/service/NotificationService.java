@@ -37,7 +37,11 @@ public class NotificationService {
     }
 
     public boolean sendIfNotSent(UserFilter user, ListingDto listing) {
-        if (!user.isActive()) {
+        return sendIfNotSent(user, listing, false);
+    }
+
+    public boolean sendIfNotSent(UserFilter user, ListingDto listing, boolean allowInactiveMainSearch) {
+        if (!user.isActive() && !allowInactiveMainSearch) {
             return false;
         }
 

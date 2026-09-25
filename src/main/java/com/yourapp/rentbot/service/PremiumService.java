@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.List;
 
 @Service
 public class PremiumService {
@@ -35,6 +36,13 @@ public class PremiumService {
 
     public Optional<PremiumSearch> findSearch(Long userId) {
         return premiumSearchRepo.findByTelegramUserId(userId);
+    }
+
+    public List<Long> findUserIdsWithActiveSearch() {
+        return premiumSearchRepo.findByActiveTrue().stream()
+                .map(PremiumSearch::getTelegramUserId)
+                .filter(id -> id != null)
+                .toList();
     }
 
     public PremiumSearch getOrCreateSearch(UserFilter user) {

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -75,7 +76,16 @@ public class SchedulerService {
         parserService.resetBazosRateLimitCycle();
         parserService.resetSrealityTemporaryUnavailableCycle();
 
-        List<UserFilter> users = new ArrayList<>(userFilterRepo.findAllActiveFull());
+        Map<Long, UserFilter> usersById = new LinkedHashMap<>();
+        for (UserFilter user : userFilterRepo.findAllActiveFull()) {
+            usersById.put(user.getTelegramUserId(), user);
+        }
+        for (Long premiumUserId : premiumService.findUserIdsWithActiveSearch()) {
+            userFilterRepo.findFullById(premiumUserId)
+                    .filter(premiumService::isActive)
+                    .ifPresent(user -> usersById.putIfAbsent(user.getTelegramUserId(), user));
+        }
+        List<UserFilter> users = new ArrayList<>(usersById.values());
 
         if (users.isEmpty()) {
             log.info("Scheduler: no active users");
@@ -117,37 +127,36 @@ public class SchedulerService {
                 usersProcessed++;
                 boolean premiumUser = premiumService.isActive(user);
 
-                String cacheKey = cacheKey(user);
+                List<ListingDto> listings = new ArrayList<>();
+                if (user.isActive()) {
+                    String cacheKey = cacheKey(user);
+                    List<ListingDto> allListings = listingsCache.get(cacheKey);
 
-                List<ListingDto> allListings = listingsCache.get(cacheKey);
+                    if (allListings == null) {
+                        allListings = parserService.fetchListingsForFilter(user);
+                        listingsCache.put(cacheKey, allListings);
+                        parserRuns++;
+                        log.info("Scheduler: parsed key={} listings={}", cacheKey, allListings.size());
+                    }
 
-                if (allListings == null) {
-                    allListings = parserService.fetchListingsForFilter(user);
-                    listingsCache.put(cacheKey, allListings);
-                    parserRuns++;
-
-                    log.info(
-                            "Scheduler: parsed key={} listings={}",
-                            cacheKey,
-                            allListings != null ? allListings.size() : 0
-                    );
+                    ParserService.FilterResult filterResult = parserService.filterForScheduler(allListings, user);
+                    listings.addAll(filterResult.listings());
+                    ParserRunStats userFilterStats = filterResult.stats();
+                    aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
+                    aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
+                    aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
+                    aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
+                    aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
+                    aggregateFilteredBaseDigireality += userFilterStats.filteredBaseDigireality();
+                    aggregateFinalFiltered += userFilterStats.finalFiltered();
+                    aggregateFinalSreality += userFilterStats.finalSreality();
+                    aggregateFinalIdnes += userFilterStats.finalIdnes();
+                    aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
+                    aggregateFinalBazos += userFilterStats.finalBazos();
+                    aggregateFinalDigireality += userFilterStats.finalDigireality();
+                } else if (premiumUser) {
+                    log.info("Scheduler: premium-only user={} main search inactive", userId);
                 }
-
-                ParserService.FilterResult filterResult = parserService.filterForScheduler(allListings, user);
-                List<ListingDto> listings = new java.util.ArrayList<>(filterResult.listings());
-                ParserRunStats userFilterStats = filterResult.stats();
-                aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
-                aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
-                aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
-                aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
-                aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
-                aggregateFilteredBaseDigireality += userFilterStats.filteredBaseDigireality();
-                aggregateFinalFiltered += userFilterStats.finalFiltered();
-                aggregateFinalSreality += userFilterStats.finalSreality();
-                aggregateFinalIdnes += userFilterStats.finalIdnes();
-                aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
-                aggregateFinalBazos += userFilterStats.finalBazos();
-                aggregateFinalDigireality += userFilterStats.finalDigireality();
 
                 List<ListingDto> premiumMatches = List.of();
                 if (premiumUser) {
@@ -199,7 +208,7 @@ public class SchedulerService {
                         : maxNotificationsPerUserPerCycle;
 
                 for (ListingDto listing : listings) {
-                    if (!user.isActive()) {
+                    if (!user.isActive() && !premiumUser) {
                         break;
                     }
 
@@ -210,7 +219,7 @@ public class SchedulerService {
 
                     try {
                         totalSendAttempts++;
-                        if (notificationService.sendIfNotSent(user, listing)) {
+                        if (notificationService.sendIfNotSent(user, listing, premiumUser)) {
                             sentForUser++;
                             totalSent++;
                             if (premiumLinks.contains(listing.link())) {

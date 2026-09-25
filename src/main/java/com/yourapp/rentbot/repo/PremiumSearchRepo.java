@@ -4,8 +4,10 @@ import com.yourapp.rentbot.domain.PremiumSearch;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface PremiumSearchRepo extends JpaRepository<PremiumSearch, Long> {
     Optional<PremiumSearch> findByTelegramUserId(Long telegramUserId);
     Optional<PremiumSearch> findByTelegramUserIdAndActiveTrue(Long telegramUserId);
+    List<PremiumSearch> findByActiveTrue();
 }
