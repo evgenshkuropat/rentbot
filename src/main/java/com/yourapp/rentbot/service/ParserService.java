@@ -86,7 +86,9 @@ public class ParserService {
         UserFilter filter = userFilterRepo.findFullById(telegramUserId)
                 .orElseThrow(() -> new IllegalArgumentException("UserFilter not found: " + telegramUserId));
 
-        List<ListingDto> mainListings = filterForUser(fetchListingsForFilter(filter), filter);
+        List<ListingDto> mainListings = filter.isActive()
+                ? filterForUser(fetchListingsForFilter(filter), filter)
+                : List.of();
 
         if (!premiumService.isActive(filter)) {
             return mainListings;

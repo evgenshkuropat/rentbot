@@ -411,6 +411,13 @@ public class Keyboards {
         ))).build();
     }
 
+    public static InlineKeyboardMarkup premiumPaymentAdminKeyboard(long requestId) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(
+                button("✅ Активувати на 30 днів", "PREMIUM:PAYMENT_APPROVE:" + requestId),
+                button("❌ Відхилити", "PREMIUM:PAYMENT_REJECT:" + requestId)
+        ))).build();
+    }
+
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {

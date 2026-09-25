@@ -20,6 +20,7 @@ import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
+import com.yourapp.rentbot.service.PremiumPaymentService;
 import com.yourapp.rentbot.service.SchedulerService;
 import com.yourapp.rentbot.service.SupportMetricsService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -76,6 +77,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final MessageService messageService;
     private final SupportMetricsService supportMetricsService;
     private final PremiumService premiumService;
+    private final PremiumPaymentService premiumPaymentService;
 
     private final String token;
     private final long adminId;
@@ -116,6 +118,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             MessageService messageService,
             SupportMetricsService supportMetricsService,
             PremiumService premiumService,
+            PremiumPaymentService premiumPaymentService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
@@ -136,6 +139,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.messageService = messageService;
         this.supportMetricsService = supportMetricsService;
         this.premiumService = premiumService;
+        this.premiumPaymentService = premiumPaymentService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
@@ -1748,11 +1752,12 @@ DigiReality owners: %d
             if (!isPremiumPaymentMethod(method)) return;
             String username = update.getCallbackQuery().getFrom().getUserName();
             String requester = username == null || username.isBlank() ? String.valueOf(userId) : "@" + username + " / " + userId;
+            var paymentRequest = premiumPaymentService.submit(userId, method);
             send(adminId,
                     "💎 Заявка на активацію платного Premium\nКористувач: " + requester
                             + "\nСпосіб: " + premiumPaymentMethodTitle(method)
                             + "\nСума: 99 Kč / 30 днів\n\nПеревір оплату та активуй доступ.",
-                    Keyboards.premiumAdminKeyboard(userId));
+                    Keyboards.premiumPaymentAdminKeyboard(paymentRequest.getId()));
             send(chatId, premiumPaymentSubmittedText(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
@@ -1762,13 +1767,34 @@ DigiReality owners: %d
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
-            Long targetUserId = parseLongOrNull(data.substring("PREMIUM:APPROVE:".length()));
-            if (targetUserId == null) return;
-            UserFilter target = userFilterRepo.findFullById(targetUserId).orElseGet(() -> flowService.getOrCreate(targetUserId));
-            premiumService.activate(target, 30);
-            Language targetLang = getUserLanguage(targetUserId);
-            send(targetUserId, premiumActivatedText(targetLang), Keyboards.premiumActiveKeyboard(targetLang));
-            send(chatId, "✅ Premium активовано на 30 днів для " + targetUserId, Keyboards.persistentNavKeyboard(lang));
+            send(chatId, "ℹ️ Старі тестові заявки більше не активують Premium. Використовуйте платіжну заявку.", Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:PAYMENT_APPROVE:")) {
+            if (chatId != adminId) return;
+            Long requestId = parseLongOrNull(data.substring("PREMIUM:PAYMENT_APPROVE:".length()));
+            if (requestId == null) return;
+            var approvedUserId = premiumPaymentService.approve(requestId);
+            if (approvedUserId.isEmpty()) { send(chatId, "ℹ️ Ця заявка вже оброблена або не знайдена.", Keyboards.persistentNavKeyboard(lang)); return; }
+            Language targetLang = getUserLanguage(approvedUserId.get());
+            send(approvedUserId.get(), premiumActivatedText(targetLang), Keyboards.premiumActiveKeyboard(targetLang));
+            send(chatId, "✅ Premium активовано на 30 днів для " + approvedUserId.get(), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:PAYMENT_REJECT:")) {
+            if (chatId != adminId) return;
+            Long requestId = parseLongOrNull(data.substring("PREMIUM:PAYMENT_REJECT:".length()));
+            if (requestId == null) return;
+            var rejectedUserId = premiumPaymentService.reject(requestId);
+            if (rejectedUserId.isEmpty()) {
+                send(chatId, "ℹ️ Ця заявка вже оброблена або не знайдена.", Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+            Language targetLang = getUserLanguage(rejectedUserId.get());
+            send(rejectedUserId.get(), premiumPaymentRejectedText(targetLang), Keyboards.persistentNavKeyboard(targetLang));
+            send(chatId, "❌ Заявку відхилено.", Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1782,7 +1808,7 @@ DigiReality owners: %d
 
         if (data.equals("PREMIUM:SETUP")) {
             if (!premiumService.isActive(f)) {
-                send(chatId, premiumTrialInfo(lang), Keyboards.premiumRequestKeyboard(lang));
+                send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
                 return;
             }
             premiumService.getOrCreateSearch(f);
@@ -2602,7 +2628,7 @@ DigiReality owners: %d
         PremiumSearch search = premiumService.findSearch(telegramUserId).orElse(null);
         boolean premiumActive = premiumService.isActive(user);
         boolean secondSearchActive = search != null && search.isActive();
-        boolean schedulerEligible = user.isActive() && premiumActive && secondSearchActive;
+        boolean schedulerEligible = user.isActive() || (premiumActive && secondSearchActive);
 
         String mainSearch = "🏠 Основний пошук\n"
                 + "Активний: " + yesNo(user.isActive())
@@ -3008,6 +3034,15 @@ Please verify the information yourself — the bot only shares a useful source.
             case CZ -> "✅ Žádost byla odeslána. Po ověření platby bude Premium aktivováno na 30 dní.";
             case EN -> "✅ Your request was sent. Premium will be activated for 30 days after payment is verified.";
             default -> "✅ Заявку надіслано. Після перевірки оплати Premium буде активовано на 30 днів.";
+        };
+    }
+
+    private String premiumPaymentRejectedText(Language lang) {
+        return switch (lang) {
+            case RU -> "Не удалось подтвердить оплату Premium. Проверьте перевод или напишите в поддержку — поможем разобраться.";
+            case CZ -> "Platbu Premium se nepodařilo potvrdit. Zkontrolujte prosím převod nebo napište podpoře — pomůžeme to vyřešit.";
+            case EN -> "We could not confirm your Premium payment. Please check the transfer or contact support and we will help.";
+            default -> "Не вдалося підтвердити оплату Premium. Перевірте переказ або напишіть у підтримку — допоможемо розібратися.";
         };
     }
 
