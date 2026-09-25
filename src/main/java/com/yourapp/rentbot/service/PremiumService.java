@@ -26,7 +26,10 @@ public class PremiumService {
     }
 
     public UserFilter activate(UserFilter user, int days) {
-        user.setPremiumUntil(Instant.now().plus(Math.max(1, days), ChronoUnit.DAYS));
+        Instant now = Instant.now();
+        Instant startsAt = user.getPremiumUntil() != null && user.getPremiumUntil().isAfter(now)
+                ? user.getPremiumUntil() : now;
+        user.setPremiumUntil(startsAt.plus(Math.max(1, days), ChronoUnit.DAYS));
         return userFilterRepo.save(user);
     }
 

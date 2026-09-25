@@ -367,6 +367,43 @@ public class Keyboards {
         }, "PREMIUM:REQUEST")))).build();
     }
 
+    public static InlineKeyboardMarkup premiumPaymentMethodsKeyboard(Language lang) {
+        return InlineKeyboardMarkup.builder().keyboard(List.of(
+                new InlineKeyboardRow(button("💳 Raiffeisenbank", "PREMIUM:METHOD:RAIFFEISEN")),
+                new InlineKeyboardRow(button("PrivatBank", "PREMIUM:METHOD:PRIVATBANK")),
+                new InlineKeyboardRow(button("PayPal", "PREMIUM:METHOD:PAYPAL")),
+                new InlineKeyboardRow(button("Revolut", "PREMIUM:METHOD:REVOLUT"))
+        )).build();
+    }
+
+    public static InlineKeyboardMarkup premiumPaymentConfirmationKeyboard(String method, String url, Language lang) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        if (url != null && !url.isBlank()) {
+            rows.add(new InlineKeyboardRow(InlineKeyboardButton.builder()
+                    .text(switch (lang) {
+                        case RU -> "Открыть " + method;
+                        case CZ -> "Otevřít " + method;
+                        case EN -> "Open " + method;
+                        default -> "Відкрити " + method;
+                    })
+                    .url(url)
+                    .build()));
+        }
+        rows.add(new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "✅ Я оплатил 99 Kč";
+            case CZ -> "✅ Zaplatil/a jsem 99 Kč";
+            case EN -> "✅ I paid 99 Kč";
+            default -> "✅ Я сплатив/ла 99 Kč";
+        }, "PREMIUM:PAID:" + method.toUpperCase())));
+        rows.add(new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "⬅️ Выбрать другой способ";
+            case CZ -> "⬅️ Vybrat jiný způsob";
+            case EN -> "⬅️ Choose another method";
+            default -> "⬅️ Обрати інший спосіб";
+        }, "PREMIUM:PAY")));
+        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+    }
+
     public static InlineKeyboardMarkup premiumAdminKeyboard(long userId) {
         return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(
                 button("✅ Активувати на 30 днів", "PREMIUM:APPROVE:" + userId),

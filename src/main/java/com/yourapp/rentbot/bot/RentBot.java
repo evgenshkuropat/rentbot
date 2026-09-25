@@ -1721,11 +1721,34 @@ DigiReality owners: %d
         Language lang = getUserLanguage(userId);
 
         if (data.equals("PREMIUM:REQUEST")) {
+            send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("PREMIUM:PAY")) {
+            send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:METHOD:")) {
+            String method = data.substring("PREMIUM:METHOD:".length());
+            if (!isPremiumPaymentMethod(method)) return;
+            send(chatId, premiumPaymentInstructions(lang, method, userId),
+                    Keyboards.premiumPaymentConfirmationKeyboard(premiumPaymentMethodTitle(method), premiumPaymentUrl(method), lang));
+            return;
+        }
+
+        if (data.startsWith("PREMIUM:PAID:")) {
+            String method = data.substring("PREMIUM:PAID:".length());
+            if (!isPremiumPaymentMethod(method)) return;
             String username = update.getCallbackQuery().getFrom().getUserName();
             String requester = username == null || username.isBlank() ? String.valueOf(userId) : "@" + username + " / " + userId;
-            send(adminId, "💎 Запит на тестовий Premium\nКористувач: " + requester,
+            send(adminId,
+                    "💎 Заявка на активацію платного Premium\nКористувач: " + requester
+                            + "\nСпосіб: " + premiumPaymentMethodTitle(method)
+                            + "\nСума: 99 Kč / 30 днів\n\nПеревір оплату та активуй доступ.",
                     Keyboards.premiumAdminKeyboard(userId));
-            send(chatId, premiumRequestSentText(lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, premiumPaymentSubmittedText(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -2938,8 +2961,73 @@ Please verify the information yourself — the bot only shares a useful source.
         if (premiumService.isActive(user)) {
             showSearches(chatId, user, lang);
         } else {
-            send(chatId, premiumTrialInfo(lang), Keyboards.premiumRequestKeyboard(lang));
+            send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
         }
+    }
+
+    private String premiumPaymentIntro(Language lang) {
+        return switch (lang) {
+            case RU -> "💎 Premium — 99 Kč / месяц\n\nНе пропускайте новые варианты: два независимых поиска, приоритетная обработка и до 10 новых уведомлений за цикл.\n\nВыберите удобный способ оплаты. Доступ активируется на 30 дней после проверки оплаты.";
+            case CZ -> "💎 Premium — 99 Kč / měsíc\n\nNenechte si ujít nové nabídky: dvě nezávislá hledání, prioritní zpracování a až 10 nových upozornění za cyklus.\n\nVyberte si způsob platby. Přístup aktivuji na 30 dní po ověření platby.";
+            case EN -> "💎 Premium — 99 Kč / month\n\nDo not miss new listings: two independent searches, priority processing, and up to 10 new alerts per cycle.\n\nChoose a payment method. Access is activated for 30 days after payment is verified.";
+            default -> "💎 Premium — 99 Kč / місяць\n\nНе пропускайте нові варіанти: два незалежні пошуки, пріоритетна обробка та до 10 нових сповіщень за цикл.\n\nОберіть зручний спосіб оплати. Доступ активується на 30 днів після перевірки оплати.";
+        };
+    }
+
+    private String premiumPaymentInstructions(Language lang, String method, long userId) {
+        String paymentDetails = switch (method) {
+            case "RAIFFEISEN" -> switch (lang) {
+                case RU -> "Реквизиты: 972026002/5500";
+                case CZ -> "Účet: 972026002/5500";
+                case EN -> "Account: 972026002/5500";
+                default -> "Рахунок: 972026002/5500";
+            };
+            default -> switch (lang) {
+                case RU -> "Нажмите кнопку ниже и укажите сумму 99 Kč.";
+                case CZ -> "Otevřete platební odkaz níže a zadejte částku 99 Kč.";
+                case EN -> "Open the payment link below and enter 99 Kč.";
+                default -> "Відкрийте посилання нижче та вкажіть суму 99 Kč.";
+            };
+        };
+        return switch (lang) {
+            case RU -> "💎 Premium на 30 дней — 99 Kč\n\n" + paymentDetails + "\n\nВ комментарии к платежу укажите Telegram ID: " + userId + ". После оплаты нажмите кнопку ниже.";
+            case CZ -> "💎 Premium na 30 dní — 99 Kč\n\n" + paymentDetails + "\n\nDo poznámky k platbě uveďte Telegram ID: " + userId + ". Po zaplacení klikněte na tlačítko níže.";
+            case EN -> "💎 Premium for 30 days — 99 Kč\n\n" + paymentDetails + "\n\nAdd your Telegram ID to the payment note: " + userId + ". After paying, press the button below.";
+            default -> "💎 Premium на 30 днів — 99 Kč\n\n" + paymentDetails + "\n\nУ коментарі до платежу вкажіть Telegram ID: " + userId + ". Після оплати натисніть кнопку нижче.";
+        };
+    }
+
+    private String premiumPaymentSubmittedText(Language lang) {
+        return switch (lang) {
+            case RU -> "✅ Заявка отправлена. После проверки оплаты Premium будет активирован на 30 дней.";
+            case CZ -> "✅ Žádost byla odeslána. Po ověření platby bude Premium aktivováno na 30 dní.";
+            case EN -> "✅ Your request was sent. Premium will be activated for 30 days after payment is verified.";
+            default -> "✅ Заявку надіслано. Після перевірки оплати Premium буде активовано на 30 днів.";
+        };
+    }
+
+    private boolean isPremiumPaymentMethod(String method) {
+        return "RAIFFEISEN".equals(method) || "PRIVATBANK".equals(method)
+                || "PAYPAL".equals(method) || "REVOLUT".equals(method);
+    }
+
+    private String premiumPaymentMethodTitle(String method) {
+        return switch (method) {
+            case "RAIFFEISEN" -> "Raiffeisenbank";
+            case "PRIVATBANK" -> "PrivatBank";
+            case "PAYPAL" -> "PayPal";
+            case "REVOLUT" -> "Revolut";
+            default -> method;
+        };
+    }
+
+    private String premiumPaymentUrl(String method) {
+        return switch (method) {
+            case "PRIVATBANK" -> "https://www.privat24.ua/send/47m35";
+            case "PAYPAL" -> "https://www.paypal.me/YEVHENSHKUROPAT";
+            case "REVOLUT" -> "https://revolut.me/evzen13";
+            default -> null;
+        };
     }
 
     private void showSearches(long chatId, UserFilter user, Language lang) throws TelegramApiException {
