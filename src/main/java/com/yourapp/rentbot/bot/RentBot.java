@@ -48,6 +48,7 @@ import com.yourapp.rentbot.service.dto.ParserRunStats;
 import com.yourapp.rentbot.service.dto.SchedulerRunStats;
 
 import java.text.Normalizer;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -711,6 +712,10 @@ DigiReality owners: %d
 
         if (text.equalsIgnoreCase("/start")) {
             UserFilter f = flowService.getOrCreate(userId);
+
+            if (!f.isOnboarded()) {
+                sendAutumnBanner(chatId);
+            }
 
             send(chatId, msg(userId, "menu.pinned"), Keyboards.persistentNavKeyboard(lang));
 
@@ -3291,6 +3296,21 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         }
 
         telegramClient.execute(b.build());
+    }
+
+    private void sendAutumnBanner(long chatId) {
+        try (InputStream image = getClass().getResourceAsStream("/images/autumn-prague-banner.png")) {
+            if (image == null) {
+                log.warn("Autumn banner resource is missing");
+                return;
+            }
+            telegramClient.execute(SendPhoto.builder()
+                    .chatId(chatId)
+                    .photo(new InputFile(image, "autumn-prague-banner.png"))
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not send autumn banner", e);
+        }
     }
 
     private void sendListing(long chatId, long userId, ListingDto l) throws TelegramApiException {
