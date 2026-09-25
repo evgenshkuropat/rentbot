@@ -22,6 +22,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (regionRepo.findByCode("PRAHA").isPresent()) {
             ensurePopularRegions();
+            ensurePrahaGroups();
             return;
         }
 
@@ -47,6 +48,8 @@ public class DataInitializer implements CommandLineRunner {
         saveGroup(praha, "PRAHA_4_6", "Praha 4-6");
         saveGroup(praha, "PRAHA_7_10", "Praha 7-10");
         saveGroup(praha, "PRAHA_11_15", "Praha 11-15");
+        saveGroup(praha, "PRAHA_16_18", "Praha 16-18");
+        saveGroup(praha, "PRAHA_19_22", "Praha 19-22");
 
         System.out.println("✅ Regions and Praha groups initialized");
     }
@@ -70,6 +73,12 @@ public class DataInitializer implements CommandLineRunner {
         markPopular("OLOMOUC");
     }
 
+    private void ensurePrahaGroups() {
+        Region praha = regionRepo.findByCode("PRAHA").orElseThrow();
+        saveGroupIfMissing(praha, "PRAHA_16_18", "Praha 16-18");
+        saveGroupIfMissing(praha, "PRAHA_19_22", "Praha 19-22");
+    }
+
     private void markPopular(String code) {
         regionRepo.findByCode(code).ifPresent(region -> {
             if (!region.isPopular()) {
@@ -85,5 +94,11 @@ public class DataInitializer implements CommandLineRunner {
         group.setCode(code);
         group.setTitle(title);
         regionGroupRepo.save(group);
+    }
+
+    private void saveGroupIfMissing(Region region, String code, String title) {
+        if (regionGroupRepo.findByCode(code).isEmpty()) {
+            saveGroup(region, code, title);
+        }
     }
 }

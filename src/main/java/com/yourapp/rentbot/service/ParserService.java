@@ -627,6 +627,8 @@ public class ParserService {
             case "PRAHA_4_6" -> district >= 4 && district <= 6;
             case "PRAHA_7_10" -> district >= 7 && district <= 10;
             case "PRAHA_11_15" -> district >= 11 && district <= 15;
+            case "PRAHA_16_18" -> district >= 16 && district <= 18;
+            case "PRAHA_19_22" -> district >= 19 && district <= 22;
             default -> true;
         };
     }
