@@ -1767,7 +1767,7 @@ DigiReality owners: %d
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
-            send(chatId, "ℹ️ Старі тестові заявки більше не активують Premium. Використовуйте платіжну заявку.", Keyboards.persistentNavKeyboard(lang));
+            send(chatId, "ℹ️ Ця застаріла дія не змінює Premium. Використовуйте актуальну платіжну заявку.", Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1800,8 +1800,7 @@ DigiReality owners: %d
 
         if (data.startsWith("PREMIUM:REJECT:")) {
             if (chatId == adminId) {
-                Long targetUserId = parseLongOrNull(data.substring("PREMIUM:REJECT:".length()));
-                if (targetUserId != null) send(targetUserId, premiumRejectedText(getUserLanguage(targetUserId)), Keyboards.persistentNavKeyboard(getUserLanguage(targetUserId)));
+                send(chatId, "ℹ️ Ця стара заявка більше не використовується.", Keyboards.persistentNavKeyboard(lang));
             }
             return;
         }
@@ -2858,103 +2857,6 @@ DigiReality owners: %d
         };
     }
 
-    private String premiumInfo(Language lang) {
-        return switch (lang) {
-            case RU -> """
-💎 Премиум
-
-Для тех, кто хочет искать жильё активнее и получать больше подходящих вариантов.
-
-Цена раннего доступа: 99 Kč / месяц.
-
-Что будет в Премиум:
-
-✅ несколько поисков одновременно
-Например: Praha 1+kk, Brno 2+kk и Plzeň комната.
-
-🔎 больше вариантов в выдаче
-Больше подходящих предложений из Sreality, iDNES, Bezrealitky и Bazoš.
-
-🏠 больше вариантов без риелтора
-Отдельный акцент на объявления от собственников и Bezrealitky.
-
-⚡ приоритет в новых функциях
-Первые пользователи помогают выбрать, что добавить дальше.
-
-Премиум запускается в тестовом режиме. Чтобы подключить — напишите автору.
-""";
-            case CZ -> """
-💎 Premium
-
-Pro ty, kteří chtějí hledat bydlení aktivněji a dostávat více relevantních nabídek.
-
-Cena předběžného přístupu: 99 Kč / měsíc.
-
-Co bude v Premium:
-
-✅ více hledání najednou
-Například: Praha 1+kk, Brno 2+kk a Plzeň pokoj.
-
-🔎 více nabídek ve výsledcích
-Více relevantních nabídek ze Sreality, iDNES, Bezrealitky a Bazoš.
-
-🏠 více nabídek bez realitky
-Větší důraz na nabídky od majitelů a Bezrealitky.
-
-⚡ priorita u nových funkcí
-První uživatelé pomohou vybrat, co přidat dál.
-
-Premium se spouští v testovacím režimu. Pro aktivaci napište autorovi.
-""";
-            case EN -> """
-💎 Premium
-
-For people who want to search more actively and get more relevant listings.
-
-Early access price: 99 Kč / month.
-
-What Premium will include:
-
-✅ multiple searches at once
-For example: Praha 1+kk, Brno 2+kk and Plzeň room.
-
-🔎 more listings in results
-More relevant listings from Sreality, iDNES, Bezrealitky and Bazoš.
-
-🏠 more no-agent options
-More focus on owner listings and Bezrealitky.
-
-⚡ priority for new features
-Early users help decide what to add next.
-
-Premium is launching in test mode. To activate it, contact the author.
-""";
-            default -> """
-💎 Преміум
-
-Для тих, хто хоче шукати житло активніше й отримувати більше відповідних варіантів.
-
-Ціна раннього доступу: 99 Kč / місяць.
-
-Що буде в Преміум:
-
-✅ кілька пошуків одночасно
-Наприклад: Praha 1+kk, Brno 2+kk і Plzeň кімната.
-
-🔎 більше варіантів у видачі
-Більше відповідних пропозицій із Sreality, iDNES, Bezrealitky та Bazoš.
-
-🏠 більше варіантів без рієлтора
-Більший акцент на оголошеннях від власників і Bezrealitky.
-
-⚡ пріоритет у нових функціях
-Перші користувачі допомагають обрати, що додати далі.
-
-Преміум запускається в тестовому режимі. Щоб підключити — напишіть автору.
-""";
-        };
-    }
-
     private String dpDocumentInfo(Language lang) {
         return switch (lang) {
             case RU -> """
@@ -3104,39 +3006,12 @@ Please verify the information yourself — the bot only shares a useful source.
                 Keyboards.searchesKeyboard(secondSearch != null, lang));
     }
 
-    private String premiumTrialInfo(Language lang) {
-        return switch (lang) {
-            case RU -> "💎 Premium — ранний доступ\n\nДля тех, кому важно не пропускать новые варианты: второй независимый поиск, приоритетная обработка и до 10 новых уведомлений за цикл. Доступ бесплатный на время теста.";
-            case CZ -> "💎 Premium — předběžný přístup\n\nPro ty, kteří nechtějí přijít o nové nabídky: druhé samostatné hledání, prioritní zpracování a až 10 nových upozornění za cyklus. Přístup je během testu zdarma.";
-            case EN -> "💎 Premium — early access\n\nFor those who do not want to miss new listings: a second independent search, priority processing, and up to 10 new alerts per cycle. Access is free during the test.";
-            default -> "💎 Premium — ранній доступ\n\nДля тих, кому важливо не пропускати нові варіанти: другий незалежний пошук, пріоритетна обробка та до 10 нових сповіщень за цикл. Доступ безкоштовний на час тестування.";
-        };
-    }
-
-    private String premiumRequestSentText(Language lang) {
-        return switch (lang) {
-            case RU -> "✅ Запрос отправлен. Я сообщу, когда тестовый доступ будет активирован.";
-            case CZ -> "✅ Žádost byla odeslána. Ozvu se vám, až bude testovací přístup aktivní.";
-            case EN -> "✅ Your request was sent. I will let you know when test access is active.";
-            default -> "✅ Запит надіслано. Я повідомлю, коли тестовий доступ буде активовано.";
-        };
-    }
-
     private String premiumActivatedText(Language lang) {
         return switch (lang) {
             case RU -> "🎉 Premium-доступ активен на 30 дней. У вас до 10 новых уведомлений за цикл и приоритетная обработка. Настройте второй независимый поиск ниже.";
             case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Máte až 10 nových upozornění za cyklus a prioritní zpracování. Níže si nastavte druhé samostatné hledání.";
             case EN -> "🎉 Premium access is active for 30 days. You have up to 10 new alerts per cycle and priority processing. Set up your second independent search below.";
             default -> "🎉 Premium-доступ активний на 30 днів. У вас до 10 нових сповіщень за цикл і пріоритетна обробка. Нижче налаштуйте другий незалежний пошук.";
-        };
-    }
-
-    private String premiumRejectedText(Language lang) {
-        return switch (lang) {
-            case RU -> "Сейчас тестовый доступ недоступен. Спасибо за интерес к Premium.";
-            case CZ -> "Testovací přístup nyní není k dispozici. Děkujeme za zájem o Premium.";
-            case EN -> "Test access is not available right now. Thank you for your interest in Premium.";
-            default -> "Наразі тестовий доступ недоступний. Дякуємо за інтерес до Premium.";
         };
     }
 

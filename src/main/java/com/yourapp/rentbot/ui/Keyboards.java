@@ -391,15 +391,6 @@ public class Keyboards {
         }, "PREMIUM:SETUP")))).build();
     }
 
-    public static InlineKeyboardMarkup premiumRequestKeyboard(Language lang) {
-        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(button(switch (lang) {
-            case RU -> "✨ Запросить тестовый доступ";
-            case CZ -> "✨ Požádat o testovací přístup";
-            case EN -> "✨ Request test access";
-            default -> "✨ Запросити тестовий доступ";
-        }, "PREMIUM:REQUEST")))).build();
-    }
-
     public static InlineKeyboardMarkup premiumPaymentMethodsKeyboard(Language lang) {
         return InlineKeyboardMarkup.builder().keyboard(List.of(
                 new InlineKeyboardRow(button("💳 Raiffeisenbank", "PREMIUM:METHOD:RAIFFEISEN")),
@@ -435,13 +426,6 @@ public class Keyboards {
             default -> "⬅️ Обрати інший спосіб";
         }, "PREMIUM:PAY")));
         return InlineKeyboardMarkup.builder().keyboard(rows).build();
-    }
-
-    public static InlineKeyboardMarkup premiumAdminKeyboard(long userId) {
-        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(
-                button("✅ Активувати на 30 днів", "PREMIUM:APPROVE:" + userId),
-                button("❌ Відхилити", "PREMIUM:REJECT:" + userId)
-        ))).build();
     }
 
     public static InlineKeyboardMarkup premiumPaymentAdminKeyboard(long requestId) {
