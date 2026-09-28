@@ -148,12 +148,6 @@ public class SchedulerService {
                     aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
                     aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
                     aggregateFilteredBaseDigireality += userFilterStats.filteredBaseDigireality();
-                    aggregateFinalFiltered += userFilterStats.finalFiltered();
-                    aggregateFinalSreality += userFilterStats.finalSreality();
-                    aggregateFinalIdnes += userFilterStats.finalIdnes();
-                    aggregateFinalBezrealitky += userFilterStats.finalBezrealitky();
-                    aggregateFinalBazos += userFilterStats.finalBazos();
-                    aggregateFinalDigireality += userFilterStats.finalDigireality();
                 } else if (premiumUser) {
                     log.info("Scheduler: premium-only user={} main search inactive", userId);
                 }
@@ -172,7 +166,15 @@ public class SchedulerService {
                                 parserRuns++;
                                 log.info("Scheduler: parsed premium key={} listings={}", premiumCacheKey, premiumListings.size());
                             }
-                            premiumMatches = parserService.filterForUser(premiumListings, premiumFilter);
+                            ParserService.FilterResult premiumFilterResult = parserService.filterForScheduler(premiumListings, premiumFilter);
+                            premiumMatches = premiumFilterResult.listings();
+                            ParserRunStats premiumFilterStats = premiumFilterResult.stats();
+                            aggregateFilteredBaseTotal += premiumFilterStats.filteredBaseTotal();
+                            aggregateFilteredBaseSreality += premiumFilterStats.filteredBaseSreality();
+                            aggregateFilteredBaseIdnes += premiumFilterStats.filteredBaseIdnes();
+                            aggregateFilteredBaseBezrealitky += premiumFilterStats.filteredBaseBezrealitky();
+                            aggregateFilteredBaseBazos += premiumFilterStats.filteredBaseBazos();
+                            aggregateFilteredBaseDigireality += premiumFilterStats.filteredBaseDigireality();
                             listings = interleaveUnique(premiumMatches, listings);
                             log.info("Scheduler: premium search user={} candidates={}", userId, premiumMatches.size());
                         } catch (Exception e) {
@@ -188,6 +190,15 @@ public class SchedulerService {
 
                 usersWithMatches++;
                 totalCandidates += listings.size();
+                aggregateFinalFiltered += listings.size();
+                for (ListingDto listing : listings) {
+                    String source = listing.source() == null ? "" : listing.source().toLowerCase();
+                    if (source.contains("sreality")) aggregateFinalSreality++;
+                    else if (source.contains("idnes")) aggregateFinalIdnes++;
+                    else if (source.contains("bezrealitky")) aggregateFinalBezrealitky++;
+                    else if (source.contains("bazo")) aggregateFinalBazos++;
+                    else if (source.contains("digireality")) aggregateFinalDigireality++;
+                }
 
                 int ownerMatchesForUser = (int) listings.stream()
                         .filter(this::isOwnerListing)
