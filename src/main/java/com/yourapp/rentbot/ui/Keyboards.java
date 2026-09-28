@@ -605,6 +605,24 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup inactiveReactivationKeyboard(Language lang) {
+        InlineKeyboardRow resume = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "▶️ Включить поиск снова";
+            case CZ -> "▶️ Znovu zapnout hledání";
+            case EN -> "▶️ Resume search";
+            default -> "▶️ Увімкнути пошук знову";
+        }, "REACTIVATE:RESUME"));
+
+        InlineKeyboardRow edit = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "✏️ Изменить параметры";
+            case CZ -> "✏️ Upravit parametry";
+            case EN -> "✏️ Update settings";
+            default -> "✏️ Змінити параметри";
+        }, "REACTIVATE:EDIT"));
+
+        return InlineKeyboardMarkup.builder().keyboard(List.of(resume, edit)).build();
+    }
+
     public static InlineKeyboardMarkup milestone1500Keyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(InlineKeyboardButton.builder()

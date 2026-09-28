@@ -48,6 +48,9 @@ public class UserFilter {
     @Column(name = "reactivation_sent_at")
     private Instant reactivationSentAt;
 
+    @Column(name = "inactive_reactivation_sent_at")
+    private Instant inactiveReactivationSentAt;
+
     @Column(name = "milestone_1500_sent_at")
     private Instant milestone1500SentAt;
 
@@ -140,6 +143,14 @@ public class UserFilter {
 
     public void setReactivationSentAt(Instant reactivationSentAt) {
         this.reactivationSentAt = reactivationSentAt;
+    }
+
+    public Instant getInactiveReactivationSentAt() {
+        return inactiveReactivationSentAt;
+    }
+
+    public void setInactiveReactivationSentAt(Instant inactiveReactivationSentAt) {
+        this.inactiveReactivationSentAt = inactiveReactivationSentAt;
     }
 
     public Instant getMilestone1500SentAt() {

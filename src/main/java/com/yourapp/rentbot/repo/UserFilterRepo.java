@@ -76,6 +76,28 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     @Query("""
         select uf
         from UserFilter uf
+        left join fetch uf.region
+        left join fetch uf.regionGroup
+        where uf.active = false
+          and uf.onboarded = true
+          and uf.region is not null
+          and uf.layout is not null
+          and (uf.premiumUntil is null or uf.premiumUntil <= :now)
+          and (uf.updatedAt is null or uf.updatedAt < :staleBefore)
+          and (
+              uf.inactiveReactivationSentAt is null
+              or uf.inactiveReactivationSentAt < :canSendAgainBefore
+          )
+        order by uf.updatedAt asc
+    """)
+    List<UserFilter> findInactiveReactivationCandidates(@Param("now") Instant now,
+                                                        @Param("staleBefore") Instant staleBefore,
+                                                        @Param("canSendAgainBefore") Instant canSendAgainBefore,
+                                                        Pageable pageable);
+
+    @Query("""
+        select uf
+        from UserFilter uf
         where uf.active = true
           and uf.milestone1500SentAt is null
           and uf.telegramUserId is not null

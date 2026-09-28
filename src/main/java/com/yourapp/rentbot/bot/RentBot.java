@@ -5,6 +5,7 @@ import com.yourapp.rentbot.domain.OwnerListing;
 import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
+import com.yourapp.rentbot.domain.ReactivationEvent;
 import com.yourapp.rentbot.domain.SupportEvent;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowService;
@@ -21,6 +22,7 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
+import com.yourapp.rentbot.service.ReactivationMetricsService;
 import com.yourapp.rentbot.service.SchedulerService;
 import com.yourapp.rentbot.service.SupportMetricsService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -78,13 +80,17 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final SupportMetricsService supportMetricsService;
     private final PremiumService premiumService;
     private final PremiumPaymentService premiumPaymentService;
+    private final ReactivationMetricsService reactivationMetricsService;
 
     private final String token;
     private final long adminId;
     private final boolean milestone1500AutoEnabled;
     private final int milestone1500AutoBatchSize;
+    private final boolean inactiveReactivationAutoEnabled;
+    private final int inactiveReactivationAutoBatchSize;
     private final int supportMonthlyGoalCzk;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
+    private final AtomicBoolean inactiveReactivationAutoRunning = new AtomicBoolean(false);
 
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
@@ -119,8 +125,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SupportMetricsService supportMetricsService,
             PremiumService premiumService,
             PremiumPaymentService premiumPaymentService,
+            ReactivationMetricsService reactivationMetricsService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
+            @Value("${rentbot.reactivation.inactive.auto-enabled:false}") boolean inactiveReactivationAutoEnabled,
+            @Value("${rentbot.reactivation.inactive.auto-batch-size:50}") int inactiveReactivationAutoBatchSize,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
     ) {
         this.token = token;
@@ -140,8 +149,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.supportMetricsService = supportMetricsService;
         this.premiumService = premiumService;
         this.premiumPaymentService = premiumPaymentService;
+        this.reactivationMetricsService = reactivationMetricsService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
+        this.inactiveReactivationAutoEnabled = inactiveReactivationAutoEnabled;
+        this.inactiveReactivationAutoBatchSize = Math.max(1, Math.min(inactiveReactivationAutoBatchSize, 100));
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
     }
 
@@ -156,11 +168,16 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     }
 
     @PostConstruct
-    public void logMilestone1500AutoConfig() {
+    public void logAutomaticBroadcastConfig() {
         log.info(
                 "Milestone 1500 auto broadcast config: enabled={}, batchSize={}",
                 milestone1500AutoEnabled,
                 milestone1500AutoBatchSize
+        );
+        log.info(
+                "Inactive reactivation auto broadcast config: enabled={}, batchSize={}, schedule=19:30 Europe/Prague",
+                inactiveReactivationAutoEnabled,
+                inactiveReactivationAutoBatchSize
         );
     }
 
@@ -193,6 +210,37 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             log.error("Milestone 1500 auto broadcast failed", e);
         } finally {
             milestone1500AutoRunning.set(false);
+        }
+    }
+
+    @Scheduled(
+            cron = "${rentbot.reactivation.inactive.auto-cron:0 30 19 * * *}",
+            zone = "${rentbot.reactivation.inactive.time-zone:Europe/Prague}"
+    )
+    public void sendInactiveReactivationAutomatically() {
+        if (!inactiveReactivationAutoEnabled) {
+            return;
+        }
+
+        if (!inactiveReactivationAutoRunning.compareAndSet(false, true)) {
+            log.warn("Inactive reactivation auto broadcast already running, skipping...");
+            return;
+        }
+
+        try {
+            ReactivationResult result = sendInactiveReactivationMessages(inactiveReactivationAutoBatchSize);
+            log.info(
+                    "Inactive reactivation auto broadcast: checked={}, sent={}, skipped={}, deactivated={}, failed={}",
+                    result.checked,
+                    result.sent,
+                    result.skipped,
+                    result.deactivated,
+                    result.failed
+            );
+        } catch (Exception e) {
+            log.error("Inactive reactivation auto broadcast failed", e);
+        } finally {
+            inactiveReactivationAutoRunning.set(false);
         }
     }
 
@@ -281,6 +329,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SupportMetricsService.SupportMetrics supportMetrics = supportMetricsService.since(
                     now.minus(java.time.Duration.ofDays(14))
             );
+            ReactivationMetricsService.ReactivationMetrics reactivationMetrics = reactivationMetricsService.since(
+                    now.minus(java.time.Duration.ofDays(30))
+            );
 
             int cachedSearchUsers = searchCache.size();
             int cachedSearchResults = searchCache.values()
@@ -347,6 +398,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 💙 Підтримка за 14 днів:
 Відкрили екран: %d (%d користувачів)
 Обрали спосіб: Raiffeisen %d · PrivatBank %d · PayPal %d · Revolut %d
+
+🔄 Повернення неактивних за 30 днів:
+Надіслано: %d (%d користувачів)
+Натиснули: %d (%d користувачів)
+Відновили пошук: %d (%d користувачів)
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -430,6 +486,12 @@ DigiReality owners: %d
                             supportMetrics.privatBank(),
                             supportMetrics.paypal(),
                             supportMetrics.revolut(),
+                            reactivationMetrics.sent(),
+                            reactivationMetrics.uniqueSentUsers(),
+                            reactivationMetrics.clicked(),
+                            reactivationMetrics.uniqueClickedUsers(),
+                            reactivationMetrics.activated(),
+                            reactivationMetrics.uniqueActivatedUsers(),
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -494,6 +556,36 @@ DigiReality owners: %d
             }
 
             send(chatId, premiumStatusText(targetUserId), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_reactivate_inactive")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            int limit = parseAdminLimit(text, 50, 100);
+            ReactivationResult result = sendInactiveReactivationMessages(limit);
+
+            send(chatId,
+                    """
+                    🔄 Inactive-user reactivation finished
+
+                    Candidates checked: %d
+                    Sent: %d
+                    Skipped: %d
+                    Deactivated: %d
+                    Failed: %d
+                    """
+                            .formatted(
+                                    result.checked,
+                                    result.sent,
+                                    result.skipped,
+                                    result.deactivated,
+                                    result.failed
+                            ),
+                    Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -2232,6 +2324,26 @@ DigiReality owners: %d
             return;
         }
 
+        if (data.equals("REACTIVATE:RESUME")) {
+            reactivationMetricsService.record(userId, ReactivationEvent.Type.CLICKED);
+            UserFilter fullFilter = userFilterRepo.findFullById(userId).orElseGet(() -> f);
+            if (!fullFilter.isOnboarded() || fullFilter.getRegion() == null || fullFilter.getLayout() == null) {
+                sendRegionsEntry(chatId, userId, msg(userId, "filter.start"));
+                return;
+            }
+            fullFilter.setActive(true);
+            fullFilter.setStep(FlowStep.CONFIRM);
+            flowService.save(fullFilter);
+            reactivationMetricsService.record(userId, ReactivationEvent.Type.ACTIVATED);
+            send(chatId, reactivationActivatedText(lang), Keyboards.mainMenuKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("REACTIVATE:EDIT")) {
+            reactivationMetricsService.record(userId, ReactivationEvent.Type.CLICKED);
+            data = "EDIT:FILTER";
+        }
+
         if (data.startsWith("EDIT:")) {
             String action = data.substring("EDIT:".length());
             UserFilter fullFilter = userFilterRepo.findFullById(userId)
@@ -2487,6 +2599,51 @@ DigiReality owners: %d
         return result;
     }
 
+    private ReactivationResult sendInactiveReactivationMessages(int limit) {
+        ReactivationResult result = new ReactivationResult();
+        Instant now = Instant.now();
+        Instant staleBefore = now.minus(java.time.Duration.ofDays(30));
+        Instant canSendAgainBefore = now.minus(java.time.Duration.ofDays(90));
+
+        List<UserFilter> candidates = userFilterRepo.findInactiveReactivationCandidates(
+                now,
+                staleBefore,
+                canSendAgainBefore,
+                PageRequest.of(0, limit)
+        );
+        result.checked = candidates.size();
+
+        for (UserFilter user : candidates) {
+            if (user.getTelegramUserId() == null) {
+                result.skipped++;
+                continue;
+            }
+
+            Language userLang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
+            try {
+                send(user.getTelegramUserId(),
+                        inactiveReactivationText(user, userLang),
+                        Keyboards.inactiveReactivationKeyboard(userLang));
+                user.setInactiveReactivationSentAt(now);
+                userFilterRepo.save(user);
+                reactivationMetricsService.record(user.getTelegramUserId(), ReactivationEvent.Type.SENT);
+                result.sent++;
+            } catch (TelegramApiException e) {
+                if (isUnreachableTelegramUser(e.getMessage())) {
+                    result.deactivated++;
+                } else {
+                    result.failed++;
+                    log.warn("Inactive reactivation message failed user={} error={}", user.getTelegramUserId(), e.getMessage());
+                }
+            } catch (Exception e) {
+                result.failed++;
+                log.warn("Unexpected inactive reactivation failure user={}", user.getTelegramUserId(), e.getMessage());
+            }
+        }
+
+        return result;
+    }
+
     private ReactivationResult sendMilestone1500Messages(int limit) {
         ReactivationResult result = new ReactivationResult();
         Instant now = Instant.now();
@@ -2588,6 +2745,24 @@ DigiReality owners: %d
             default -> "Привіт 👋\n\n"
                     + "Ваш пошук оренди все ще увімкнений. Якщо варіантів стало мало або фільтр вже неактуальний, можна швидко змінити місто, район, тип житла або бюджет.\n\n"
                     + flowService.pretty(user, lang);
+        };
+    }
+
+    private String inactiveReactivationText(UserFilter user, Language lang) {
+        return switch (lang) {
+            case RU -> "Привет 👋\n\nВаш сохранённый поиск всё ещё ждёт вас. Включите уведомления одним нажатием или сначала измените параметры.\n\n" + flowService.pretty(user, lang);
+            case CZ -> "Ahoj 👋\n\nVaše uložené hledání na vás stále čeká. Upozornění můžete znovu zapnout jedním kliknutím nebo nejdříve upravit parametry.\n\n" + flowService.pretty(user, lang);
+            case EN -> "Hi 👋\n\nYour saved search is still here. Resume alerts with one tap or update the settings first.\n\n" + flowService.pretty(user, lang);
+            default -> "Привіт 👋\n\nВаш збережений пошук усе ще чекає на вас. Увімкніть сповіщення одним натисканням або спочатку змініть параметри.\n\n" + flowService.pretty(user, lang);
+        };
+    }
+
+    private String reactivationActivatedText(Language lang) {
+        return switch (lang) {
+            case RU -> "✅ Поиск снова включён. Новые подходящие объявления будут приходить автоматически.";
+            case CZ -> "✅ Hledání je znovu zapnuté. Nové vhodné nabídky vám budou chodit automaticky.";
+            case EN -> "✅ Your search is active again. New matching listings will arrive automatically.";
+            default -> "✅ Пошук знову увімкнено. Нові відповідні оголошення приходитимуть автоматично.";
         };
     }
 
