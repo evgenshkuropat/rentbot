@@ -17,6 +17,8 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
 
 rentbot:
+  sent-log:
+    retention-days: ${RENTBOT_SENT_LOG_RETENTION_DAYS:90}
   notifications:
     max-per-user-per-cycle: ${RENTBOT_NOTIFICATIONS_MAX_PER_USER_PER_CYCLE:5}
   bazos:

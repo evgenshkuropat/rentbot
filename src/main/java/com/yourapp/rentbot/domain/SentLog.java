@@ -6,6 +6,10 @@ import java.time.Instant;
 @Entity
 @Table(
         name = "sent_log",
+        indexes = {
+                @Index(name = "idx_sent_log_sent_at", columnList = "sent_at"),
+                @Index(name = "idx_sent_log_user_sent_at", columnList = "telegram_user_id, sent_at")
+        },
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_sent_user_listing",
                 columnNames = {"telegram_user_id", "listing_key"}
