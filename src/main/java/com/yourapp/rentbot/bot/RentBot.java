@@ -1978,6 +1978,11 @@ DigiReality owners: %d
             return;
         }
 
+        if (data.equals("PREMIUM:MANAGE_SEARCHES")) {
+            showSearches(chatId, f, lang);
+            return;
+        }
+
         if (data.startsWith("PREMIUM:METHOD:")) {
             String method = data.substring("PREMIUM:METHOD:".length());
             if (!isPremiumPaymentMethod(method)) return;
@@ -3338,11 +3343,26 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private void showPremium(long chatId, long userId, UserFilter user, Language lang) throws TelegramApiException {
         if (premiumService.isActive(user)) {
-            showSearches(chatId, user, lang);
+            send(chatId, premiumOverviewText(lang, user.getPremiumUntil()), Keyboards.premiumOverviewKeyboard(lang));
         } else {
             premiumMetricsService.record(userId, PremiumEvent.Type.OPENED);
             send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
         }
+    }
+
+    private String premiumOverviewText(Language lang, Instant premiumUntil) {
+        long daysLeft = Math.max(0, java.time.Duration.between(Instant.now(), premiumUntil).toDays());
+        String expiry = formatInstant(premiumUntil);
+        return switch (lang) {
+            case RU -> "💎 Ваш Premium активен\n\nДействует до: " + expiry + "\nОсталось дней: " + daysLeft
+                    + "\n\nВключено: два независимых поиска, приоритетная обработка, до 10 новых уведомлений за цикл и проверенные предложения от владельцев первыми.";
+            case CZ -> "💎 Váš Premium je aktivní\n\nPlatí do: " + expiry + "\nZbývá dní: " + daysLeft
+                    + "\n\nZahrnuje: dvě nezávislá hledání, prioritní zpracování, až 10 nových upozornění za cyklus a ověřené nabídky od majitelů jako první.";
+            case EN -> "💎 Your Premium is active\n\nValid until: " + expiry + "\nDays remaining: " + daysLeft
+                    + "\n\nIncluded: two independent searches, priority processing, up to 10 new alerts per cycle, and verified owner listings first.";
+            default -> "💎 Ваш Premium активний\n\nДіє до: " + expiry + "\nЗалишилось днів: " + daysLeft
+                    + "\n\nВключено: два незалежні пошуки, пріоритетна обробка, до 10 нових сповіщень за цикл та перевірені пропозиції від власників першими.";
+        };
     }
 
     private String premiumPaymentIntro(Language lang) {

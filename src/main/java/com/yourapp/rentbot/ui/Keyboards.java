@@ -445,6 +445,25 @@ public class Keyboards {
         return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(button(text, "PREMIUM:PAY")))).build();
     }
 
+    public static InlineKeyboardMarkup premiumOverviewKeyboard(Language lang) {
+        String searches = switch (lang) {
+            case RU -> "🔎 Управлять поисками";
+            case CZ -> "🔎 Spravovat hledání";
+            case EN -> "🔎 Manage searches";
+            default -> "🔎 Керувати пошуками";
+        };
+        String renew = switch (lang) {
+            case RU -> "💳 Продлить Premium";
+            case CZ -> "💳 Prodloužit Premium";
+            case EN -> "💳 Renew Premium";
+            default -> "💳 Продовжити Premium";
+        };
+        return InlineKeyboardMarkup.builder().keyboard(List.of(
+                new InlineKeyboardRow(button(searches, "PREMIUM:MANAGE_SEARCHES")),
+                new InlineKeyboardRow(button(renew, "PREMIUM:PAY"))
+        )).build();
+    }
+
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
