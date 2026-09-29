@@ -298,7 +298,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 onCallback(update);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Unhandled Telegram update", e);
         }
     }
 
@@ -918,7 +918,7 @@ DigiReality owners: %d
                 startPagedSearch(chatId, userId, listings);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Manual listing check failed for user={}", userId, e);
                 send(chatId,
                         msg(userId, "search.test.error.prefix") + e.getMessage(),
                         Keyboards.persistentNavKeyboard(lang));
@@ -946,7 +946,7 @@ DigiReality owners: %d
                 startPagedSearch(chatId, userId, listings);
 
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Test listing check failed for user={}", userId, e);
                 send(chatId,
                         msg(userId, "search.test.error.prefix") + e.getMessage(),
                         Keyboards.persistentNavKeyboard(lang));
@@ -1438,7 +1438,7 @@ DigiReality owners: %d
         try {
             saved = ownerListingService.savePending(listing);
         } catch (Exception e) {
-            System.out.println("Owner listing save failed for user=" + userId + ", error=" + e.getMessage());
+            log.error("Owner listing save failed for user={}", userId, e);
             send(chatId, ownerListingSubmitFailedText(lang), Keyboards.ownerListingConfirmKeyboard(lang));
             return;
         }
@@ -1457,9 +1457,7 @@ DigiReality owners: %d
         try {
             sendOwnerListingToAdmin(saved);
         } catch (Exception e) {
-            System.out.println("Owner listing admin notification failed for listing="
-                    + saved.getId()
-                    + ", error=" + e.getMessage());
+            log.warn("Owner listing admin notification failed for listing={}", saved.getId(), e);
         }
     }
 
@@ -1705,9 +1703,7 @@ DigiReality owners: %d
                 );
                 return;
             } catch (Exception e) {
-                System.out.println("Owner listing admin view photo failed for listing="
-                        + listing.getId()
-                        + ", fallback=text, error=" + e.getMessage());
+                log.warn("Owner listing admin view photo failed, falling back to text: listing={}", listing.getId(), e);
             }
         }
 
@@ -1826,9 +1822,7 @@ DigiReality owners: %d
                 );
                 return;
             } catch (Exception e) {
-                System.out.println("Owner listing photo notification failed for listing="
-                        + listing.getId()
-                        + ", fallback=text, error=" + e.getMessage());
+                log.warn("Owner listing photo notification failed, falling back to text: listing={}", listing.getId(), e);
             }
         }
 
@@ -1858,10 +1852,8 @@ DigiReality owners: %d
         try {
             send(listing.getCreatedByTelegramId(), text, Keyboards.persistentNavKeyboard(lang));
         } catch (Exception e) {
-            System.out.println("Owner listing author notification failed for listing="
-                    + listing.getId()
-                    + ", user=" + listing.getCreatedByTelegramId()
-                    + ", error=" + e.getMessage());
+            log.warn("Owner listing author notification failed: listing={}, user={}",
+                    listing.getId(), listing.getCreatedByTelegramId(), e);
         }
     }
 
@@ -2209,7 +2201,7 @@ DigiReality owners: %d
                 }
 
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Favorite removal failed for user={}", userId, e);
                 send(chatId, msg(userId, "favorites.remove.error"), Keyboards.mainMenuKeyboard(lang));
             }
             return;
@@ -2293,7 +2285,7 @@ DigiReality owners: %d
                         startPagedSearch(chatId, userId, listings);
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.error("Main menu listing check failed for user={}", userId, e);
                         send(chatId, msg(userId, "search.error"), Keyboards.mainMenuKeyboard(lang));
                     }
                 }
@@ -2649,15 +2641,11 @@ DigiReality owners: %d
                     result.deactivated++;
                 } else {
                     result.failed++;
-                    System.out.println("Reactivation message failed for user="
-                            + user.getTelegramUserId()
-                            + ", error=" + e.getMessage());
+                    log.warn("Reactivation message failed for user={}", user.getTelegramUserId(), e);
                 }
             } catch (Exception e) {
                 result.failed++;
-                System.out.println("Unexpected reactivation failure for user="
-                        + user.getTelegramUserId()
-                        + ", error=" + e.getMessage());
+                log.error("Unexpected reactivation failure for user={}", user.getTelegramUserId(), e);
             }
         }
 
@@ -2791,15 +2779,11 @@ DigiReality owners: %d
                     result.deactivated++;
                 } else {
                     result.failed++;
-                    System.out.println("Milestone 1500 message failed for user="
-                            + user.getTelegramUserId()
-                            + ", error=" + e.getMessage());
+                    log.warn("Milestone 1500 message failed for user={}", user.getTelegramUserId(), e);
                 }
             } catch (Exception e) {
                 result.failed++;
-                System.out.println("Unexpected milestone 1500 failure for user="
-                        + user.getTelegramUserId()
-                        + ", error=" + e.getMessage());
+                log.error("Unexpected milestone 1500 failure for user={}", user.getTelegramUserId(), e);
             }
         }
 
@@ -3041,7 +3025,7 @@ DigiReality owners: %d
             startPagedSearch(chatId, userId, listings);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Manual notification check failed for user={}", userId, e);
             send(chatId, msg(userId, "notify.fetch.failed"), Keyboards.mainMenuKeyboard(lang));
         }
     }
@@ -3470,7 +3454,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
             );
         } catch (TelegramApiException e) {
             if (!isExpiredCallback(e)) {
-                System.out.println("AnswerCallbackQuery failed: " + e.getMessage());
+                log.warn("AnswerCallbackQuery failed", e);
             }
         }
     }
@@ -3486,7 +3470,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
             );
         } catch (TelegramApiException e) {
             if (!isExpiredCallback(e)) {
-                System.out.println("AnswerCallbackQuery failed: " + e.getMessage());
+                log.warn("AnswerCallbackQuery with text failed", e);
             }
         }
     }
@@ -3562,8 +3546,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                 );
                 return;
             } catch (Exception e) {
-                System.out.println("SendPhoto failed for listing link=" + l.link() + " photo=" + l.photoUrl());
-                e.printStackTrace();
+                log.warn("Listing photo send failed, falling back to text: link={}", l.link(), e);
             }
         }
 
@@ -3602,8 +3585,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                 );
                 return;
             } catch (Exception e) {
-                System.out.println("SendPhoto failed for favorite link=" + fav.getLink() + " photo=" + fav.getPhotoUrl());
-                e.printStackTrace();
+                log.warn("Favorite photo send failed, falling back to text: link={}", fav.getLink(), e);
             }
         }
 
@@ -3779,7 +3761,7 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
                 );
                 return;
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Paged listing photo send failed, falling back to text: link={}", l.link(), e);
             }
         }
 

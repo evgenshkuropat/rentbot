@@ -4,11 +4,15 @@ import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DataInitializer implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
     private final RegionRepo regionRepo;
     private final RegionGroupRepo regionGroupRepo;
@@ -53,7 +57,7 @@ public class DataInitializer implements CommandLineRunner {
         saveGroup(praha, "PRAHA_19_22", "Praha 19-22");
         createBrnoGroups(brno);
 
-        System.out.println("✅ Regions and Praha groups initialized");
+        log.info("Regions and district groups initialized");
     }
 
     private Region saveRegion(String code, String title, boolean hasDistricts, boolean popular, Integer srealityRegionId) {

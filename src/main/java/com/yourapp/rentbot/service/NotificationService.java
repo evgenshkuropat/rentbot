@@ -106,9 +106,9 @@ public class NotificationService {
                         return false;
                     }
 
-                    System.out.println("SendPhoto failed, fallback to text. link=" + listing.link());
+                    log.warn("Listing photo send failed, falling back to text: link={}", listing.link(), e);
                 } catch (Exception e) {
-                    System.out.println("Unexpected SendPhoto failure, fallback to text. link=" + listing.link());
+                    log.warn("Unexpected listing photo send failure, falling back to text: link={}", listing.link(), e);
                 }
             }
 
@@ -124,11 +124,9 @@ public class NotificationService {
                 return false;
             }
 
-            System.out.println("SendMessage failed in NotificationService for link=" + listing.link()
-                    + ", error=" + msg);
+            log.warn("Listing notification failed: link={}, error={}", listing.link(), msg, e);
         } catch (Exception e) {
-            System.out.println("Unexpected notification failure for link=" + listing.link()
-                    + ", error=" + e.getMessage());
+            log.error("Unexpected listing notification failure: link={}", listing.link(), e);
         }
 
         return false;

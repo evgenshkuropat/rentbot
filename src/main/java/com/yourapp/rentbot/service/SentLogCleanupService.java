@@ -4,12 +4,16 @@ import com.yourapp.rentbot.repo.SentLogRepo;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 @Service
 public class SentLogCleanupService {
+
+    private static final Logger log = LoggerFactory.getLogger(SentLogCleanupService.class);
 
     private final SentLogRepo sentLogRepo;
     private final int retentionDays;
@@ -28,6 +32,6 @@ public class SentLogCleanupService {
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
         long deleted = sentLogRepo.deleteBySentAtBefore(cutoff);
 
-        System.out.println("SentLog cleanup done. Retention days: " + retentionDays + ". Deleted rows: " + deleted);
+        log.info("Sent log cleanup completed: retentionDays={}, deletedRows={}", retentionDays, deleted);
     }
 }
