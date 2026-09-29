@@ -723,6 +723,15 @@ DigiReality owners: %d
             return;
         }
 
+        if (text.equalsIgnoreCase("/admin_health")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+            send(chatId, healthStatusText(), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
         if (text.toLowerCase().startsWith("/admin_reactivate_inactive")) {
             if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
@@ -3111,6 +3120,30 @@ DigiReality owners: %d
                 .append(premiumPaymentMethodTitle(request.getPaymentMethod())).append(" · ")
                 .append(formatInstant(request.getCreatedAt())));
         return text.toString();
+    }
+
+    private String healthStatusText() {
+        SchedulerRunStats scheduler = schedulerService.getLastRunStats();
+        ParserRunStats parser = parserService.getLastRunStats();
+        Instant completedAt = schedulerService.getLastCompletedAt();
+        boolean recent = completedAt != null
+                && java.time.Duration.between(completedAt, Instant.now()).toMinutes() < 20;
+        boolean hasResults = scheduler.aggregateFilteredBase() > 0 && scheduler.aggregateFinal() > 0;
+        String status = recent && hasResults ? "✅ Норма" : "⚠️ Потребує перевірки";
+
+        return "🩺 Стан бота: " + status
+                + "\nОстанній повний цикл: " + formatInstant(completedAt)
+                + "\n\n👥 Оброблено: " + scheduler.usersProcessed()
+                + "\n🔎 Зі співпадіннями: " + scheduler.usersWithMatches()
+                + "\n📤 Нових надіслано: " + scheduler.totalSent()
+                + "\n📦 У фінальній видачі: " + scheduler.aggregateFinal()
+                + "\n🧪 До diversify: " + scheduler.aggregateFilteredBase()
+                + "\n\n📡 Останній парсинг:"
+                + "\nSreality: " + parser.srealityRaw()
+                + "\niDNES: " + parser.idnesRaw()
+                + "\nBezrealitky: " + parser.bezrealitkyRaw()
+                + "\nBazoš: " + parser.bazosRaw()
+                + "\nDigiReality owners: " + parser.digirealityRaw();
     }
 
     private String premiumPaymentRequestText(PremiumPaymentRequest request) {
