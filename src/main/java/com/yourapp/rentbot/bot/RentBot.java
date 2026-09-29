@@ -3075,10 +3075,10 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private String premiumPaymentIntro(Language lang) {
         return switch (lang) {
-            case RU -> "💎 Premium — 99 Kč / месяц\n\nНе пропускайте новые варианты: два независимых поиска, приоритетная обработка и до 10 новых уведомлений за цикл.\n\nВыберите удобный способ оплаты. Доступ активируется на 30 дней после проверки оплаты.";
-            case CZ -> "💎 Premium — 99 Kč / měsíc\n\nNenechte si ujít nové nabídky: dvě nezávislá hledání, prioritní zpracování a až 10 nových upozornění za cyklus.\n\nVyberte si způsob platby. Přístup aktivuji na 30 dní po ověření platby.";
-            case EN -> "💎 Premium — 99 Kč / month\n\nDo not miss new listings: two independent searches, priority processing, and up to 10 new alerts per cycle.\n\nChoose a payment method. Access is activated for 30 days after payment is verified.";
-            default -> "💎 Premium — 99 Kč / місяць\n\nНе пропускайте нові варіанти: два незалежні пошуки, пріоритетна обробка та до 10 нових сповіщень за цикл.\n\nОберіть зручний спосіб оплати. Доступ активується на 30 днів після перевірки оплати.";
+            case RU -> "💎 Premium — 99 Kč / месяц\n\nНе пропускайте новые варианты: два независимых поиска, приоритетная обработка, до 10 новых уведомлений за цикл и проверенные варианты от владельцев — первыми.\n\nВыберите удобный способ оплаты. Доступ активируется на 30 дней после проверки оплаты.";
+            case CZ -> "💎 Premium — 99 Kč / měsíc\n\nNenechte si ujít nové nabídky: dvě nezávislá hledání, prioritní zpracování, až 10 nových upozornění za cyklus a ověřené nabídky přímo od majitelů jako první.\n\nVyberte si způsob platby. Přístup aktivuji na 30 dní po ověření platby.";
+            case EN -> "💎 Premium — 99 Kč / month\n\nDo not miss new listings: two independent searches, priority processing, up to 10 new alerts per cycle, and verified owner listings first.\n\nChoose a payment method. Access is activated for 30 days after payment is verified.";
+            default -> "💎 Premium — 99 Kč / місяць\n\nНе пропускайте нові варіанти: два незалежні пошуки, пріоритетна обробка, до 10 нових сповіщень за цикл і перевірені варіанти від власників — першими.\n\nОберіть зручний спосіб оплати. Доступ активується на 30 днів після перевірки оплати.";
         };
     }
 
@@ -3183,10 +3183,10 @@ Please verify the information yourself — the bot only shares a useful source.
 
     private String premiumActivatedText(Language lang) {
         return switch (lang) {
-            case RU -> "🎉 Premium-доступ активен на 30 дней. У вас до 10 новых уведомлений за цикл и приоритетная обработка. Настройте второй независимый поиск ниже.";
-            case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Máte až 10 nových upozornění za cyklus a prioritní zpracování. Níže si nastavte druhé samostatné hledání.";
-            case EN -> "🎉 Premium access is active for 30 days. You have up to 10 new alerts per cycle and priority processing. Set up your second independent search below.";
-            default -> "🎉 Premium-доступ активний на 30 днів. У вас до 10 нових сповіщень за цикл і пріоритетна обробка. Нижче налаштуйте другий незалежний пошук.";
+            case RU -> "🎉 Premium-доступ активен на 30 дней. У вас до 10 новых уведомлений за цикл, приоритетная обработка и проверенные варианты от владельцев первыми. Настройте второй независимый поиск ниже.";
+            case CZ -> "🎉 Premium přístup je aktivní na 30 dní. Máte až 10 nových upozornění za cyklus, prioritní zpracování a ověřené nabídky přímo od majitelů jako první. Níže si nastavte druhé samostatné hledání.";
+            case EN -> "🎉 Premium access is active for 30 days. You have up to 10 new alerts per cycle, priority processing, and verified owner listings first. Set up your second independent search below.";
+            default -> "🎉 Premium-доступ активний на 30 днів. У вас до 10 нових сповіщень за цикл, пріоритетна обробка та перевірені варіанти від власників першими. Нижче налаштуйте другий незалежний пошук.";
         };
     }
 
@@ -3526,10 +3526,10 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
         String normalized = source.trim().toLowerCase();
         if (normalized.contains("owner") || normalized.contains("власник")) {
             return switch (lang) {
-                case RU -> "Владелец";
-                case CZ -> "Majitel";
-                case EN -> "Owner";
-                default -> "Власник";
+                case RU -> "Владелец (проверено)";
+                case CZ -> "Majitel (ověřeno)";
+                case EN -> "Owner (verified)";
+                default -> "Власник (перевірено)";
             };
         }
 

@@ -188,6 +188,10 @@ public class SchedulerService {
                     continue;
                 }
 
+                if (premiumUser) {
+                    listings = prioritizeVerifiedOwnerListings(listings);
+                }
+
                 usersWithMatches++;
                 totalCandidates += listings.size();
                 aggregateFinalFiltered += listings.size();
@@ -363,5 +367,20 @@ public class SchedulerService {
             return;
         }
         target.add(listing);
+    }
+
+    private List<ListingDto> prioritizeVerifiedOwnerListings(List<ListingDto> listings) {
+        return listings.stream()
+                .sorted(Comparator.comparing(this::isVerifiedOwnerListing).reversed())
+                .toList();
+    }
+
+    private boolean isVerifiedOwnerListing(ListingDto listing) {
+        if (listing == null || listing.source() == null) {
+            return false;
+        }
+
+        String source = listing.source().toLowerCase();
+        return source.contains("owner") || source.contains("власник");
     }
 }

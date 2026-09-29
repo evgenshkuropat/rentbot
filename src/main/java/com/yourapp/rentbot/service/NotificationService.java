@@ -40,8 +40,8 @@ public class NotificationService {
         return sendIfNotSent(user, listing, false);
     }
 
-    public boolean sendIfNotSent(UserFilter user, ListingDto listing, boolean allowInactiveMainSearch) {
-        if (!user.isActive() && !allowInactiveMainSearch) {
+    public boolean sendIfNotSent(UserFilter user, ListingDto listing, boolean premiumUser) {
+        if (!user.isActive() && !premiumUser) {
             return false;
         }
 
@@ -73,6 +73,7 @@ public class NotificationService {
         };
 
         String caption =
+                verifiedOwnerBadge(listing, premiumUser, lang) +
                 "🏠 " + nvl(listing.title()) + "\n" +
                         "🏷 " + sourceLabel + ": " + displaySource(listing.source(), lang) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
@@ -222,14 +223,32 @@ public class NotificationService {
         String normalized = source.trim().toLowerCase();
         if (normalized.contains("owner") || normalized.contains("власник")) {
             return switch (lang) {
-                case RU -> "Владелец";
-                case CZ -> "Majitel";
-                case EN -> "Owner";
-                default -> "Власник";
+                case RU -> "Владелец (проверено)";
+                case CZ -> "Majitel (ověřeno)";
+                case EN -> "Owner (verified)";
+                default -> "Власник (перевірено)";
             };
         }
 
         return source;
+    }
+
+    private String verifiedOwnerBadge(ListingDto listing, boolean premiumUser, Language lang) {
+        if (!premiumUser || listing == null || listing.source() == null) {
+            return "";
+        }
+
+        String source = listing.source().toLowerCase();
+        if (!source.contains("owner") && !source.contains("власник")) {
+            return "";
+        }
+
+        return switch (lang) {
+            case RU -> "🏡 Premium: проверено от владельца\n";
+            case CZ -> "🏡 Premium: ověřeno od majitele\n";
+            case EN -> "🏡 Premium: verified owner listing\n";
+            default -> "🏡 Premium: перевірено від власника\n";
+        };
     }
 
     public long countSentSince(java.time.Instant cutoff) {
