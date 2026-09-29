@@ -46,4 +46,19 @@ class PremiumPaymentServiceTest {
         verify(paymentRequests).save(request);
         verify(users, never()).save(any());
     }
+
+    @Test
+    void rejectedRequestNeverActivatesPremium() {
+        PremiumPaymentRequest request = new PremiumPaymentRequest();
+        request.setTelegramUserId(18L);
+        PremiumPaymentService service = new PremiumPaymentService(paymentRequests, users, premiumService);
+
+        when(paymentRequests.findById(6L)).thenReturn(Optional.of(request));
+
+        assertThat(service.reject(6L)).contains(18L);
+        assertThat(service.reject(6L)).isEmpty();
+
+        verify(premiumService, never()).activate(any(), any(Integer.class));
+        verify(paymentRequests).save(request);
+    }
 }

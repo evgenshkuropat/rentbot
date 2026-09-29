@@ -41,6 +41,19 @@ class PremiumServiceTest {
     }
 
     @Test
+    void extendsExistingPremiumInsteadOfReplacingRemainingAccess() {
+        PremiumService service = new PremiumService(userFilterRepo, premiumSearchRepo);
+        UserFilter user = user(13L);
+        Instant previousExpiry = Instant.now().plus(Duration.ofDays(10));
+        user.setPremiumUntil(previousExpiry);
+        when(userFilterRepo.save(any(UserFilter.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.activate(user, 30);
+
+        assertThat(Duration.between(previousExpiry, user.getPremiumUntil()).toDays()).isBetween(29L, 30L);
+    }
+
+    @Test
     void createsSecondSearchAndConvertsItToIndependentFilter() {
         PremiumService service = new PremiumService(userFilterRepo, premiumSearchRepo);
         UserFilter user = user(12L);
@@ -74,6 +87,18 @@ class PremiumServiceTest {
                 .toList();
 
         assertThat(callbacks).containsExactly("PREMIUM:SETUP");
+    }
+
+    @Test
+    void ignoresBrokenPremiumSearchRecordsWithoutUserId() {
+        PremiumService service = new PremiumService(userFilterRepo, premiumSearchRepo);
+        PremiumSearch valid = new PremiumSearch();
+        valid.setTelegramUserId(14L);
+        PremiumSearch broken = new PremiumSearch();
+
+        when(premiumSearchRepo.findByActiveTrue()).thenReturn(java.util.List.of(valid, broken));
+
+        assertThat(service.findUserIdsWithActiveSearch()).containsExactly(14L);
     }
 
     private static UserFilter user(long id) {
