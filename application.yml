@@ -48,3 +48,6 @@ rentbot:
       auto-enabled: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_AUTO_ENABLED:true}
       auto-cron: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_AUTO_CRON:0 0 12 * * *}
       time-zone: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_TIME_ZONE:Europe/Prague}
+  health:
+    check-delay-ms: ${RENTBOT_HEALTH_CHECK_DELAY_MS:300000}
+    initial-delay-ms: ${RENTBOT_HEALTH_INITIAL_DELAY_MS:300000}

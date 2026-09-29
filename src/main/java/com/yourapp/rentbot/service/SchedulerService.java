@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.time.Instant;
 
 @Service
 public class SchedulerService {
@@ -32,6 +33,7 @@ public class SchedulerService {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<SchedulerRunStats> lastRunStats =
             new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+    private final AtomicReference<Instant> lastCompletedAt = new AtomicReference<>();
 
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
@@ -304,6 +306,10 @@ public class SchedulerService {
         return lastRunStats.get();
     }
 
+    public Instant getLastCompletedAt() {
+        return lastCompletedAt.get();
+    }
+
     private void updateLastRunStats(int usersProcessed,
                                     int usersWithMatches,
                                     int parserRuns,
@@ -328,6 +334,7 @@ public class SchedulerService {
                 ownerMatches,
                 usersWithOwnerMatches
         ));
+        lastCompletedAt.set(Instant.now());
     }
 
     private boolean isOwnerListing(ListingDto listing) {
