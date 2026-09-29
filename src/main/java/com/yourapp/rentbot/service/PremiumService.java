@@ -30,6 +30,10 @@ public class PremiumService {
         Instant startsAt = user.getPremiumUntil() != null && user.getPremiumUntil().isAfter(now)
                 ? user.getPremiumUntil() : now;
         user.setPremiumUntil(startsAt.plus(Math.max(1, days), ChronoUnit.DAYS));
+        user.setPremiumActivatedAt(now);
+        if (findActiveSearch(user.getTelegramUserId()).isEmpty()) {
+            user.setPremiumSecondSearchReminderSentAt(null);
+        }
         return userFilterRepo.save(user);
     }
 

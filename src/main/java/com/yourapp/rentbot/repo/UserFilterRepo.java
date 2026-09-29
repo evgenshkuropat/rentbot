@@ -120,6 +120,16 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     long countByPremiumUntilAfterAndPremiumUntilLessThanEqual(Instant now, Instant expiresBefore);
 
     @Query("""
+        select uf from UserFilter uf
+        where uf.premiumUntil > :now
+          and (uf.premiumActivatedAt is null or uf.premiumActivatedAt <= :activatedBefore)
+          and uf.premiumSecondSearchReminderSentAt is null
+        order by uf.premiumActivatedAt asc
+    """)
+    List<UserFilter> findPremiumSecondSearchReminderCandidates(@Param("now") Instant now,
+                                                               @Param("activatedBefore") Instant activatedBefore);
+
+    @Query("""
         select uf
         from UserFilter uf
         where uf.premiumUntil > :from

@@ -102,11 +102,13 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final boolean searchStatusAutoEnabled;
     private final int searchStatusAutoBatchSize;
     private final boolean premiumExpiryReminderAutoEnabled;
+    private final boolean premiumSecondSearchReminderAutoEnabled;
     private final int supportMonthlyGoalCzk;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean inactiveReactivationAutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean searchStatusAutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean premiumExpiryReminderAutoRunning = new AtomicBoolean(false);
+    private final AtomicBoolean premiumSecondSearchReminderAutoRunning = new AtomicBoolean(false);
 
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
@@ -152,6 +154,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             @Value("${rentbot.search-status.auto-enabled:false}") boolean searchStatusAutoEnabled,
             @Value("${rentbot.search-status.auto-batch-size:100}") int searchStatusAutoBatchSize,
             @Value("${rentbot.premium.expiry-reminder.auto-enabled:true}") boolean premiumExpiryReminderAutoEnabled,
+            @Value("${rentbot.premium.second-search-reminder.auto-enabled:true}") boolean premiumSecondSearchReminderAutoEnabled,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
     ) {
         this.token = token;
@@ -182,6 +185,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.searchStatusAutoEnabled = searchStatusAutoEnabled;
         this.searchStatusAutoBatchSize = Math.max(1, Math.min(searchStatusAutoBatchSize, 100));
         this.premiumExpiryReminderAutoEnabled = premiumExpiryReminderAutoEnabled;
+        this.premiumSecondSearchReminderAutoEnabled = premiumSecondSearchReminderAutoEnabled;
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
     }
 
@@ -213,6 +217,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 searchStatusAutoBatchSize
         );
         log.info("Premium expiry reminders: enabled={}, schedule=11:00 Europe/Prague", premiumExpiryReminderAutoEnabled);
+        log.info("Premium second-search reminders: enabled={}, schedule=12:00 Europe/Prague", premiumSecondSearchReminderAutoEnabled);
     }
 
     @Scheduled(
@@ -328,6 +333,31 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             log.info("Premium expiry reminders: candidates={}, sent={}", users.size(), sent);
         } finally {
             premiumExpiryReminderAutoRunning.set(false);
+        }
+    }
+
+    @Scheduled(cron = "${rentbot.premium.second-search-reminder.cron:0 0 12 * * *}", zone = "${rentbot.premium.second-search-reminder.time-zone:Europe/Prague}")
+    public void sendPremiumSecondSearchRemindersAutomatically() {
+        if (!premiumSecondSearchReminderAutoEnabled || !premiumSecondSearchReminderAutoRunning.compareAndSet(false, true)) return;
+        try {
+            Instant now = Instant.now();
+            List<UserFilter> candidates = userFilterRepo.findPremiumSecondSearchReminderCandidates(now, now.minusSeconds(24 * 60 * 60));
+            int sent = 0;
+            for (UserFilter user : candidates) {
+                if (premiumService.findActiveSearch(user.getTelegramUserId()).isPresent()) continue;
+                try {
+                    Language language = getUserLanguage(user.getTelegramUserId());
+                    send(user.getTelegramUserId(), premiumSecondSearchReminderText(language), Keyboards.premiumActiveKeyboard(language));
+                    user.setPremiumSecondSearchReminderSentAt(now);
+                    userFilterRepo.save(user);
+                    sent++;
+                } catch (Exception e) {
+                    log.warn("Could not send Premium second-search reminder user={}", user.getTelegramUserId(), e);
+                }
+            }
+            log.info("Premium second-search reminders: candidates={}, sent={}", candidates.size(), sent);
+        } finally {
+            premiumSecondSearchReminderAutoRunning.set(false);
         }
     }
 
@@ -507,7 +537,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 💎 Premium за 30 днів:
 Відкрили: %d · Обрали оплату: %d · Подали заявку: %d
 Підтверджено: %d · Відхилено: %d
-Активний зараз: %d · Закінчується за 7 днів: %d
+Активний зараз: %d · Закінчується за 7 днів: %d · Другий пошук налаштовано: %d
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -610,6 +640,7 @@ DigiReality owners: %d
                             premiumMetrics.rejected(),
                             premiumMetrics.activeNow(),
                             premiumMetrics.expiringWithin7Days(),
+                            premiumMetrics.secondSearchConfigured(),
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -3097,6 +3128,15 @@ DigiReality owners: %d
             case CZ -> "💎 Premium platí do " + expires + ".\n\nProdloužením si zachováte druhé hledání, prioritní zpracování, až 10 upozornění za cyklus a ověřené nabídky od majitelů jako první.";
             case EN -> "💎 Premium is active until " + expires + ".\n\nRenew to keep your second search, priority processing, up to 10 alerts per cycle, and verified owner listings first.";
             default -> "💎 Premium діє до " + expires + ".\n\nПродовжте доступ, щоб зберегти другий пошук, пріоритетну обробку, до 10 сповіщень за цикл та перевірені пропозиції від власників першими.";
+        };
+    }
+
+    private String premiumSecondSearchReminderText(Language lang) {
+        return switch (lang) {
+            case RU -> "💎 Ваш Premium уже активен. Настройте второй независимый поиск — например, для другого района, планировки или бюджета. Так вы получите главную возможность Premium.";
+            case CZ -> "💎 Váš Premium už je aktivní. Nastavte si druhé nezávislé hledání — například pro jinou lokalitu, dispozici nebo rozpočet. Získáte tak hlavní výhodu Premium.";
+            case EN -> "💎 Your Premium is already active. Set up your second independent search—for another area, layout, or budget—to use the main Premium benefit.";
+            default -> "💎 Ваш Premium уже активний. Налаштуйте другий незалежний пошук — наприклад, для іншого району, планування або бюджету. Так ви отримаєте головну можливість Premium.";
         };
     }
 

@@ -44,3 +44,7 @@ rentbot:
       auto-enabled: ${RENTBOT_PREMIUM_EXPIRY_REMINDER_AUTO_ENABLED:true}
       auto-cron: ${RENTBOT_PREMIUM_EXPIRY_REMINDER_AUTO_CRON:0 0 11 * * *}
       time-zone: ${RENTBOT_PREMIUM_EXPIRY_REMINDER_TIME_ZONE:Europe/Prague}
+    second-search-reminder:
+      auto-enabled: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_AUTO_ENABLED:true}
+      auto-cron: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_AUTO_CRON:0 0 12 * * *}
+      time-zone: ${RENTBOT_PREMIUM_SECOND_SEARCH_REMINDER_TIME_ZONE:Europe/Prague}

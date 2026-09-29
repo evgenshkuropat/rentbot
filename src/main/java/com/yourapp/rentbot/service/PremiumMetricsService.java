@@ -3,6 +3,7 @@ package com.yourapp.rentbot.service;
 import com.yourapp.rentbot.domain.PremiumEvent;
 import com.yourapp.rentbot.repo.PremiumEventRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
+import com.yourapp.rentbot.repo.PremiumSearchRepo;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 
@@ -10,10 +11,12 @@ import java.time.Instant;
 public class PremiumMetricsService {
     private final PremiumEventRepo events;
     private final UserFilterRepo users;
+    private final PremiumSearchRepo searches;
 
-    public PremiumMetricsService(PremiumEventRepo events, UserFilterRepo users) {
+    public PremiumMetricsService(PremiumEventRepo events, UserFilterRepo users, PremiumSearchRepo searches) {
         this.events = events;
         this.users = users;
+        this.searches = searches;
     }
 
     public void record(Long userId, PremiumEvent.Type type) {
@@ -33,7 +36,8 @@ public class PremiumMetricsService {
                 count(cutoff, PremiumEvent.Type.APPROVED),
                 count(cutoff, PremiumEvent.Type.REJECTED),
                 users.countByPremiumUntilAfter(now),
-                users.countByPremiumUntilAfterAndPremiumUntilLessThanEqual(now, expiringBefore)
+                users.countByPremiumUntilAfterAndPremiumUntilLessThanEqual(now, expiringBefore),
+                searches.countActiveForPremiumUsers(now)
         );
     }
 
@@ -42,5 +46,6 @@ public class PremiumMetricsService {
     }
 
     public record PremiumMetrics(long opened, long paymentMethodSelected, long requestSubmitted,
-                                 long approved, long rejected, long activeNow, long expiringWithin7Days) { }
+                                 long approved, long rejected, long activeNow, long expiringWithin7Days,
+                                 long secondSearchConfigured) { }
 }

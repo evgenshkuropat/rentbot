@@ -70,6 +70,12 @@ public class UserFilter {
     @Column(name = "premium_expiry_reminder_sent_at")
     private Instant premiumExpiryReminderSentAt;
 
+    @Column(name = "premium_activated_at")
+    private Instant premiumActivatedAt;
+
+    @Column(name = "premium_second_search_reminder_sent_at")
+    private Instant premiumSecondSearchReminderSentAt;
+
     public Long getTelegramUserId() {
         return telegramUserId;
     }
@@ -191,4 +197,9 @@ public class UserFilter {
     public void setPremiumExpiryReminderSentAt(Instant premiumExpiryReminderSentAt) {
         this.premiumExpiryReminderSentAt = premiumExpiryReminderSentAt;
     }
+
+    public Instant getPremiumActivatedAt() { return premiumActivatedAt; }
+    public void setPremiumActivatedAt(Instant premiumActivatedAt) { this.premiumActivatedAt = premiumActivatedAt; }
+    public Instant getPremiumSecondSearchReminderSentAt() { return premiumSecondSearchReminderSentAt; }
+    public void setPremiumSecondSearchReminderSentAt(Instant value) { premiumSecondSearchReminderSentAt = value; }
 }
