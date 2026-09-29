@@ -117,7 +117,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
     public RentBot(
             @Value("${telegram.bot.token}") String token,
-            @Value("${TELEGRAM_ADMIN_ID:1246486851}") long adminId,
+            @Value("${TELEGRAM_ADMIN_ID}") long adminId,
             TelegramClient telegramClient,
             FlowService flowService,
             RegionRepo regionRepo,
