@@ -611,14 +611,14 @@ public class Keyboards {
             case CZ -> "📋 Zobrazit moje hledání";
             case EN -> "📋 View my search";
             default -> "📋 Переглянути мій пошук";
-        }, "CONFIRM:SHOW"));
+        }, "STATUS:VIEW"));
 
         InlineKeyboardRow edit = new InlineKeyboardRow(button(switch (lang) {
             case RU -> "✏️ Изменить параметры";
             case CZ -> "✏️ Upravit parametry";
             case EN -> "✏️ Change parameters";
             default -> "✏️ Змінити параметри";
-        }, "EDIT:FILTER"));
+        }, "STATUS:EDIT"));
 
         return InlineKeyboardMarkup.builder().keyboard(List.of(view, edit)).build();
     }

@@ -6,6 +6,7 @@ import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.ReactivationEvent;
+import com.yourapp.rentbot.domain.SearchStatusEvent;
 import com.yourapp.rentbot.domain.SupportEvent;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowService;
@@ -24,6 +25,7 @@ import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
 import com.yourapp.rentbot.service.ReactivationMetricsService;
+import com.yourapp.rentbot.service.SearchStatusMetricsService;
 import com.yourapp.rentbot.service.SchedulerService;
 import com.yourapp.rentbot.service.SupportMetricsService;
 import com.yourapp.rentbot.service.dto.ListingDto;
@@ -83,6 +85,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final PremiumService premiumService;
     private final PremiumPaymentService premiumPaymentService;
     private final ReactivationMetricsService reactivationMetricsService;
+    private final SearchStatusMetricsService searchStatusMetricsService;
 
     private final String token;
     private final long adminId;
@@ -132,6 +135,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             PremiumService premiumService,
             PremiumPaymentService premiumPaymentService,
             ReactivationMetricsService reactivationMetricsService,
+            SearchStatusMetricsService searchStatusMetricsService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
             @Value("${rentbot.reactivation.inactive.auto-enabled:false}") boolean inactiveReactivationAutoEnabled,
@@ -159,6 +163,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.premiumService = premiumService;
         this.premiumPaymentService = premiumPaymentService;
         this.reactivationMetricsService = reactivationMetricsService;
+        this.searchStatusMetricsService = searchStatusMetricsService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
         this.inactiveReactivationAutoEnabled = inactiveReactivationAutoEnabled;
@@ -375,6 +380,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             ReactivationMetricsService.ReactivationMetrics reactivationMetrics = reactivationMetricsService.since(
                     now.minus(java.time.Duration.ofDays(30))
             );
+            SearchStatusMetricsService.SearchStatusMetrics searchStatusMetrics = searchStatusMetricsService.since(
+                    now.minus(java.time.Duration.ofDays(14))
+            );
 
             int cachedSearchUsers = searchCache.size();
             int cachedSearchResults = searchCache.values()
@@ -446,6 +454,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 Надіслано: %d (%d користувачів)
 Натиснули: %d (%d користувачів)
 Відновили пошук: %d (%d користувачів)
+
+🔎 Статус пошуку за 14 днів:
+Надіслано: %d (%d користувачів)
+Переглянули пошук: %d (%d користувачів)
+Відкрили зміну параметрів: %d (%d користувачів)
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -535,6 +548,12 @@ DigiReality owners: %d
                             reactivationMetrics.uniqueClickedUsers(),
                             reactivationMetrics.activated(),
                             reactivationMetrics.uniqueActivatedUsers(),
+                            searchStatusMetrics.sent(),
+                            searchStatusMetrics.uniqueSentUsers(),
+                            searchStatusMetrics.viewed(),
+                            searchStatusMetrics.uniqueViewedUsers(),
+                            searchStatusMetrics.editOpened(),
+                            searchStatusMetrics.uniqueEditOpenedUsers(),
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -2337,6 +2356,18 @@ DigiReality owners: %d
             return;
         }
 
+        if (data.equals("STATUS:VIEW")) {
+            searchStatusMetricsService.record(userId, SearchStatusEvent.Type.VIEWED);
+            UserFilter fullFilter = userFilterRepo.findFullById(userId).orElseGet(() -> f);
+            send(chatId, flowService.pretty(fullFilter, lang), Keyboards.filterActionsKeyboard(lang));
+            return;
+        }
+
+        if (data.equals("STATUS:EDIT")) {
+            searchStatusMetricsService.record(userId, SearchStatusEvent.Type.EDIT_OPENED);
+            data = "EDIT:FILTER";
+        }
+
         if (data.equals("SUPPORT:RAIFFEISEN")) {
             supportMetricsService.record(userId, SupportEvent.Type.RAIFFEISEN);
             send(chatId, raiffeisenSupportInfo(lang), Keyboards.supportKeyboard(lang));
@@ -2729,6 +2760,7 @@ DigiReality owners: %d
                         Keyboards.searchStatusKeyboard(userLang));
                 user.setSearchStatusSentAt(now);
                 userFilterRepo.save(user);
+                searchStatusMetricsService.record(targetUserId, SearchStatusEvent.Type.SENT);
                 result.sent++;
             } catch (TelegramApiException e) {
                 if (isUnreachableTelegramUser(e.getMessage())) {
