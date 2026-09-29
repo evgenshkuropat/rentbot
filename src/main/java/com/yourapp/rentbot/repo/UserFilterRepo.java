@@ -115,6 +115,10 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
 
     long countBySearchStatusSentAtAfter(Instant cutoff);
 
+    long countByPremiumUntilAfter(Instant now);
+
+    long countByPremiumUntilAfterAndPremiumUntilLessThanEqual(Instant now, Instant expiresBefore);
+
     @Query("""
         select uf
         from UserFilter uf

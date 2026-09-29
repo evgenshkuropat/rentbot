@@ -4,6 +4,7 @@ import com.yourapp.rentbot.domain.FavoriteListing;
 import com.yourapp.rentbot.domain.OwnerListing;
 import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.PremiumPaymentRequest;
+import com.yourapp.rentbot.domain.PremiumEvent;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.ReactivationEvent;
@@ -25,6 +26,7 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
+import com.yourapp.rentbot.service.PremiumMetricsService;
 import com.yourapp.rentbot.service.ReactivationMetricsService;
 import com.yourapp.rentbot.service.SearchStatusMetricsService;
 import com.yourapp.rentbot.service.SchedulerService;
@@ -87,6 +89,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final SupportMetricsService supportMetricsService;
     private final PremiumService premiumService;
     private final PremiumPaymentService premiumPaymentService;
+    private final PremiumMetricsService premiumMetricsService;
     private final ReactivationMetricsService reactivationMetricsService;
     private final SearchStatusMetricsService searchStatusMetricsService;
 
@@ -139,6 +142,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SupportMetricsService supportMetricsService,
             PremiumService premiumService,
             PremiumPaymentService premiumPaymentService,
+            PremiumMetricsService premiumMetricsService,
             ReactivationMetricsService reactivationMetricsService,
             SearchStatusMetricsService searchStatusMetricsService,
             @Value("${rentbot.milestone1500.auto-enabled:false}") boolean milestone1500AutoEnabled,
@@ -168,6 +172,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.supportMetricsService = supportMetricsService;
         this.premiumService = premiumService;
         this.premiumPaymentService = premiumPaymentService;
+        this.premiumMetricsService = premiumMetricsService;
         this.reactivationMetricsService = reactivationMetricsService;
         this.searchStatusMetricsService = searchStatusMetricsService;
         this.milestone1500AutoEnabled = milestone1500AutoEnabled;
@@ -417,6 +422,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SearchStatusMetricsService.SearchStatusMetrics searchStatusMetrics = searchStatusMetricsService.since(
                     now.minus(java.time.Duration.ofDays(14))
             );
+            PremiumMetricsService.PremiumMetrics premiumMetrics = premiumMetricsService.since(
+                    now.minus(java.time.Duration.ofDays(30)),
+                    now,
+                    now.plus(java.time.Duration.ofDays(7))
+            );
 
             int cachedSearchUsers = searchCache.size();
             int cachedSearchResults = searchCache.values()
@@ -493,6 +503,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 Надіслано: %d (%d користувачів)
 Переглянули пошук: %d (%d користувачів)
 Відкрили зміну параметрів: %d (%d користувачів)
+
+💎 Premium за 30 днів:
+Відкрили: %d · Обрали оплату: %d · Подали заявку: %d
+Підтверджено: %d · Відхилено: %d
+Активний зараз: %d · Закінчується за 7 днів: %d
 
 🕒 Оновлювались за 24 год: %d
 📆 Оновлювались за 7 днів: %d
@@ -588,6 +603,13 @@ DigiReality owners: %d
                             searchStatusMetrics.uniqueViewedUsers(),
                             searchStatusMetrics.editOpened(),
                             searchStatusMetrics.uniqueEditOpenedUsers(),
+                            premiumMetrics.opened(),
+                            premiumMetrics.paymentMethodSelected(),
+                            premiumMetrics.requestSubmitted(),
+                            premiumMetrics.approved(),
+                            premiumMetrics.rejected(),
+                            premiumMetrics.activeNow(),
+                            premiumMetrics.expiringWithin7Days(),
                             updated24h,
                             updated7d,
                             activeConversion,
@@ -1959,6 +1981,7 @@ DigiReality owners: %d
         if (data.startsWith("PREMIUM:METHOD:")) {
             String method = data.substring("PREMIUM:METHOD:".length());
             if (!isPremiumPaymentMethod(method)) return;
+            premiumMetricsService.record(userId, PremiumEvent.Type.PAYMENT_METHOD_SELECTED);
             send(chatId, premiumPaymentInstructions(lang, method, userId),
                     Keyboards.premiumPaymentConfirmationKeyboard(premiumPaymentMethodTitle(method), premiumPaymentUrl(method), lang));
             return;
@@ -1970,6 +1993,7 @@ DigiReality owners: %d
             String username = update.getCallbackQuery().getFrom().getUserName();
             String requester = username == null || username.isBlank() ? String.valueOf(userId) : "@" + username + " / " + userId;
             var paymentRequest = premiumPaymentService.submit(userId, method);
+            premiumMetricsService.record(userId, PremiumEvent.Type.REQUEST_SUBMITTED);
             send(adminId,
                     "💎 Заявка на активацію платного Premium\nКористувач: " + requester
                             + "\nСпосіб: " + premiumPaymentMethodTitle(method)
@@ -1994,6 +2018,7 @@ DigiReality owners: %d
             if (requestId == null) return;
             var approvedUserId = premiumPaymentService.approve(requestId);
             if (approvedUserId.isEmpty()) { send(chatId, "ℹ️ Ця заявка вже оброблена або не знайдена.", Keyboards.persistentNavKeyboard(lang)); return; }
+            premiumMetricsService.record(approvedUserId.get(), PremiumEvent.Type.APPROVED);
             Language targetLang = getUserLanguage(approvedUserId.get());
             send(approvedUserId.get(), premiumActivatedText(targetLang), Keyboards.premiumActiveKeyboard(targetLang));
             send(chatId, "✅ Premium активовано на 30 днів для " + approvedUserId.get(), Keyboards.persistentNavKeyboard(lang));
@@ -2009,6 +2034,7 @@ DigiReality owners: %d
                 send(chatId, "ℹ️ Ця заявка вже оброблена або не знайдена.", Keyboards.persistentNavKeyboard(lang));
                 return;
             }
+            premiumMetricsService.record(rejectedUserId.get(), PremiumEvent.Type.REJECTED);
             Language targetLang = getUserLanguage(rejectedUserId.get());
             send(rejectedUserId.get(), premiumPaymentRejectedText(targetLang), Keyboards.persistentNavKeyboard(targetLang));
             send(chatId, "❌ Заявку відхилено.", Keyboards.persistentNavKeyboard(lang));
@@ -3314,6 +3340,7 @@ Please verify the information yourself — the bot only shares a useful source.
         if (premiumService.isActive(user)) {
             showSearches(chatId, user, lang);
         } else {
+            premiumMetricsService.record(userId, PremiumEvent.Type.OPENED);
             send(chatId, premiumPaymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
         }
     }
