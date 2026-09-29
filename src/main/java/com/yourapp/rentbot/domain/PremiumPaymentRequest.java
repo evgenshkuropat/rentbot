@@ -21,7 +21,10 @@ public class PremiumPaymentRequest {
     public void setTelegramUserId(Long value) { telegramUserId = value; }
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String value) { paymentMethod = value; }
+    public int getAmountCzk() { return amountCzk; }
     public Status getStatus() { return status; }
     public void setStatus(Status value) { status = value; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getProcessedAt() { return processedAt; }
     public void setProcessedAt(Instant value) { processedAt = value; }
 }

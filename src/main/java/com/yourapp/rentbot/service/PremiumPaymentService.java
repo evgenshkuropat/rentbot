@@ -8,6 +8,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 
 @Service
 public class PremiumPaymentService {
@@ -30,5 +31,11 @@ public class PremiumPaymentService {
         if (request == null || request.getStatus() != PremiumPaymentRequest.Status.PENDING) return Optional.empty();
         request.setStatus(PremiumPaymentRequest.Status.REJECTED); request.setProcessedAt(Instant.now()); repo.save(request);
         return Optional.of(request.getTelegramUserId());
+    }
+    public List<PremiumPaymentRequest> pendingRequests() {
+        return repo.findByStatusOrderByCreatedAtAsc(PremiumPaymentRequest.Status.PENDING);
+    }
+    public List<PremiumPaymentRequest> recentRequests() {
+        return repo.findTop20ByOrderByIdDesc();
     }
 }

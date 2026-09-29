@@ -3,6 +3,7 @@ package com.yourapp.rentbot.bot;
 import com.yourapp.rentbot.domain.FavoriteListing;
 import com.yourapp.rentbot.domain.OwnerListing;
 import com.yourapp.rentbot.domain.PremiumSearch;
+import com.yourapp.rentbot.domain.PremiumPaymentRequest;
 import com.yourapp.rentbot.domain.Region;
 import com.yourapp.rentbot.domain.RegionGroup;
 import com.yourapp.rentbot.domain.ReactivationEvent;
@@ -57,6 +58,8 @@ import java.text.Normalizer;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -95,10 +98,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final int inactiveReactivationAutoBatchSize;
     private final boolean searchStatusAutoEnabled;
     private final int searchStatusAutoBatchSize;
+    private final boolean premiumExpiryReminderAutoEnabled;
     private final int supportMonthlyGoalCzk;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean inactiveReactivationAutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean searchStatusAutoRunning = new AtomicBoolean(false);
+    private final AtomicBoolean premiumExpiryReminderAutoRunning = new AtomicBoolean(false);
 
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
@@ -142,6 +147,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             @Value("${rentbot.reactivation.inactive.auto-batch-size:50}") int inactiveReactivationAutoBatchSize,
             @Value("${rentbot.search-status.auto-enabled:false}") boolean searchStatusAutoEnabled,
             @Value("${rentbot.search-status.auto-batch-size:100}") int searchStatusAutoBatchSize,
+            @Value("${rentbot.premium.expiry-reminder.auto-enabled:true}") boolean premiumExpiryReminderAutoEnabled,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
     ) {
         this.token = token;
@@ -170,6 +176,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.inactiveReactivationAutoBatchSize = Math.max(1, Math.min(inactiveReactivationAutoBatchSize, 100));
         this.searchStatusAutoEnabled = searchStatusAutoEnabled;
         this.searchStatusAutoBatchSize = Math.max(1, Math.min(searchStatusAutoBatchSize, 100));
+        this.premiumExpiryReminderAutoEnabled = premiumExpiryReminderAutoEnabled;
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
     }
 
@@ -200,6 +207,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 searchStatusAutoEnabled,
                 searchStatusAutoBatchSize
         );
+        log.info("Premium expiry reminders: enabled={}, schedule=11:00 Europe/Prague", premiumExpiryReminderAutoEnabled);
     }
 
     @Scheduled(
@@ -289,6 +297,32 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             log.error("Search status auto broadcast failed", e);
         } finally {
             searchStatusAutoRunning.set(false);
+        }
+    }
+
+    @Scheduled(cron = "${rentbot.premium.expiry-reminder.cron:0 0 11 * * *}", zone = "${rentbot.premium.expiry-reminder.time-zone:Europe/Prague}")
+    public void sendPremiumExpiryRemindersAutomatically() {
+        if (!premiumExpiryReminderAutoEnabled || !premiumExpiryReminderAutoRunning.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            Instant now = Instant.now();
+            List<UserFilter> users = userFilterRepo.findPremiumExpiryReminderCandidates(now.plusSeconds(2 * 24 * 60 * 60), now.plusSeconds(3 * 24 * 60 * 60));
+            int sent = 0;
+            for (UserFilter user : users) {
+                try {
+                    Language language = getUserLanguage(user.getTelegramUserId());
+                    send(user.getTelegramUserId(), premiumExpiryReminderText(language, user.getPremiumUntil()), Keyboards.premiumRenewalKeyboard(language));
+                    user.setPremiumExpiryReminderSentAt(now);
+                    userFilterRepo.save(user);
+                    sent++;
+                } catch (Exception e) {
+                    log.warn("Could not send Premium expiry reminder user={}", user.getTelegramUserId(), e);
+                }
+            }
+            log.info("Premium expiry reminders: candidates={}, sent={}", users.size(), sent);
+        } finally {
+            premiumExpiryReminderAutoRunning.set(false);
         }
     }
 
@@ -618,6 +652,21 @@ DigiReality owners: %d
             }
 
             send(chatId, premiumStatusText(targetUserId), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_premium_payments")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            List<PremiumPaymentRequest> pending = premiumPaymentService.pendingRequests();
+            List<PremiumPaymentRequest> recent = premiumPaymentService.recentRequests();
+            send(chatId, premiumPaymentsText(pending, recent), Keyboards.persistentNavKeyboard(lang));
+            for (PremiumPaymentRequest request : pending) {
+                send(chatId, premiumPaymentRequestText(request), Keyboards.premiumPaymentAdminKeyboard(request.getId()));
+            }
             return;
         }
 
@@ -2984,6 +3033,46 @@ DigiReality owners: %d
                 + "\nДіє до: " + (user.getPremiumUntil() == null ? "—" : user.getPremiumUntil())
                 + "\nПотрапить у наступний цикл: " + yesNo(schedulerEligible)
                 + "\n\n" + mainSearch + "\n\n" + premiumSearch;
+    }
+
+    private String premiumPaymentsText(List<PremiumPaymentRequest> pending, List<PremiumPaymentRequest> recent) {
+        StringBuilder text = new StringBuilder("💳 Premium payments\n\nОчікують перевірки: ")
+                .append(pending.size());
+        if (pending.isEmpty()) {
+            text.append("\nНемає заявок, що очікують на підтвердження.");
+        }
+        text.append("\n\nОстанні операції:");
+        recent.stream().limit(10).forEach(request -> text.append("\n#")
+                .append(request.getId()).append(" · ")
+                .append(request.getStatus()).append(" · ")
+                .append(request.getTelegramUserId()).append(" · ")
+                .append(premiumPaymentMethodTitle(request.getPaymentMethod())).append(" · ")
+                .append(formatInstant(request.getCreatedAt())));
+        return text.toString();
+    }
+
+    private String premiumPaymentRequestText(PremiumPaymentRequest request) {
+        return "💎 Заявка на Premium #" + request.getId()
+                + "\nКористувач: " + request.getTelegramUserId()
+                + "\nСпосіб: " + premiumPaymentMethodTitle(request.getPaymentMethod())
+                + "\nСума: " + request.getAmountCzk() + " Kč / 30 днів"
+                + "\nСтворено: " + formatInstant(request.getCreatedAt());
+    }
+
+    private String premiumExpiryReminderText(Language lang, Instant premiumUntil) {
+        String expires = formatInstant(premiumUntil);
+        return switch (lang) {
+            case RU -> "💎 Premium действует до " + expires + ".\n\nПродлите доступ, чтобы сохранить второй поиск, приоритетную обработку, до 10 уведомлений за цикл и проверенные предложения от владельцев первыми.";
+            case CZ -> "💎 Premium platí do " + expires + ".\n\nProdloužením si zachováte druhé hledání, prioritní zpracování, až 10 upozornění za cyklus a ověřené nabídky od majitelů jako první.";
+            case EN -> "💎 Premium is active until " + expires + ".\n\nRenew to keep your second search, priority processing, up to 10 alerts per cycle, and verified owner listings first.";
+            default -> "💎 Premium діє до " + expires + ".\n\nПродовжте доступ, щоб зберегти другий пошук, пріоритетну обробку, до 10 сповіщень за цикл та перевірені пропозиції від власників першими.";
+        };
+    }
+
+    private String formatInstant(Instant value) {
+        return value == null ? "—" : DateTimeFormatter.ofPattern("d.M.yyyy HH:mm")
+                .withZone(ZoneId.of("Europe/Prague"))
+                .format(value);
     }
 
     private String yesNo(boolean value) {

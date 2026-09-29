@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -60,5 +61,22 @@ class PremiumPaymentServiceTest {
 
         verify(premiumService, never()).activate(any(), any(Integer.class));
         verify(paymentRequests).save(request);
+    }
+
+    @Test
+    void exposesPendingAndRecentPaymentRequestsForAdminReview() {
+        PremiumPaymentRequest pending = new PremiumPaymentRequest();
+        pending.setTelegramUserId(19L);
+        PremiumPaymentRequest processed = new PremiumPaymentRequest();
+        processed.setTelegramUserId(20L);
+        processed.setStatus(PremiumPaymentRequest.Status.APPROVED);
+        PremiumPaymentService service = new PremiumPaymentService(paymentRequests, users, premiumService);
+
+        when(paymentRequests.findByStatusOrderByCreatedAtAsc(PremiumPaymentRequest.Status.PENDING))
+                .thenReturn(List.of(pending));
+        when(paymentRequests.findTop20ByOrderByIdDesc()).thenReturn(List.of(processed, pending));
+
+        assertThat(service.pendingRequests()).containsExactly(pending);
+        assertThat(service.recentRequests()).containsExactly(processed, pending);
     }
 }

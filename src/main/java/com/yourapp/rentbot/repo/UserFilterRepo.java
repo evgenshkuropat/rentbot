@@ -118,6 +118,16 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     @Query("""
         select uf
         from UserFilter uf
+        where uf.premiumUntil > :from
+          and uf.premiumUntil <= :to
+          and (uf.premiumExpiryReminderSentAt is null or uf.premiumExpiryReminderSentAt < uf.premiumUntil)
+        order by uf.premiumUntil asc
+    """)
+    List<UserFilter> findPremiumExpiryReminderCandidates(@Param("from") Instant from, @Param("to") Instant to);
+
+    @Query("""
+        select uf
+        from UserFilter uf
         where uf.active = true
           and uf.milestone1500SentAt is null
           and uf.telegramUserId is not null

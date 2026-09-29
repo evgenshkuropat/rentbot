@@ -435,6 +435,16 @@ public class Keyboards {
         ))).build();
     }
 
+    public static InlineKeyboardMarkup premiumRenewalKeyboard(Language lang) {
+        String text = switch (lang) {
+            case RU -> "💳 Продлить Premium";
+            case CZ -> "💳 Prodloužit Premium";
+            case EN -> "💳 Renew Premium";
+            default -> "💳 Продовжити Premium";
+        };
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(button(text, "PREMIUM:PAY")))).build();
+    }
+
     public static InlineKeyboardMarkup mainMenuKeyboard(Language lang) {
         InlineKeyboardRow row1 = new InlineKeyboardRow();
         row1.add(button(switch (lang) {
