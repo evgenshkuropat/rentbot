@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "premium_payment_requests")
+@Table(name = "premium_payment_requests", indexes = {
+        @Index(name = "idx_premium_payment_user_status_id", columnList = "telegram_user_id, status, id")
+})
 public class PremiumPaymentRequest {
     public enum Status { PENDING, APPROVED, REJECTED }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;

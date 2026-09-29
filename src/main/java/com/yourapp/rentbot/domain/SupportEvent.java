@@ -7,12 +7,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "support_events")
+@Table(name = "support_events", indexes = {
+        @Index(name = "idx_support_event_type_time_user", columnList = "type, created_at, telegram_user_id")
+})
 public class SupportEvent {
 
     public enum Type { OPENED, RAIFFEISEN, PRIVATBANK, PAYPAL, REVOLUT }

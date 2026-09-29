@@ -7,7 +7,14 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "user_filter")
+@Table(
+        name = "user_filter",
+        indexes = {
+                @Index(name = "idx_user_filter_active_updated", columnList = "active, updated_at"),
+                @Index(name = "idx_user_filter_active_status", columnList = "active, onboarded, search_status_sent_at"),
+                @Index(name = "idx_user_filter_inactive_reactivation", columnList = "active, inactive_reactivation_sent_at")
+        }
+)
 public class UserFilter {
 
     @Id
