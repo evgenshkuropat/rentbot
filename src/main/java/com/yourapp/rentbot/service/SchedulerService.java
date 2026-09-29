@@ -34,6 +34,7 @@ public class SchedulerService {
     private final AtomicReference<SchedulerRunStats> lastRunStats =
             new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
     private final AtomicReference<Instant> lastCompletedAt = new AtomicReference<>();
+    private final AtomicReference<Instant> startedAt = new AtomicReference<>();
 
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
@@ -67,9 +68,11 @@ public class SchedulerService {
             return;
         }
 
+        startedAt.set(Instant.now());
         try {
             runScheduler();
         } finally {
+            startedAt.set(null);
             running.set(false);
         }
     }
@@ -309,6 +312,10 @@ public class SchedulerService {
     public Instant getLastCompletedAt() {
         return lastCompletedAt.get();
     }
+
+    public boolean isRunning() { return running.get(); }
+
+    public Instant getStartedAt() { return startedAt.get(); }
 
     private void updateLastRunStats(int usersProcessed,
                                     int usersWithMatches,

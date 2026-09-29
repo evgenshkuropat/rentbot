@@ -23,6 +23,8 @@ public class BotHealthMonitor {
     private final ParserService parser;
     private final TelegramClient telegramClient;
     private final long adminId;
+    private final int stalledAfterMinutes;
+    private final int maxCycleDurationMinutes;
     private Instant lastObservedCycle;
     private final Instant startedAt = Instant.now();
     private int consecutiveEmptyCycles;
@@ -32,26 +34,33 @@ public class BotHealthMonitor {
     public BotHealthMonitor(SchedulerService scheduler,
                             ParserService parser,
                             TelegramClient telegramClient,
-                            @Value("${TELEGRAM_ADMIN_ID}") long adminId) {
+                            @Value("${TELEGRAM_ADMIN_ID}") long adminId,
+                            @Value("${rentbot.health.stalled-after-minutes:40}") int stalledAfterMinutes,
+                            @Value("${rentbot.health.max-cycle-duration-minutes:60}") int maxCycleDurationMinutes) {
         this.scheduler = scheduler;
         this.parser = parser;
         this.telegramClient = telegramClient;
         this.adminId = adminId;
+        this.stalledAfterMinutes = Math.max(20, stalledAfterMinutes);
+        this.maxCycleDurationMinutes = Math.max(this.stalledAfterMinutes, maxCycleDurationMinutes);
     }
 
     @Scheduled(fixedDelayString = "${rentbot.health.check-delay-ms:300000}", initialDelayString = "${rentbot.health.initial-delay-ms:300000}")
     public void check() {
         Instant completedAt = scheduler.getLastCompletedAt();
         if (completedAt == null) {
-            if (Duration.between(startedAt, Instant.now()).toMinutes() >= 20) {
-                alertOnce("scheduler-not-started", "⚠️ Контроль бота: після запуску понад 20 хвилин не завершився жоден повний цикл розсилки.");
+            if (Duration.between(startedAt, Instant.now()).toMinutes() >= stalledAfterMinutes) {
+                alertOnce("scheduler-not-started", "⚠️ Контроль бота: після запуску понад " + stalledAfterMinutes + " хвилин не завершився жоден повний цикл розсилки.");
             }
             return;
         }
 
-        if (Duration.between(completedAt, Instant.now()).toMinutes() >= 20) {
+        Instant cycleStartedAt = scheduler.getStartedAt();
+        boolean cycleRunningNormally = scheduler.isRunning() && cycleStartedAt != null
+                && Duration.between(cycleStartedAt, Instant.now()).toMinutes() < maxCycleDurationMinutes;
+        if (!cycleRunningNormally && Duration.between(completedAt, Instant.now()).toMinutes() >= stalledAfterMinutes) {
             schedulerAlerted = true;
-            alertOnce("scheduler-stalled", "⚠️ Контроль бота: повний цикл не завершувався понад 20 хвилин. Перевір Railway logs.");
+            alertOnce("scheduler-stalled", "⚠️ Контроль бота: повний цикл не завершувався понад " + stalledAfterMinutes + " хвилин. Перевір Railway logs.");
             return;
         }
 

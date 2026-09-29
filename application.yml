@@ -51,3 +51,5 @@ rentbot:
   health:
     check-delay-ms: ${RENTBOT_HEALTH_CHECK_DELAY_MS:300000}
     initial-delay-ms: ${RENTBOT_HEALTH_INITIAL_DELAY_MS:300000}
+    stalled-after-minutes: ${RENTBOT_HEALTH_STALLED_AFTER_MINUTES:40}
+    max-cycle-duration-minutes: ${RENTBOT_HEALTH_MAX_CYCLE_DURATION_MINUTES:60}
