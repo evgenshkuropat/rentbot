@@ -98,6 +98,26 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     @Query("""
         select uf
         from UserFilter uf
+        left join fetch uf.region
+        left join fetch uf.regionGroup
+        where uf.active = true
+          and uf.onboarded = true
+          and uf.region is not null
+          and uf.layout is not null
+          and (
+              uf.searchStatusSentAt is null
+              or uf.searchStatusSentAt < :canSendAgainBefore
+          )
+        order by uf.searchStatusSentAt asc nulls first
+    """)
+    List<UserFilter> findSearchStatusCandidates(@Param("canSendAgainBefore") Instant canSendAgainBefore,
+                                                Pageable pageable);
+
+    long countBySearchStatusSentAtAfter(Instant cutoff);
+
+    @Query("""
+        select uf
+        from UserFilter uf
         where uf.active = true
           and uf.milestone1500SentAt is null
           and uf.telegramUserId is not null

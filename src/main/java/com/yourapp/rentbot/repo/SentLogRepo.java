@@ -14,4 +14,6 @@ public interface SentLogRepo extends JpaRepository<SentLog, Long> {
 
     long countBySentAtAfter(Instant cutoff);
 
+    boolean existsByTelegramUserIdAndSentAtAfter(Long telegramUserId, Instant cutoff);
+
 }

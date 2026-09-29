@@ -605,6 +605,24 @@ public class Keyboards {
                 .build();
     }
 
+    public static InlineKeyboardMarkup searchStatusKeyboard(Language lang) {
+        InlineKeyboardRow view = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "📋 Посмотреть мой поиск";
+            case CZ -> "📋 Zobrazit moje hledání";
+            case EN -> "📋 View my search";
+            default -> "📋 Переглянути мій пошук";
+        }, "CONFIRM:SHOW"));
+
+        InlineKeyboardRow edit = new InlineKeyboardRow(button(switch (lang) {
+            case RU -> "✏️ Изменить параметры";
+            case CZ -> "✏️ Upravit parametry";
+            case EN -> "✏️ Change parameters";
+            default -> "✏️ Змінити параметри";
+        }, "EDIT:FILTER"));
+
+        return InlineKeyboardMarkup.builder().keyboard(List.of(view, edit)).build();
+    }
+
     public static InlineKeyboardMarkup inactiveReactivationKeyboard(Language lang) {
         InlineKeyboardRow resume = new InlineKeyboardRow(button(switch (lang) {
             case RU -> "▶️ Включить поиск снова";

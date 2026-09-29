@@ -14,6 +14,7 @@ import com.yourapp.rentbot.i18n.Language;
 import com.yourapp.rentbot.i18n.MessageService;
 import com.yourapp.rentbot.repo.RegionGroupRepo;
 import com.yourapp.rentbot.repo.RegionRepo;
+import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.ListingCacheService;
@@ -69,6 +70,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final FlowService flowService;
     private final RegionRepo regionRepo;
     private final RegionGroupRepo regionGroupRepo;
+    private final SentLogRepo sentLogRepo;
     private final UserFilterRepo userFilterRepo;
     private final ParserService parserService;
     private final SchedulerService schedulerService;
@@ -88,9 +90,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final int milestone1500AutoBatchSize;
     private final boolean inactiveReactivationAutoEnabled;
     private final int inactiveReactivationAutoBatchSize;
+    private final boolean searchStatusAutoEnabled;
+    private final int searchStatusAutoBatchSize;
     private final int supportMonthlyGoalCzk;
     private final AtomicBoolean milestone1500AutoRunning = new AtomicBoolean(false);
     private final AtomicBoolean inactiveReactivationAutoRunning = new AtomicBoolean(false);
+    private final AtomicBoolean searchStatusAutoRunning = new AtomicBoolean(false);
 
     private static final long INTERACTION_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
@@ -114,6 +119,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             FlowService flowService,
             RegionRepo regionRepo,
             RegionGroupRepo regionGroupRepo,
+            SentLogRepo sentLogRepo,
             UserFilterRepo userFilterRepo,
             ParserService parserService,
             SchedulerService schedulerService,
@@ -130,6 +136,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             @Value("${rentbot.milestone1500.auto-batch-size:25}") int milestone1500AutoBatchSize,
             @Value("${rentbot.reactivation.inactive.auto-enabled:false}") boolean inactiveReactivationAutoEnabled,
             @Value("${rentbot.reactivation.inactive.auto-batch-size:50}") int inactiveReactivationAutoBatchSize,
+            @Value("${rentbot.search-status.auto-enabled:false}") boolean searchStatusAutoEnabled,
+            @Value("${rentbot.search-status.auto-batch-size:100}") int searchStatusAutoBatchSize,
             @Value("${rentbot.support.monthly-goal-czk:${RENTBOT_SUPPORT_MONTHLY_GOAL_CZK:800}}") int supportMonthlyGoalCzk
     ) {
         this.token = token;
@@ -138,6 +146,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.flowService = flowService;
         this.regionRepo = regionRepo;
         this.regionGroupRepo = regionGroupRepo;
+        this.sentLogRepo = sentLogRepo;
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.schedulerService = schedulerService;
@@ -154,6 +163,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.milestone1500AutoBatchSize = Math.max(1, Math.min(milestone1500AutoBatchSize, 100));
         this.inactiveReactivationAutoEnabled = inactiveReactivationAutoEnabled;
         this.inactiveReactivationAutoBatchSize = Math.max(1, Math.min(inactiveReactivationAutoBatchSize, 100));
+        this.searchStatusAutoEnabled = searchStatusAutoEnabled;
+        this.searchStatusAutoBatchSize = Math.max(1, Math.min(searchStatusAutoBatchSize, 100));
         this.supportMonthlyGoalCzk = Math.max(1, supportMonthlyGoalCzk);
     }
 
@@ -178,6 +189,11 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 "Inactive reactivation auto broadcast config: enabled={}, batchSize={}, schedule=19:30 Europe/Prague",
                 inactiveReactivationAutoEnabled,
                 inactiveReactivationAutoBatchSize
+        );
+        log.info(
+                "Search status auto broadcast config: enabled={}, batchSize={}, schedule=18:45 Europe/Prague",
+                searchStatusAutoEnabled,
+                searchStatusAutoBatchSize
         );
     }
 
@@ -241,6 +257,33 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             log.error("Inactive reactivation auto broadcast failed", e);
         } finally {
             inactiveReactivationAutoRunning.set(false);
+        }
+    }
+
+    @Scheduled(
+            cron = "${rentbot.search-status.auto-cron:0 45 18 * * *}",
+            zone = "${rentbot.search-status.time-zone:Europe/Prague}"
+    )
+    public void sendSearchStatusAutomatically() {
+        if (!searchStatusAutoEnabled) {
+            return;
+        }
+
+        if (!searchStatusAutoRunning.compareAndSet(false, true)) {
+            log.warn("Search status auto broadcast already running, skipping...");
+            return;
+        }
+
+        try {
+            ReactivationResult result = sendSearchStatusMessages(searchStatusAutoBatchSize);
+            log.info(
+                    "Search status auto broadcast: checked={}, sent={}, skipped={}, deactivated={}, failed={}",
+                    result.checked, result.sent, result.skipped, result.deactivated, result.failed
+            );
+        } catch (Exception e) {
+            log.error("Search status auto broadcast failed", e);
+        } finally {
+            searchStatusAutoRunning.set(false);
         }
     }
 
@@ -585,6 +628,28 @@ DigiReality owners: %d
                                     result.deactivated,
                                     result.failed
                             ),
+                    Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
+        if (text.toLowerCase().startsWith("/admin_search_status")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            int limit = parseAdminLimit(text, 20, 100);
+            ReactivationResult result = sendSearchStatusMessages(limit);
+            send(chatId,
+                    """
+                    🔎 Search status messages finished
+
+                    Candidates checked: %d
+                    Sent: %d
+                    Skipped (recent listing): %d
+                    Deactivated: %d
+                    Failed: %d
+                    """.formatted(result.checked, result.sent, result.skipped, result.deactivated, result.failed),
                     Keyboards.persistentNavKeyboard(lang));
             return;
         }
@@ -2644,6 +2709,57 @@ DigiReality owners: %d
         return result;
     }
 
+    private ReactivationResult sendSearchStatusMessages(int limit) {
+        ReactivationResult result = new ReactivationResult();
+        Instant now = Instant.now();
+        List<UserFilter> candidates = userFilterRepo.findSearchStatusCandidates(
+                now.minus(java.time.Duration.ofDays(7)),
+                PageRequest.of(0, limit)
+        );
+        result.checked = candidates.size();
+
+        for (UserFilter user : candidates) {
+            Long targetUserId = user.getTelegramUserId();
+            if (targetUserId == null) {
+                result.skipped++;
+                continue;
+            }
+
+            boolean premiumUser = premiumService.isActive(user);
+            int quietDays = premiumUser ? 4 : 7;
+            if (sentLogRepo.existsByTelegramUserIdAndSentAtAfter(
+                    targetUserId,
+                    now.minus(java.time.Duration.ofDays(quietDays)))) {
+                result.skipped++;
+                continue;
+            }
+
+            Language userLang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
+            try {
+                send(targetUserId,
+                        searchStatusText(user, premiumUser, quietDays, userLang),
+                        Keyboards.searchStatusKeyboard(userLang));
+                user.setSearchStatusSentAt(now);
+                userFilterRepo.save(user);
+                result.sent++;
+            } catch (TelegramApiException e) {
+                if (isUnreachableTelegramUser(e.getMessage())) {
+                    user.setActive(false);
+                    userFilterRepo.save(user);
+                    result.deactivated++;
+                } else {
+                    result.failed++;
+                    log.warn("Search status message failed user={} error={}", targetUserId, e.getMessage());
+                }
+            } catch (Exception e) {
+                result.failed++;
+                log.warn("Unexpected search status failure user={} error={}", targetUserId, e.getMessage());
+            }
+        }
+
+        return result;
+    }
+
     private ReactivationResult sendMilestone1500Messages(int limit) {
         ReactivationResult result = new ReactivationResult();
         Instant now = Instant.now();
@@ -2754,6 +2870,30 @@ DigiReality owners: %d
             case CZ -> "Ahoj 👋\n\nVaše uložené hledání na vás stále čeká. Upozornění můžete znovu zapnout jedním kliknutím nebo nejdříve upravit parametry.\n\n" + flowService.pretty(user, lang);
             case EN -> "Hi 👋\n\nYour saved search is still here. Resume alerts with one tap or update the settings first.\n\n" + flowService.pretty(user, lang);
             default -> "Привіт 👋\n\nВаш збережений пошук усе ще чекає на вас. Увімкніть сповіщення одним натисканням або спочатку змініть параметри.\n\n" + flowService.pretty(user, lang);
+        };
+    }
+
+    private String searchStatusText(UserFilter user, boolean premiumUser, int quietDays, Language lang) {
+        String premiumNote = premiumUser ? switch (lang) {
+            case RU -> "\n\n🏡 Проверенные варианты от владельцев отправлю первыми, как только они появятся.";
+            case CZ -> "\n\n🏡 Ověřené nabídky přímo od majitelů pošlu jako první, jakmile se objeví.";
+            case EN -> "\n\n🏡 I will send verified owner listings first as soon as they appear.";
+            default -> "\n\n🏡 Перевірені варіанти від власників надішлю першими, щойно вони з’являться.";
+        } : "";
+
+        return switch (lang) {
+            case RU -> "🔎 Я продолжаю искать варианты по вашему фильтру.\n\nЗа последние " + quietDays
+                    + " дней новых подходящих объявлений не появилось. Проверяю Sreality, Bezrealitky, Bazoš и объявления от владельцев. Как только найдётся подходящий вариант — сразу пришлю его."
+                    + premiumNote + "\n\n" + flowService.pretty(user, lang);
+            case CZ -> "🔎 Stále hledám nabídky podle vašeho filtru.\n\nZa posledních " + quietDays
+                    + " dní se neobjevily žádné nové vhodné nabídky. Kontroluji Sreality, Bezrealitky, Bazoš a nabídky od majitelů. Jakmile najdu vhodnou nabídku, ihned ji pošlu."
+                    + premiumNote + "\n\n" + flowService.pretty(user, lang);
+            case EN -> "🔎 I am still searching for listings that match your filter.\n\nNo new suitable listings appeared in the last " + quietDays
+                    + " days. I am checking Sreality, Bezrealitky, Bazoš, and owner listings. As soon as a suitable listing appears, I will send it right away."
+                    + premiumNote + "\n\n" + flowService.pretty(user, lang);
+            default -> "🔎 Я продовжую шукати варіанти за вашим фільтром.\n\nЗа останні " + quietDays
+                    + " днів нових відповідних оголошень не з’явилося. Перевіряю Sreality, Bezrealitky, Bazoš та оголошення від власників. Щойно знайду відповідний варіант — одразу надішлю."
+                    + premiumNote + "\n\n" + flowService.pretty(user, lang);
         };
     }
 

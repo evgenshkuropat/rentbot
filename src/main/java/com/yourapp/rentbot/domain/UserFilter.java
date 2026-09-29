@@ -51,6 +51,9 @@ public class UserFilter {
     @Column(name = "inactive_reactivation_sent_at")
     private Instant inactiveReactivationSentAt;
 
+    @Column(name = "search_status_sent_at")
+    private Instant searchStatusSentAt;
+
     @Column(name = "milestone_1500_sent_at")
     private Instant milestone1500SentAt;
 
@@ -151,6 +154,14 @@ public class UserFilter {
 
     public void setInactiveReactivationSentAt(Instant inactiveReactivationSentAt) {
         this.inactiveReactivationSentAt = inactiveReactivationSentAt;
+    }
+
+    public Instant getSearchStatusSentAt() {
+        return searchStatusSentAt;
+    }
+
+    public void setSearchStatusSentAt(Instant searchStatusSentAt) {
+        this.searchStatusSentAt = searchStatusSentAt;
     }
 
     public Instant getMilestone1500SentAt() {

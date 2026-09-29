@@ -32,3 +32,8 @@ rentbot:
       auto-batch-size: ${RENTBOT_REACTIVATION_INACTIVE_AUTO_BATCH_SIZE:50}
       auto-cron: ${RENTBOT_REACTIVATION_INACTIVE_AUTO_CRON:0 30 19 * * *}
       time-zone: ${RENTBOT_REACTIVATION_INACTIVE_TIME_ZONE:Europe/Prague}
+  search-status:
+    auto-enabled: ${RENTBOT_SEARCH_STATUS_AUTO_ENABLED:false}
+    auto-batch-size: ${RENTBOT_SEARCH_STATUS_AUTO_BATCH_SIZE:100}
+    auto-cron: ${RENTBOT_SEARCH_STATUS_AUTO_CRON:0 45 18 * * *}
+    time-zone: ${RENTBOT_SEARCH_STATUS_TIME_ZONE:Europe/Prague}
