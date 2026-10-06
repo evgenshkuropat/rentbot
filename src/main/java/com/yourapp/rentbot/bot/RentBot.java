@@ -25,6 +25,7 @@ import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.OwnerListingInputParser;
 import com.yourapp.rentbot.service.OwnerListingMessages;
+import com.yourapp.rentbot.service.OwnerListingAdminMessages;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
@@ -87,6 +88,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final OwnerListingService ownerListingService;
     private final OwnerListingInputParser ownerListingInputParser;
     private final OwnerListingMessages ownerListingMessages;
+    private final OwnerListingAdminMessages ownerListingAdminMessages;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -145,6 +147,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             OwnerListingService ownerListingService,
             OwnerListingInputParser ownerListingInputParser,
             OwnerListingMessages ownerListingMessages,
+            OwnerListingAdminMessages ownerListingAdminMessages,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
@@ -179,6 +182,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.ownerListingService = ownerListingService;
         this.ownerListingInputParser = ownerListingInputParser;
         this.ownerListingMessages = ownerListingMessages;
+        this.ownerListingAdminMessages = ownerListingAdminMessages;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -1188,78 +1192,6 @@ DigiReality owners: %d
         send(chatId, ownerListingMessages.start(lang), Keyboards.persistentNavKeyboard(lang));
     }
 
-    private String ownerListingCancelledText(Language lang) {
-        return switch (lang) {
-            case RU -> "Добавление объявления отменено.";
-            case CZ -> "Přidání nabídky bylo zrušeno.";
-            case EN -> "Listing submission cancelled.";
-            default -> "Додавання оголошення скасовано.";
-        };
-    }
-
-    private String ownerListingPhotoRequiredText(Language lang) {
-        return switch (lang) {
-            case RU -> "8/8 Пришлите фото квартиры. Фото обязательно для отправки на проверку.";
-            case CZ -> "8/8 Pošlete fotku bytu. Fotka je povinná pro odeslání ke kontrole.";
-            case EN -> "8/8 Send an apartment photo. A photo is required before review.";
-            default -> "8/8 Надішліть фото квартири. Фото обовʼязкове для відправки на перевірку.";
-        };
-    }
-
-    private String ownerListingUnexpectedPhotoText(Language lang, String expectedStep) {
-        return switch (lang) {
-            case RU -> "Фото нужно будет отправить на последнем шаге. Сейчас ожидаю: " + expectedStep + ".";
-            case CZ -> "Fotku pošlete až v posledním kroku. Teď očekávám: " + expectedStep + ".";
-            case EN -> "You will send the photo in the last step. Right now I am waiting for: " + expectedStep + ".";
-            default -> "Фото потрібно буде надіслати на останньому кроці. Зараз очікую: " + expectedStep + ".";
-        };
-    }
-
-    private String ownerListingRegionNotFoundText(Language lang) {
-        return switch (lang) {
-            case RU -> "Не нашёл такой город/округ в базе. Напишите как в боте, например: Praha, Brno, Kolín, Plzeň.";
-            case CZ -> "Takové město nebo okres jsem v databázi nenašel. Napište ho jako v botu, například: Praha, Brno, Kolín, Plzeň.";
-            case EN -> "I could not find that city or district in the database. Write it as in the bot, for example: Praha, Brno, Kolín, Plzeň.";
-            default -> "Не знайшов таке місто/округ у базі. Напишіть як у боті, наприклад: Praha, Brno, Kolín, Plzeň.";
-        };
-    }
-
-    private String ownerListingLocalityPromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "2/8 Локация или адрес. Например: Kolín - Kolín II, Masarykova.";
-            case CZ -> "2/8 Lokalita nebo adresa. Například: Kolín - Kolín II, Masarykova.";
-            case EN -> "2/8 Location or address. For example: Kolín - Kolín II, Masarykova.";
-            default -> "2/8 Локація або адреса. Наприклад: Kolín - Kolín II, Masarykova.";
-        };
-    }
-
-    private String ownerListingLocalityRequiredText(Language lang) {
-        return switch (lang) {
-            case RU -> "Локация не может быть пустой. Напишите район, город или адрес.";
-            case CZ -> "Lokalita nesmí být prázdná. Napište část města, město nebo adresu.";
-            case EN -> "Location cannot be empty. Send the district, city, or address.";
-            default -> "Локація не може бути пустою. Напишіть район, місто або адресу.";
-        };
-    }
-
-    private String ownerListingLayoutPromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "3/8 Тип жилья: room, 1, 2, 3 или 4.";
-            case CZ -> "3/8 Typ bydlení: room, 1, 2, 3 nebo 4.";
-            case EN -> "3/8 Housing type: room, 1, 2, 3, or 4.";
-            default -> "3/8 Тип житла: room, 1, 2, 3 або 4.";
-        };
-    }
-
-    private String ownerListingLayoutInvalidText(Language lang) {
-        return switch (lang) {
-            case RU -> "Не понял тип. Напишите: room, 1, 2, 3 или 4.";
-            case CZ -> "Nerozumím typu. Napište: room, 1, 2, 3 nebo 4.";
-            case EN -> "I did not understand the type. Send: room, 1, 2, 3, or 4.";
-            default -> "Не зрозумів тип. Напишіть: room, 1, 2, 3 або 4.";
-        };
-    }
-
     private void onPhoto(Update update) throws TelegramApiException {
         long chatId = update.getMessage().getChatId();
         long userId = update.getMessage().getFrom().getId();
@@ -1355,10 +1287,10 @@ DigiReality owners: %d
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.PHOTO;
-                send(chatId, ownerListingPhotoRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case PHOTO -> {
-                send(chatId, ownerListingPhotoRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case CONFIRM -> {
                 if (ownerListingInputParser.isSubmit(text)) {
@@ -1368,7 +1300,7 @@ DigiReality owners: %d
 
                 if (ownerListingInputParser.isCancel(text)) {
                     ownerListingDrafts.remove(userId);
-                    send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
 
@@ -1442,32 +1374,31 @@ DigiReality owners: %d
     private void sendOwnerListingsList(long chatId, int limit) throws TelegramApiException {
         List<OwnerListing> listings = ownerListingService.listRecent(limit);
         if (listings.isEmpty()) {
-            send(chatId, "Поки немає оголошень від власників.", Keyboards.persistentNavKeyboard(Language.UA));
+            send(chatId, ownerListingAdminMessages.emptyList(), Keyboards.persistentNavKeyboard(Language.UA));
             return;
         }
 
         send(chatId,
-                "🏠 Оголошення від власників\n\nПоказую останні: " + listings.size()
-                        + "\n\nКоманди:\n/admin_owner_view ID\n/admin_owner_archive ID",
+                ownerListingAdminMessages.listHeader(listings.size()),
                 Keyboards.persistentNavKeyboard(Language.UA));
 
         for (OwnerListing listing : listings) {
             boolean approved = listing.getStatus() == OwnerListing.Status.APPROVED;
             send(chatId,
-                    ownerListingAdminSummary(listing),
+                    ownerListingAdminMessages.summary(listing),
                     Keyboards.ownerListingAdminKeyboard(listing.getId(), approved));
         }
     }
 
     private void showOwnerListingById(long chatId, Long listingId, Language lang) throws TelegramApiException {
         if (listingId == null) {
-            send(chatId, "Вкажи ID. Приклад: /admin_owner_view 7", Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.idRequired("admin_owner_view"), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
         Optional<OwnerListing> listing = ownerListingService.findById(listingId);
         if (listing.isEmpty()) {
-            send(chatId, "Оголошення не знайдено. ID: " + listingId, Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.notFound(listingId), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1476,28 +1407,25 @@ DigiReality owners: %d
 
     private void archiveOwnerListingById(long chatId, Long listingId, Language lang) throws TelegramApiException {
         if (listingId == null) {
-            send(chatId, "Вкажи ID. Приклад: /admin_owner_archive 7", Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.idRequired("admin_owner_archive"), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
         Optional<OwnerListing> listing = ownerListingService.findById(listingId);
         if (listing.isEmpty()) {
-            send(chatId, "Оголошення не знайдено. ID: " + listingId, Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.notFound(listingId), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
         OwnerListing archived = ownerListingService.archive(listing.get());
-        send(chatId,
-                "🗄 Оголошення приховано.\nID: " + archived.getId()
-                        + "\n\nВоно більше не потрапляє у видачу.",
-                Keyboards.persistentNavKeyboard(lang));
+        send(chatId, ownerListingAdminMessages.archived(archived), Keyboards.persistentNavKeyboard(lang));
     }
 
     private void sendOwnerListingAdminView(long chatId, OwnerListing listing) throws TelegramApiException {
         boolean approved = listing.getStatus() == OwnerListing.Status.APPROVED;
-        String text = ownerListingAdminDetails(listing);
+        String text = ownerListingAdminMessages.details(listing);
 
-        if (hasUsablePhotoUrl(listing.getPhotoFileId())) {
+        if (ownerListingAdminMessages.hasPhoto(listing)) {
             try {
                 telegramClient.execute(
                         SendPhoto.builder()
@@ -1516,107 +1444,10 @@ DigiReality owners: %d
         send(chatId, text, Keyboards.ownerListingAdminKeyboard(listing.getId(), approved));
     }
 
-    private String ownerListingAdminSummary(OwnerListing listing) {
-        return """
-                🏠 Оголошення від власника
-
-                ID: %d
-                Статус: %s
-                Регіон пошуку: %s
-                Локація: %s
-                Тип: %s
-                Ціна: %s
-                Назва: %s
-                """.formatted(
-                listing.getId(),
-                ownerListingStatusLabel(listing),
-                listing.getRegion() == null ? "—" : listing.getRegion().getTitle(),
-                nvl(listing.getLocality()),
-                nvl(listing.getLayout()),
-                listing.getPriceCzk() == null ? "—" : formatPrice(listing.getPriceCzk()),
-                nvl(listing.getTitle())
-        );
-    }
-
-    private String ownerListingAdminDetails(OwnerListing listing) {
-        return """
-                🏠 Оголошення від власника
-
-                ID: %d
-                Статус: %s
-                Автор: %s
-                Регіон пошуку: %s
-                Локація: %s
-                Тип: %s
-                Ціна: %s
-                Назва: %s
-                Опис: %s
-                Контакт: %s
-                Фото: %s
-                """.formatted(
-                listing.getId(),
-                ownerListingStatusLabel(listing),
-                ownerListingAuthorLabel(listing),
-                listing.getRegion() == null ? "—" : listing.getRegion().getTitle(),
-                nvl(listing.getLocality()),
-                nvl(listing.getLayout()),
-                listing.getPriceCzk() == null ? "—" : formatPrice(listing.getPriceCzk()),
-                nvl(listing.getTitle()),
-                nvl(listing.getDescription()),
-                nvl(listing.getContact()),
-                hasUsablePhotoUrl(listing.getPhotoFileId()) ? "є" : "немає"
-        );
-    }
-
-    private String ownerListingStatusLabel(OwnerListing listing) {
-        if (listing.getStatus() == OwnerListing.Status.APPROVED) {
-            return "опубліковано";
-        }
-        if (listing.getApprovedAt() == null) {
-            return "очікує модерації";
-        }
-        return "приховано";
-    }
-
-    private String ownerListingAuthorLabel(OwnerListing listing) {
-        if (listing.getCreatedByUsername() == null || listing.getCreatedByUsername().isBlank()) {
-            return String.valueOf(listing.getCreatedByTelegramId());
-        }
-        return "@" + listing.getCreatedByUsername() + " / " + listing.getCreatedByTelegramId();
-    }
-
     private void sendOwnerListingToAdmin(OwnerListing listing) throws TelegramApiException {
-        String author = listing.getCreatedByUsername() == null || listing.getCreatedByUsername().isBlank()
-                ? String.valueOf(listing.getCreatedByTelegramId())
-                : "@" + listing.getCreatedByUsername() + " / " + listing.getCreatedByTelegramId();
+        String text = ownerListingAdminMessages.moderationRequest(listing);
 
-        String text = """
-                🏠 Нова заявка: житло від власника
-
-                ID: %d
-                Автор: %s
-                Регіон пошуку: %s
-                Локація: %s
-                Тип: %s
-                Ціна: %s
-                Назва: %s
-                Опис: %s
-                Контакт: %s
-
-                Опублікувати оголошення?
-                """.formatted(
-                listing.getId(),
-                author,
-                listing.getRegion() == null ? "—" : listing.getRegion().getTitle(),
-                nvl(listing.getLocality()),
-                nvl(listing.getLayout()),
-                listing.getPriceCzk() == null ? "—" : formatPrice(listing.getPriceCzk()),
-                nvl(listing.getTitle()),
-                nvl(listing.getDescription()),
-                nvl(listing.getContact())
-        );
-
-        if (hasUsablePhotoUrl(listing.getPhotoFileId())) {
+        if (ownerListingAdminMessages.hasPhoto(listing)) {
             try {
                 telegramClient.execute(
                         SendPhoto.builder()
@@ -1641,19 +1472,7 @@ DigiReality owners: %d
         }
 
         Language lang = getUserLanguage(listing.getCreatedByTelegramId());
-        String text = approved
-                ? switch (lang) {
-                    case RU -> "✅ Ваше объявление опубликовано и теперь может появляться в выдаче.";
-                    case CZ -> "✅ Vaše nabídka byla zveřejněna a může se zobrazovat ve výsledcích.";
-                    case EN -> "✅ Your listing has been published and can now appear in search results.";
-                    default -> "✅ Ваше оголошення опубліковано і тепер може зʼявлятися у видачі.";
-                }
-                : switch (lang) {
-                    case RU -> "❌ Ваше объявление не было опубликовано после проверки.";
-                    case CZ -> "❌ Vaše nabídka nebyla po kontrole zveřejněna.";
-                    case EN -> "❌ Your listing was not published after review.";
-                    default -> "❌ Ваше оголошення не було опубліковано після перевірки.";
-                };
+        String text = ownerListingAdminMessages.authorNotification(lang, approved);
 
         try {
             send(listing.getCreatedByTelegramId(), text, Keyboards.persistentNavKeyboard(lang));
@@ -1872,7 +1691,7 @@ DigiReality owners: %d
 
         if (data.equals("OWNER:CANCEL")) {
             ownerListingDrafts.remove(userId);
-            send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
