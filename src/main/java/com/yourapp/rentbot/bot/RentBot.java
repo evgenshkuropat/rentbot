@@ -1260,69 +1260,6 @@ DigiReality owners: %d
         };
     }
 
-    private String ownerListingPricePromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "4/8 Цена в Kč. Например: 12990.";
-            case CZ -> "4/8 Cena v Kč. Například: 12990.";
-            case EN -> "4/8 Price in Kč. For example: 12990.";
-            default -> "4/8 Ціна в Kč. Наприклад: 12990.";
-        };
-    }
-
-    private String ownerListingPriceInvalidText(Language lang) {
-        return switch (lang) {
-            case RU -> "Цена должна быть числом. Например: 12990.";
-            case CZ -> "Cena musí být číslo. Například: 12990.";
-            case EN -> "Price must be a number. For example: 12990.";
-            default -> "Ціна має бути числом. Наприклад: 12990.";
-        };
-    }
-
-    private String ownerListingTitlePromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "5/8 Название объявления. Например: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
-            case CZ -> "5/8 Název nabídky. Například: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
-            case EN -> "5/8 Listing title. For example: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
-            default -> "5/8 Назва оголошення. Наприклад: Pronájem bytu 2+kk 39 m² Masarykova, Kolín.";
-        };
-    }
-
-    private String ownerListingTitleRequiredText(Language lang) {
-        return switch (lang) {
-            case RU -> "Название не может быть пустым.";
-            case CZ -> "Název nesmí být prázdný.";
-            case EN -> "Title cannot be empty.";
-            default -> "Назва не може бути пустою.";
-        };
-    }
-
-    private String ownerListingDescriptionPromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "6/8 Описание. Можно коротко: мебель, депозит, доступность. Если описания нет, напишите -";
-            case CZ -> "6/8 Popis. Stačí krátce: nábytek, kauce, dostupnost. Pokud popis není, napište -";
-            case EN -> "6/8 Description. Short is fine: furniture, deposit, availability. If there is no description, send -";
-            default -> "6/8 Опис. Можна коротко: меблі, депозит, доступність. Якщо опису немає, напишіть -";
-        };
-    }
-
-    private String ownerListingContactPromptText(Language lang) {
-        return switch (lang) {
-            case RU -> "7/8 Контакт владельца: телефон, Telegram или другой способ связи.";
-            case CZ -> "7/8 Kontakt na majitele: telefon, Telegram nebo jiný způsob spojení.";
-            case EN -> "7/8 Owner contact: phone, Telegram, or another contact method.";
-            default -> "7/8 Контакт власника: телефон, Telegram або інший спосіб зв'язку.";
-        };
-    }
-
-    private String ownerListingContactRequiredText(Language lang) {
-        return switch (lang) {
-            case RU -> "Контакт не может быть пустым.";
-            case CZ -> "Kontakt nesmí být prázdný.";
-            case EN -> "Contact cannot be empty.";
-            default -> "Контакт не може бути пустим.";
-        };
-    }
-
     private void onPhoto(Update update) throws TelegramApiException {
         long chatId = update.getMessage().getChatId();
         long userId = update.getMessage().getFrom().getId();
@@ -1385,36 +1322,36 @@ DigiReality owners: %d
                 }
                 draft.layout = layout;
                 draft.step = OwnerListingDraft.Step.PRICE;
-                send(chatId, ownerListingPricePromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.pricePrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case PRICE -> {
                 Integer price = ownerListingInputParser.price(text);
                 if (price == null) {
-                    send(chatId, ownerListingPriceInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.priceInvalid(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.priceCzk = price;
                 draft.step = OwnerListingDraft.Step.TITLE;
-                send(chatId, ownerListingTitlePromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.titlePrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case TITLE -> {
                 draft.title = ownerListingInputParser.required(text);
                 if (draft.title == null) {
-                    send(chatId, ownerListingTitleRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.titleRequired(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.DESCRIPTION;
-                send(chatId, ownerListingDescriptionPromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.descriptionPrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case DESCRIPTION -> {
                 draft.description = "-".equals(text.trim()) ? null : text.trim();
                 draft.step = OwnerListingDraft.Step.CONTACT;
-                send(chatId, ownerListingContactPromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.contactPrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case CONTACT -> {
                 draft.contact = ownerListingInputParser.required(text);
                 if (draft.contact == null) {
-                    send(chatId, ownerListingContactRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.contactRequired(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.PHOTO;
