@@ -1536,15 +1536,12 @@ DigiReality owners: %d
             Long listingId = parseLongOrNull(data.substring("OWNER:APPROVE:".length()));
             Optional<OwnerListing> approved = ownerListingModerationService.approvePending(listingId);
             if (approved.isEmpty()) {
-                send(chatId, "Заявку не знайдено або вона вже оброблена.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingAdminMessages.alreadyProcessed(), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
             OwnerListing approvedListing = approved.get();
-            send(chatId,
-                    "✅ Оголошення опубліковане.\nID: " + approvedListing.getId()
-                            + "\n\nВоно тепер бере участь у фільтрах як джерело «Власник».",
-                    Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.approved(approvedListing), Keyboards.persistentNavKeyboard(lang));
             notifyOwnerListingAuthor(approvedListing, true);
             return;
         }
@@ -1558,14 +1555,12 @@ DigiReality owners: %d
             Long listingId = parseLongOrNull(data.substring("OWNER:REJECT:".length()));
             Optional<OwnerListing> archived = ownerListingModerationService.rejectPending(listingId);
             if (archived.isEmpty()) {
-                send(chatId, "Заявку не знайдено або вона вже оброблена.", Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingAdminMessages.alreadyProcessed(), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
             OwnerListing archivedListing = archived.get();
-            send(chatId,
-                    "❌ Оголошення відхилене / відправлене в архів.\nID: " + archivedListing.getId(),
-                    Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingAdminMessages.rejected(archivedListing), Keyboards.persistentNavKeyboard(lang));
             notifyOwnerListingAuthor(archivedListing, false);
             return;
         }

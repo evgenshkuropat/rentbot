@@ -29,6 +29,19 @@ public class OwnerListingAdminMessages {
                 + "\n\nВоно більше не потрапляє у видачу.";
     }
 
+    public String alreadyProcessed() {
+        return "Заявку не знайдено або вона вже оброблена.";
+    }
+
+    public String approved(OwnerListing listing) {
+        return "✅ Оголошення опубліковане.\nID: " + listing.getId()
+                + "\n\nВоно тепер бере участь у фільтрах як джерело «Власник».";
+    }
+
+    public String rejected(OwnerListing listing) {
+        return "❌ Оголошення відхилене / відправлене в архів.\nID: " + listing.getId();
+    }
+
     public String summary(OwnerListing listing) {
         return """
                 🏠 Оголошення від власника
