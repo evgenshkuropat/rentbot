@@ -539,7 +539,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 Відкрили зміну параметрів: %d (%d користувачів)
 
 💎 Premium за 30 днів:
-Відкрили: %d · Обрали оплату: %d · Подали заявку: %d
+Відкрили: %d · Контекстна пропозиція: %d / натиснули: %d
+Обрали оплату: %d · Подали заявку: %d
 Підтверджено: %d · Відхилено: %d
 Активний зараз: %d · Закінчується за 7 днів: %d · Другий пошук налаштовано: %d
 
@@ -638,6 +639,8 @@ DigiReality owners: %d
                             searchStatusMetrics.editOpened(),
                             searchStatusMetrics.uniqueEditOpenedUsers(),
                             premiumMetrics.opened(),
+                            premiumMetrics.contextualOfferShown(),
+                            premiumMetrics.contextualOfferClicked(),
                             premiumMetrics.paymentMethodSelected(),
                             premiumMetrics.requestSubmitted(),
                             premiumMetrics.approved(),
@@ -2012,6 +2015,13 @@ DigiReality owners: %d
 
         Language lang = getUserLanguage(userId);
 
+        if (data.equals("PREMIUM:CONTEXTUAL_OFFER")) {
+            premiumMetricsService.record(userId, PremiumEvent.Type.CONTEXTUAL_OFFER_CLICKED);
+            premiumMetricsService.record(userId, PremiumEvent.Type.OPENED);
+            send(chatId, premiumViewService.paymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
+            return;
+        }
+
         if (data.equals("PREMIUM:REQUEST")) {
             send(chatId, premiumViewService.paymentIntro(lang), Keyboards.premiumPaymentMethodsKeyboard(lang));
             return;
@@ -2314,8 +2324,9 @@ DigiReality owners: %d
 
             if (added) {
                 answerCallback(callbackId, msg(userId, "favorites.added"));
-                if (favoriteService.countForUser(userId) == 3) {
-                    send(chatId, supportPromptText(lang), Keyboards.supportPromptKeyboard(lang));
+                if (favoriteService.countForUser(userId) == 3 && !premiumService.isActive(f)) {
+                    premiumMetricsService.record(userId, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN);
+                    send(chatId, premiumViewService.contextualOffer(lang), Keyboards.premiumContextualOfferKeyboard(lang));
                 }
             } else {
                 answerCallback(callbackId, msg(userId, "favorites.already.exists"));

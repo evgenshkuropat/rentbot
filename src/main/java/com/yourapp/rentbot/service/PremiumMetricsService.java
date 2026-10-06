@@ -31,6 +31,8 @@ public class PremiumMetricsService {
     public PremiumMetrics since(Instant cutoff, Instant now, Instant expiringBefore) {
         return new PremiumMetrics(
                 count(cutoff, PremiumEvent.Type.OPENED),
+                count(cutoff, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN),
+                count(cutoff, PremiumEvent.Type.CONTEXTUAL_OFFER_CLICKED),
                 count(cutoff, PremiumEvent.Type.PAYMENT_METHOD_SELECTED),
                 count(cutoff, PremiumEvent.Type.REQUEST_SUBMITTED),
                 count(cutoff, PremiumEvent.Type.APPROVED),
@@ -45,7 +47,8 @@ public class PremiumMetricsService {
         return events.countDistinctUsersByTypeSince(type, cutoff);
     }
 
-    public record PremiumMetrics(long opened, long paymentMethodSelected, long requestSubmitted,
+    public record PremiumMetrics(long opened, long contextualOfferShown, long contextualOfferClicked,
+                                 long paymentMethodSelected, long requestSubmitted,
                                  long approved, long rejected, long activeNow, long expiringWithin7Days,
                                  long secondSearchConfigured) { }
 }

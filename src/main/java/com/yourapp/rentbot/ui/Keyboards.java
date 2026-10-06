@@ -966,6 +966,18 @@ public class Keyboards {
         return InlineKeyboardMarkup.builder().keyboard(List.of(row)).build();
     }
 
+    public static InlineKeyboardMarkup premiumContextualOfferKeyboard(Language lang) {
+        String text = switch (lang) {
+            case RU -> "💎 Узнать о Premium";
+            case CZ -> "💎 Zjistit více o Premium";
+            case EN -> "💎 Explore Premium";
+            default -> "💎 Дізнатися про Premium";
+        };
+        return InlineKeyboardMarkup.builder().keyboard(List.of(new InlineKeyboardRow(
+                button(text, "PREMIUM:CONTEXTUAL_OFFER")
+        ))).build();
+    }
+
     public static InlineKeyboardMarkup ownerListingConfirmKeyboard() {
         return ownerListingConfirmKeyboard(Language.UA);
     }

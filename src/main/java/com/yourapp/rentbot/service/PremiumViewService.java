@@ -33,6 +33,15 @@ public class PremiumViewService {
         };
     }
 
+    public String contextualOffer(Language lang) {
+        return switch (lang) {
+            case RU -> "⭐ У вас уже 3 сохранённых варианта. Хотите искать сразу по двум настройкам — например, в другом районе или с другим бюджетом?\n\n💎 Premium даёт второй независимый поиск, приоритетную обработку и до 10 новых уведомлений за цикл.";
+            case CZ -> "⭐ Už máte 3 uložené nabídky. Chcete hledat podle dvou nastavení najednou — například v jiné lokalitě nebo s jiným rozpočtem?\n\n💎 Premium nabízí druhé nezávislé hledání, prioritní zpracování a až 10 nových upozornění za cyklus.";
+            case EN -> "⭐ You already have 3 saved listings. Want to search with two settings at once—for another area or budget?\n\n💎 Premium includes a second independent search, priority processing, and up to 10 new alerts per cycle.";
+            default -> "⭐ У вас уже 3 збережені варіанти. Хочете шукати одразу за двома налаштуваннями — наприклад, в іншому районі або з іншим бюджетом?\n\n💎 Premium дає другий незалежний пошук, пріоритетну обробку та до 10 нових сповіщень за цикл.";
+        };
+    }
+
     public String paymentInstructions(Language lang, String method, long userId) {
         String details = "RAIFFEISEN".equals(method) ? switch (lang) {
             case RU -> "Реквизиты: 972026002/5500"; case CZ -> "Účet: 972026002/5500";

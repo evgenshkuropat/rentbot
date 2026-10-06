@@ -9,7 +9,7 @@ import java.time.Instant;
 })
 public class PremiumEvent {
 
-    public enum Type { OPENED, PAYMENT_METHOD_SELECTED, REQUEST_SUBMITTED, APPROVED, REJECTED }
+    public enum Type { OPENED, CONTEXTUAL_OFFER_SHOWN, CONTEXTUAL_OFFER_CLICKED, PAYMENT_METHOD_SELECTED, REQUEST_SUBMITTED, APPROVED, REJECTED }
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

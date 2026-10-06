@@ -29,6 +29,8 @@ class PremiumMetricsServiceTest {
         PremiumMetricsService service = new PremiumMetricsService(events, users, searches);
 
         when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.OPENED, cutoff)).thenReturn(11L);
+        when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN, cutoff)).thenReturn(8L);
+        when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.CONTEXTUAL_OFFER_CLICKED, cutoff)).thenReturn(5L);
         when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.PAYMENT_METHOD_SELECTED, cutoff)).thenReturn(7L);
         when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.REQUEST_SUBMITTED, cutoff)).thenReturn(4L);
         when(events.countDistinctUsersByTypeSince(PremiumEvent.Type.APPROVED, cutoff)).thenReturn(3L);
@@ -38,6 +40,6 @@ class PremiumMetricsServiceTest {
         when(searches.countActiveForPremiumUsers(now)).thenReturn(6L);
 
         assertThat(service.since(cutoff, now, expiry)).isEqualTo(
-                new PremiumMetricsService.PremiumMetrics(11, 7, 4, 3, 1, 9, 2, 6));
+                new PremiumMetricsService.PremiumMetrics(11, 8, 5, 7, 4, 3, 1, 9, 2, 6));
     }
 }
