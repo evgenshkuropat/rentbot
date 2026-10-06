@@ -1373,7 +1373,7 @@ DigiReality owners: %d
                 }
 
                 send(chatId,
-                        ownerListingConfirmHelpText(lang),
+                        ownerListingMessages.confirmHelp(lang),
                         Keyboards.ownerListingConfirmKeyboard(lang));
             }
         }
@@ -1384,7 +1384,7 @@ DigiReality owners: %d
                                          OwnerListingDraft draft,
                                          Language lang) throws TelegramApiException {
         if (draft == null || !draft.readyToPublish()) {
-            send(chatId, ownerListingDraftNotReadyText(lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingMessages.draftNotReady(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1406,19 +1406,14 @@ DigiReality owners: %d
             saved = ownerListingService.savePending(listing);
         } catch (Exception e) {
             log.error("Owner listing save failed for user={}", userId, e);
-            send(chatId, ownerListingSubmitFailedText(lang), Keyboards.ownerListingConfirmKeyboard(lang));
+            send(chatId, ownerListingMessages.submitFailed(lang), Keyboards.ownerListingConfirmKeyboard(lang));
             return;
         }
 
         ownerListingDrafts.remove(userId);
 
         send(chatId,
-                switch (lang) {
-                    case RU -> "✅ Объявление отправлено на проверку.\n\nПосле модерации оно сможет появиться в выдаче.";
-                    case CZ -> "✅ Nabídka byla odeslána ke kontrole.\n\nPo schválení se může zobrazit ve výsledcích.";
-                    case EN -> "✅ Listing sent for review.\n\nAfter approval it can appear in search results.";
-                    default -> "✅ Оголошення надіслано на перевірку.\n\nПісля модерації воно зможе зʼявитися у видачі.";
-                },
+                ownerListingMessages.submitted(lang),
                 Keyboards.persistentNavKeyboard(lang));
 
         try {
@@ -1428,114 +1423,9 @@ DigiReality owners: %d
         }
     }
 
-    private String ownerListingSubmitFailedText(Language lang) {
-        return switch (lang) {
-            case RU -> "Не смог сохранить объявление. Попробуйте нажать ✅ Отправить ещё раз чуть позже.";
-            case CZ -> "Nabídku se nepodařilo uložit. Zkuste prosím stisknout ✅ Odeslat znovu za chvíli.";
-            case EN -> "Could not save the listing. Please press ✅ Send again in a moment.";
-            default -> "Не вдалося зберегти оголошення. Спробуйте натиснути ✅ Надіслати ще раз трохи пізніше.";
-        };
-    }
-
-    private String ownerListingDraftNotReadyText(Language lang) {
-        return switch (lang) {
-            case RU -> "Черновик не готов или уже отменён. Начните с /add_owner_listing.";
-            case CZ -> "Koncept není hotový nebo už byl zrušen. Začněte pomocí /add_owner_listing.";
-            case EN -> "The draft is not ready or was already cancelled. Start with /add_owner_listing.";
-            default -> "Чернетка не готова або вже скасована. Почніть з /add_owner_listing.";
-        };
-    }
-
-    private String ownerListingConfirmHelpText(Language lang) {
-        return switch (lang) {
-            case RU -> "Чтобы отправить объявление на проверку, нажмите ✅ Отправить или напишите Да.";
-            case CZ -> "Pro odeslání nabídky ke kontrole stiskněte ✅ Odeslat nebo napište Ano.";
-            case EN -> "To send the listing for review, press ✅ Send or type Yes.";
-            default -> "Щоб надіслати оголошення на перевірку, натисніть ✅ Надіслати або напишіть Так.";
-        };
-    }
-
-    private String ownerListingPreviewText(Language lang) {
-        return switch (lang) {
-            case RU -> """
-                    🏠 Объявление от владельца
-
-                    Город/округ: %s
-                    Локация: %s
-                    Тип: %s
-                    Цена: %s
-                    Название: %s
-                    Описание: %s
-                    Контакт: %s
-                    Фото: %s
-
-                    Отправить это объявление на проверку?
-                    """;
-            case CZ -> """
-                    🏠 Nabídka od majitele
-
-                    Město/okres: %s
-                    Lokalita: %s
-                    Typ: %s
-                    Cena: %s
-                    Název: %s
-                    Popis: %s
-                    Kontakt: %s
-                    Foto: %s
-
-                    Odeslat tuto nabídku ke kontrole?
-                    """;
-            case EN -> """
-                    🏠 Owner listing
-
-                    City/district: %s
-                    Location: %s
-                    Type: %s
-                    Price: %s
-                    Title: %s
-                    Description: %s
-                    Contact: %s
-                    Photo: %s
-
-                    Send this listing for review?
-                    """;
-            default -> """
-                    🏠 Оголошення від власника
-
-                    Місто/округ: %s
-                    Локація: %s
-                    Тип: %s
-                    Ціна: %s
-                    Назва: %s
-                    Опис: %s
-                    Контакт: %s
-                    Фото: %s
-
-                    Надіслати це оголошення на перевірку?
-                    """;
-        };
-    }
-
-    private String ownerListingHasPhotoText(Language lang) {
-        return switch (lang) {
-            case RU -> "есть";
-            case CZ -> "ano";
-            case EN -> "yes";
-            default -> "є";
-        };
-    }
-
-    private String ownerListingNoPhotoText(Language lang) {
-        return switch (lang) {
-            case RU -> "нет";
-            case CZ -> "ne";
-            case EN -> "no";
-            default -> "немає";
-        };
-    }
-
     private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft, Language lang) throws TelegramApiException {
-        String preview = ownerListingPreviewText(lang).formatted(
+        String preview = ownerListingMessages.preview(
+                lang,
                 draft.region == null ? "—" : draft.region.getTitle(),
                 nvl(draft.locality),
                 nvl(draft.layout),
@@ -1543,7 +1433,7 @@ DigiReality owners: %d
                 nvl(draft.title),
                 nvl(draft.description),
                 nvl(draft.contact),
-                draft.photoFileId == null ? ownerListingNoPhotoText(lang) : ownerListingHasPhotoText(lang)
+                draft.photoFileId != null
         );
 
         send(chatId, preview, Keyboards.ownerListingConfirmKeyboard(lang));
@@ -1972,7 +1862,7 @@ DigiReality owners: %d
         if (data.equals("OWNER:SUBMIT")) {
             OwnerListingDraft draft = ownerListingDrafts.get(userId);
             if (draft == null || !draft.readyToPublish()) {
-                send(chatId, ownerListingDraftNotReadyText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.draftNotReady(lang), Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
