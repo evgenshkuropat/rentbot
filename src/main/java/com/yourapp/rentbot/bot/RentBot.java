@@ -24,6 +24,7 @@ import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.OwnerListingInputParser;
+import com.yourapp.rentbot.service.OwnerListingMessages;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
@@ -85,6 +86,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final NotificationService notificationService;
     private final OwnerListingService ownerListingService;
     private final OwnerListingInputParser ownerListingInputParser;
+    private final OwnerListingMessages ownerListingMessages;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -142,6 +144,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             NotificationService notificationService,
             OwnerListingService ownerListingService,
             OwnerListingInputParser ownerListingInputParser,
+            OwnerListingMessages ownerListingMessages,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
@@ -175,6 +178,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.notificationService = notificationService;
         this.ownerListingService = ownerListingService;
         this.ownerListingInputParser = ownerListingInputParser;
+        this.ownerListingMessages = ownerListingMessages;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -396,7 +400,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
         if (text.equalsIgnoreCase("/cancel") && ownerListingDrafts.containsKey(userId)) {
             ownerListingDrafts.remove(userId);
-            send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
@@ -1181,46 +1185,7 @@ DigiReality owners: %d
         draft.createdByUsername = username;
         ownerListingDrafts.put(userId, draft);
 
-        send(chatId,
-                switch (lang) {
-                    case RU -> """
-                            🏠 Добавить жильё
-
-                            Заполните короткую анкету. После проверки объявление сможет появиться в боте для людей, которым оно подходит по фильтру.
-
-                            1/8 Напишите город или округ, например: Praha, Brno, Kolín, Plzeň.
-
-                            Отменить: /cancel
-                            """;
-                    case CZ -> """
-                            🏠 Přidat bydlení
-
-                            Vyplňte krátký formulář. Po kontrole se nabídka může zobrazit lidem, kterým odpovídá podle filtru.
-
-                            1/8 Napište město nebo okres, například: Praha, Brno, Kolín, Plzeň.
-
-                            Zrušit: /cancel
-                            """;
-                    case EN -> """
-                            🏠 Add listing
-
-                            Fill in a short form. After review, the listing can appear in the bot for people whose filter matches it.
-
-                            1/8 Send the city or district, for example: Praha, Brno, Kolín, Plzeň.
-
-                            Cancel: /cancel
-                            """;
-                    default -> """
-                            🏠 Додати житло
-
-                            Заповніть коротку анкету. Після перевірки оголошення може зʼявитися в боті для людей, яким воно підходить за фільтром.
-
-                            1/8 Напишіть місто або округ, наприклад: Praha, Brno, Kolín, Plzeň.
-
-                            Скасувати: /cancel
-                            """;
-                },
-                Keyboards.persistentNavKeyboard(lang));
+        send(chatId, ownerListingMessages.start(lang), Keyboards.persistentNavKeyboard(lang));
     }
 
     private String ownerListingCancelledText(Language lang) {
@@ -1369,13 +1334,13 @@ DigiReality owners: %d
         }
 
         if (draft.step != OwnerListingDraft.Step.PHOTO) {
-            send(chatId, ownerListingUnexpectedPhotoText(lang, draft.stepLabel(lang)), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingMessages.unexpectedPhoto(lang, draft.stepLabel(lang)), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
         List<PhotoSize> photos = update.getMessage().getPhoto();
         if (photos == null || photos.isEmpty()) {
-            send(chatId, ownerListingPhotoRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+            send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
