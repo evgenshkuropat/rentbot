@@ -23,8 +23,6 @@ import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
-import com.yourapp.rentbot.service.OwnerListingInputParser;
-import com.yourapp.rentbot.service.OwnerListingMessages;
 import com.yourapp.rentbot.service.OwnerListingAdminMessages;
 import com.yourapp.rentbot.service.OwnerListingModerationService;
 import com.yourapp.rentbot.service.ParserService;
@@ -87,10 +85,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final SchedulerService schedulerService;
     private final NotificationService notificationService;
     private final OwnerListingService ownerListingService;
-    private final OwnerListingInputParser ownerListingInputParser;
-    private final OwnerListingMessages ownerListingMessages;
     private final OwnerListingAdminMessages ownerListingAdminMessages;
     private final OwnerListingModerationService ownerListingModerationService;
+    private final OwnerListingFormHandler ownerListingFormHandler;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -128,7 +125,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final Map<Long, Integer> searchOffset = new HashMap<>();
     private final Map<Long, Integer> searchCurrentIndex = new HashMap<>();
     private final Map<Long, String> filterEditMode = new HashMap<>();
-    private final Map<Long, OwnerListingDraft> ownerListingDrafts = new HashMap<>();
     private static final int PAGE_SIZE = 10;
     private static final String EDIT_CITY = "CITY";
     private static final String EDIT_DISTRICT = "DISTRICT";
@@ -147,10 +143,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SchedulerService schedulerService,
             NotificationService notificationService,
             OwnerListingService ownerListingService,
-            OwnerListingInputParser ownerListingInputParser,
-            OwnerListingMessages ownerListingMessages,
             OwnerListingAdminMessages ownerListingAdminMessages,
             OwnerListingModerationService ownerListingModerationService,
+            OwnerListingFormHandler ownerListingFormHandler,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
@@ -183,10 +178,9 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.schedulerService = schedulerService;
         this.notificationService = notificationService;
         this.ownerListingService = ownerListingService;
-        this.ownerListingInputParser = ownerListingInputParser;
-        this.ownerListingMessages = ownerListingMessages;
         this.ownerListingAdminMessages = ownerListingAdminMessages;
         this.ownerListingModerationService = ownerListingModerationService;
+        this.ownerListingFormHandler = ownerListingFormHandler;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -402,23 +396,22 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         Language lang = getUserLanguage(userId);
 
         if (text.equalsIgnoreCase("/add_owner_listing")) {
-            startOwnerListingDraft(chatId, userId, update.getMessage().getFrom().getUserName(), lang);
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.start(userId, update.getMessage().getFrom().getUserName(), lang), lang);
             return;
         }
 
-        if (text.equalsIgnoreCase("/cancel") && ownerListingDrafts.containsKey(userId)) {
-            ownerListingDrafts.remove(userId);
-            send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
+        if (text.equalsIgnoreCase("/cancel") && ownerListingFormHandler.hasDraft(userId)) {
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.cancel(userId, lang), lang);
             return;
         }
 
-        if (ownerListingDrafts.containsKey(userId) && !isPersistentMenuText(text)) {
-            handleOwnerListingText(chatId, userId, text, lang);
+        if (ownerListingFormHandler.hasDraft(userId) && !isPersistentMenuText(text)) {
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.handleText(userId, text, lang), lang);
             return;
         }
 
-        if (ownerListingDrafts.containsKey(userId)) {
-            ownerListingDrafts.remove(userId);
+        if (ownerListingFormHandler.hasDraft(userId)) {
+            ownerListingFormHandler.discard(userId);
         }
 
         if (text.equalsIgnoreCase("/admin")) {
@@ -998,7 +991,7 @@ DigiReality owners: %d
                 || text.equals("🏠 Добавить жильё от собственника")
                 || text.equals("🏠 Přidat nabídku od majitele")
                 || text.equals("🏠 Add owner listing")) {
-            startOwnerListingDraft(chatId, userId, update.getMessage().getFrom().getUserName(), lang);
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.start(userId, update.getMessage().getFrom().getUserName(), lang), lang);
             return;
         }
 
@@ -1188,191 +1181,34 @@ DigiReality owners: %d
                 || text.equals("📦 Other services");
     }
 
-    private void startOwnerListingDraft(long chatId, long userId, String username, Language lang) throws TelegramApiException {
-        OwnerListingDraft draft = new OwnerListingDraft();
-        draft.createdByUsername = username;
-        ownerListingDrafts.put(userId, draft);
-
-        send(chatId, ownerListingMessages.start(lang), Keyboards.persistentNavKeyboard(lang));
-    }
-
     private void onPhoto(Update update) throws TelegramApiException {
         long chatId = update.getMessage().getChatId();
         long userId = update.getMessage().getFrom().getId();
         Language lang = getUserLanguage(userId);
-
-        OwnerListingDraft draft = ownerListingDrafts.get(userId);
-        if (draft == null) {
+        if (!ownerListingFormHandler.hasDraft(userId)) {
             return;
         }
-
-        if (draft.step != OwnerListingDraft.Step.PHOTO) {
-            send(chatId, ownerListingMessages.unexpectedPhoto(lang, draft.stepLabel(lang)), Keyboards.persistentNavKeyboard(lang));
-            return;
-        }
-
         List<PhotoSize> photos = update.getMessage().getPhoto();
-        if (photos == null || photos.isEmpty()) {
-            send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
-            return;
-        }
-
-        draft.photoFileId = photos.get(photos.size() - 1).getFileId();
-        draft.step = OwnerListingDraft.Step.CONFIRM;
-        sendOwnerListingPreview(chatId, draft, lang);
+        String photoFileId = photos == null || photos.isEmpty() ? null : photos.get(photos.size() - 1).getFileId();
+        sendOwnerListingFormResult(chatId, ownerListingFormHandler.handlePhoto(userId, photoFileId, lang), lang);
     }
 
-    private void handleOwnerListingText(long chatId, long userId, String text, Language lang) throws TelegramApiException {
-        OwnerListingDraft draft = ownerListingDrafts.get(userId);
-        if (draft == null) {
+    private void sendOwnerListingFormResult(long chatId,
+                                            OwnerListingFormHandler.Result result,
+                                            Language lang) throws TelegramApiException {
+        if (result == null) {
             return;
         }
-
-        switch (draft.step) {
-            case CITY -> {
-                Optional<Region> region = ownerListingInputParser.findRegion(text);
-                if (region.isEmpty()) {
-                    send(chatId,
-                            ownerListingMessages.regionNotFound(lang),
-                            Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.region = region.get();
-                draft.step = OwnerListingDraft.Step.LOCALITY;
-                send(chatId, ownerListingMessages.localityPrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case LOCALITY -> {
-                draft.locality = ownerListingInputParser.required(text);
-                if (draft.locality == null) {
-                    send(chatId, ownerListingMessages.localityRequired(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.step = OwnerListingDraft.Step.LAYOUT;
-                send(chatId, ownerListingMessages.layoutPrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case LAYOUT -> {
-                String layout = ownerListingInputParser.layout(text);
-                if (layout == null) {
-                    send(chatId, ownerListingMessages.layoutInvalid(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.layout = layout;
-                draft.step = OwnerListingDraft.Step.PRICE;
-                send(chatId, ownerListingMessages.pricePrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case PRICE -> {
-                Integer price = ownerListingInputParser.price(text);
-                if (price == null) {
-                    send(chatId, ownerListingMessages.priceInvalid(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.priceCzk = price;
-                draft.step = OwnerListingDraft.Step.TITLE;
-                send(chatId, ownerListingMessages.titlePrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case TITLE -> {
-                draft.title = ownerListingInputParser.required(text);
-                if (draft.title == null) {
-                    send(chatId, ownerListingMessages.titleRequired(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.step = OwnerListingDraft.Step.DESCRIPTION;
-                send(chatId, ownerListingMessages.descriptionPrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case DESCRIPTION -> {
-                draft.description = "-".equals(text.trim()) ? null : text.trim();
-                draft.step = OwnerListingDraft.Step.CONTACT;
-                send(chatId, ownerListingMessages.contactPrompt(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case CONTACT -> {
-                draft.contact = ownerListingInputParser.required(text);
-                if (draft.contact == null) {
-                    send(chatId, ownerListingMessages.contactRequired(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-                draft.step = OwnerListingDraft.Step.PHOTO;
-                send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case PHOTO -> {
-                send(chatId, ownerListingMessages.photoRequired(lang), Keyboards.persistentNavKeyboard(lang));
-            }
-            case CONFIRM -> {
-                if (ownerListingInputParser.isSubmit(text)) {
-                    submitOwnerListingDraft(chatId, userId, draft, lang);
-                    return;
-                }
-
-                if (ownerListingInputParser.isCancel(text)) {
-                    ownerListingDrafts.remove(userId);
-                    send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
-                    return;
-                }
-
-                send(chatId,
-                        ownerListingMessages.confirmHelp(lang),
-                        Keyboards.ownerListingConfirmKeyboard(lang));
+        send(chatId, result.text(), result.keyboard() == OwnerListingFormHandler.ReplyKeyboard.CONFIRM
+                ? Keyboards.ownerListingConfirmKeyboard(lang)
+                : Keyboards.persistentNavKeyboard(lang));
+        if (result.submittedListing() != null) {
+            try {
+                sendOwnerListingToAdmin(result.submittedListing());
+            } catch (Exception e) {
+                log.warn("Owner listing admin notification failed for listing={}", result.submittedListing().getId(), e);
             }
         }
-    }
-
-    private void submitOwnerListingDraft(long chatId,
-                                         long userId,
-                                         OwnerListingDraft draft,
-                                         Language lang) throws TelegramApiException {
-        if (draft == null || !draft.readyToPublish()) {
-            send(chatId, ownerListingMessages.draftNotReady(lang), Keyboards.persistentNavKeyboard(lang));
-            return;
-        }
-
-        OwnerListing listing = new OwnerListing();
-        listing.setCreatedByTelegramId(userId);
-        listing.setCreatedByUsername(draft.createdByUsername);
-        listing.setRegion(draft.region);
-        listing.setLocality(draft.locality);
-        listing.setLayout(draft.layout);
-        listing.setPriceCzk(draft.priceCzk);
-        listing.setTitle(draft.title);
-        listing.setDescription(draft.description);
-        listing.setContact(draft.contact);
-        listing.setPhotoFileId(draft.photoFileId);
-        listing.setCreatedAt(Instant.now());
-
-        OwnerListing saved;
-        try {
-            saved = ownerListingService.savePending(listing);
-        } catch (Exception e) {
-            log.error("Owner listing save failed for user={}", userId, e);
-            send(chatId, ownerListingMessages.submitFailed(lang), Keyboards.ownerListingConfirmKeyboard(lang));
-            return;
-        }
-
-        ownerListingDrafts.remove(userId);
-
-        send(chatId,
-                ownerListingMessages.submitted(lang),
-                Keyboards.persistentNavKeyboard(lang));
-
-        try {
-            sendOwnerListingToAdmin(saved);
-        } catch (Exception e) {
-            log.warn("Owner listing admin notification failed for listing={}", saved.getId(), e);
-        }
-    }
-
-    private void sendOwnerListingPreview(long chatId, OwnerListingDraft draft, Language lang) throws TelegramApiException {
-        String preview = ownerListingMessages.preview(
-                lang,
-                draft.region == null ? "—" : draft.region.getTitle(),
-                nvl(draft.locality),
-                nvl(draft.layout),
-                draft.priceCzk == null ? "—" : formatPrice(draft.priceCzk),
-                nvl(draft.title),
-                nvl(draft.description),
-                nvl(draft.contact),
-                draft.photoFileId != null
-        );
-
-        send(chatId, preview, Keyboards.ownerListingConfirmKeyboard(lang));
     }
 
     private void sendOwnerListingsList(long chatId, int limit) throws TelegramApiException {
@@ -1682,19 +1518,12 @@ DigiReality owners: %d
         }
 
         if (data.equals("OWNER:SUBMIT")) {
-            OwnerListingDraft draft = ownerListingDrafts.get(userId);
-            if (draft == null || !draft.readyToPublish()) {
-                send(chatId, ownerListingMessages.draftNotReady(lang), Keyboards.persistentNavKeyboard(lang));
-                return;
-            }
-
-            submitOwnerListingDraft(chatId, userId, draft, lang);
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.submit(userId, lang), lang);
             return;
         }
 
         if (data.equals("OWNER:CANCEL")) {
-            ownerListingDrafts.remove(userId);
-            send(chatId, ownerListingMessages.cancelled(lang), Keyboards.persistentNavKeyboard(lang));
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.cancel(userId, lang), lang);
             return;
         }
 
@@ -1967,7 +1796,7 @@ DigiReality owners: %d
         }
 
         if (data.startsWith("SERVICE:OWNER_LISTING")) {
-            startOwnerListingDraft(chatId, userId, update.getCallbackQuery().getFrom().getUserName(), lang);
+            sendOwnerListingFormResult(chatId, ownerListingFormHandler.start(userId, update.getCallbackQuery().getFrom().getUserName(), lang), lang);
             return;
         }
 
