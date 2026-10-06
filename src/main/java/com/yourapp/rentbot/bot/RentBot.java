@@ -23,6 +23,7 @@ import com.yourapp.rentbot.service.FavoriteService;
 import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
+import com.yourapp.rentbot.service.OwnerListingInputParser;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
@@ -57,7 +58,6 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
 import com.yourapp.rentbot.service.dto.SchedulerRunStats;
 
-import java.text.Normalizer;
 import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -84,6 +84,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final SchedulerService schedulerService;
     private final NotificationService notificationService;
     private final OwnerListingService ownerListingService;
+    private final OwnerListingInputParser ownerListingInputParser;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -140,6 +141,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             SchedulerService schedulerService,
             NotificationService notificationService,
             OwnerListingService ownerListingService,
+            OwnerListingInputParser ownerListingInputParser,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
@@ -172,6 +174,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.schedulerService = schedulerService;
         this.notificationService = notificationService;
         this.ownerListingService = ownerListingService;
+        this.ownerListingInputParser = ownerListingInputParser;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -1389,7 +1392,7 @@ DigiReality owners: %d
 
         switch (draft.step) {
             case CITY -> {
-                Optional<Region> region = findRegionByInput(text);
+                Optional<Region> region = ownerListingInputParser.findRegion(text);
                 if (region.isEmpty()) {
                     send(chatId,
                             ownerListingRegionNotFoundText(lang),
@@ -1401,7 +1404,7 @@ DigiReality owners: %d
                 send(chatId, ownerListingLocalityPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LOCALITY -> {
-                draft.locality = cleanRequired(text);
+                draft.locality = ownerListingInputParser.required(text);
                 if (draft.locality == null) {
                     send(chatId, ownerListingLocalityRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1410,7 +1413,7 @@ DigiReality owners: %d
                 send(chatId, ownerListingLayoutPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LAYOUT -> {
-                String layout = normalizeOwnerLayout(text);
+                String layout = ownerListingInputParser.layout(text);
                 if (layout == null) {
                     send(chatId, ownerListingLayoutInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1420,7 +1423,7 @@ DigiReality owners: %d
                 send(chatId, ownerListingPricePromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case PRICE -> {
-                Integer price = parseOwnerPrice(text);
+                Integer price = ownerListingInputParser.price(text);
                 if (price == null) {
                     send(chatId, ownerListingPriceInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1430,7 +1433,7 @@ DigiReality owners: %d
                 send(chatId, ownerListingTitlePromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case TITLE -> {
-                draft.title = cleanRequired(text);
+                draft.title = ownerListingInputParser.required(text);
                 if (draft.title == null) {
                     send(chatId, ownerListingTitleRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1444,7 +1447,7 @@ DigiReality owners: %d
                 send(chatId, ownerListingContactPromptText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case CONTACT -> {
-                draft.contact = cleanRequired(text);
+                draft.contact = ownerListingInputParser.required(text);
                 if (draft.contact == null) {
                     send(chatId, ownerListingContactRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1456,12 +1459,12 @@ DigiReality owners: %d
                 send(chatId, ownerListingPhotoRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case CONFIRM -> {
-                if (isOwnerListingSubmitText(text)) {
+                if (ownerListingInputParser.isSubmit(text)) {
                     submitOwnerListingDraft(chatId, userId, draft, lang);
                     return;
                 }
 
-                if (isOwnerListingCancelText(text)) {
+                if (ownerListingInputParser.isCancel(text)) {
                     ownerListingDrafts.remove(userId);
                     send(chatId, ownerListingCancelledText(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
@@ -1472,81 +1475,6 @@ DigiReality owners: %d
                         Keyboards.ownerListingConfirmKeyboard(lang));
             }
         }
-    }
-
-    private Optional<Region> findRegionByInput(String input) {
-        String normalized = normalizeSearch(input);
-        if (normalized.isBlank()) {
-            return Optional.empty();
-        }
-
-        return regionRepo.findAll().stream()
-                .filter(region -> normalizeSearch(region.getTitle()).equals(normalized)
-                        || normalizeSearch(region.getCode()).equals(normalized))
-                .findFirst()
-                .or(() -> regionRepo.findAll().stream()
-                        .filter(region -> normalizeSearch(region.getTitle()).contains(normalized)
-                                || normalized.contains(normalizeSearch(region.getTitle())))
-                        .findFirst());
-    }
-
-    private String normalizeSearch(String value) {
-        if (value == null) {
-            return "";
-        }
-        String noAccents = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        return noAccents.toLowerCase()
-                .replaceAll("[^a-z0-9]+", "");
-    }
-
-    private String normalizeOwnerLayout(String text) {
-        if (text == null) {
-            return null;
-        }
-        String normalized = normalizeSearch(text);
-        if (normalized.equals("room")
-                || normalized.contains("kimnata")
-                || normalized.contains("komnata")
-                || normalized.contains("pokoj")) {
-            return "ROOM";
-        }
-        if (normalized.startsWith("1")) {
-            return "1";
-        }
-        if (normalized.startsWith("2")) {
-            return "2";
-        }
-        if (normalized.startsWith("3")) {
-            return "3";
-        }
-        if (normalized.startsWith("4")) {
-            return "4";
-        }
-        return null;
-    }
-
-    private Integer parseOwnerPrice(String text) {
-        if (text == null) {
-            return null;
-        }
-        String digits = text.replaceAll("[^0-9]", "");
-        if (digits.isBlank()) {
-            return null;
-        }
-        try {
-            int price = Integer.parseInt(digits);
-            return price > 0 ? price : null;
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private String cleanRequired(String text) {
-        if (text == null || text.isBlank() || "-".equals(text.trim())) {
-            return null;
-        }
-        return text.trim();
     }
 
     private void submitOwnerListingDraft(long chatId,
@@ -1614,57 +1542,6 @@ DigiReality owners: %d
             case EN -> "The draft is not ready or was already cancelled. Start with /add_owner_listing.";
             default -> "Чернетка не готова або вже скасована. Почніть з /add_owner_listing.";
         };
-    }
-
-    private boolean isOwnerListingSubmitText(String text) {
-        String lower = text == null ? "" : text.trim().toLowerCase();
-        if (lower.equals("так")
-                || lower.equals("та")
-                || lower.equals("да")
-                || lower.equals("отправить")
-                || lower.equals("надіслати")
-                || lower.equals("відправити")
-                || lower.equals("відправ")
-                || lower.equals("odeslat")) {
-            return true;
-        }
-
-        String normalized = normalizeSearch(text);
-        return normalized.equals("tak")
-                || normalized.equals("ta")
-                || normalized.equals("yes")
-                || normalized.equals("y")
-                || normalized.equals("da")
-                || normalized.equals("ano")
-                || normalized.equals("ok")
-                || normalized.equals("send")
-                || normalized.equals("submit")
-                || normalized.equals("nadislat")
-                || normalized.equals("vidpravyty")
-                || normalized.equals("odeslat")
-                || normalized.equals("otpravit");
-    }
-
-    private boolean isOwnerListingCancelText(String text) {
-        String lower = text == null ? "" : text.trim().toLowerCase();
-        if (lower.equals("ні")
-                || lower.equals("нет")
-                || lower.equals("скасувати")
-                || lower.equals("отмена")
-                || lower.equals("отменить")
-                || lower.equals("zrušit")
-                || lower.equals("zrusit")) {
-            return true;
-        }
-
-        String normalized = normalizeSearch(text);
-        return normalized.equals("ni")
-                || normalized.equals("no")
-                || normalized.equals("ne")
-                || normalized.equals("net")
-                || normalized.equals("cancel")
-                || normalized.equals("skasuvaty")
-                || normalized.equals("otmena");
     }
 
     private String ownerListingConfirmHelpText(Language lang) {
