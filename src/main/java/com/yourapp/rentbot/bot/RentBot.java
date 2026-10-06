@@ -1360,27 +1360,27 @@ DigiReality owners: %d
                 Optional<Region> region = ownerListingInputParser.findRegion(text);
                 if (region.isEmpty()) {
                     send(chatId,
-                            ownerListingRegionNotFoundText(lang),
+                            ownerListingMessages.regionNotFound(lang),
                             Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.region = region.get();
                 draft.step = OwnerListingDraft.Step.LOCALITY;
-                send(chatId, ownerListingLocalityPromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.localityPrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LOCALITY -> {
                 draft.locality = ownerListingInputParser.required(text);
                 if (draft.locality == null) {
-                    send(chatId, ownerListingLocalityRequiredText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.localityRequired(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.step = OwnerListingDraft.Step.LAYOUT;
-                send(chatId, ownerListingLayoutPromptText(lang), Keyboards.persistentNavKeyboard(lang));
+                send(chatId, ownerListingMessages.layoutPrompt(lang), Keyboards.persistentNavKeyboard(lang));
             }
             case LAYOUT -> {
                 String layout = ownerListingInputParser.layout(text);
                 if (layout == null) {
-                    send(chatId, ownerListingLayoutInvalidText(lang), Keyboards.persistentNavKeyboard(lang));
+                    send(chatId, ownerListingMessages.layoutInvalid(lang), Keyboards.persistentNavKeyboard(lang));
                     return;
                 }
                 draft.layout = layout;
