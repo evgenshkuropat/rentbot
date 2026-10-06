@@ -26,6 +26,7 @@ import com.yourapp.rentbot.service.OwnerListingService;
 import com.yourapp.rentbot.service.OwnerListingInputParser;
 import com.yourapp.rentbot.service.OwnerListingMessages;
 import com.yourapp.rentbot.service.OwnerListingAdminMessages;
+import com.yourapp.rentbot.service.OwnerListingModerationService;
 import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
@@ -89,6 +90,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final OwnerListingInputParser ownerListingInputParser;
     private final OwnerListingMessages ownerListingMessages;
     private final OwnerListingAdminMessages ownerListingAdminMessages;
+    private final OwnerListingModerationService ownerListingModerationService;
     private final FavoriteService favoriteService;
     private final ListingCacheService listingCacheService;
     private final MessageService messageService;
@@ -148,6 +150,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             OwnerListingInputParser ownerListingInputParser,
             OwnerListingMessages ownerListingMessages,
             OwnerListingAdminMessages ownerListingAdminMessages,
+            OwnerListingModerationService ownerListingModerationService,
             FavoriteService favoriteService,
             ListingCacheService listingCacheService,
             MessageService messageService,
@@ -183,6 +186,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.ownerListingInputParser = ownerListingInputParser;
         this.ownerListingMessages = ownerListingMessages;
         this.ownerListingAdminMessages = ownerListingAdminMessages;
+        this.ownerListingModerationService = ownerListingModerationService;
         this.favoriteService = favoriteService;
         this.listingCacheService = listingCacheService;
         this.messageService = messageService;
@@ -1411,14 +1415,13 @@ DigiReality owners: %d
             return;
         }
 
-        Optional<OwnerListing> listing = ownerListingService.findById(listingId);
-        if (listing.isEmpty()) {
+        Optional<OwnerListing> archived = ownerListingModerationService.archive(listingId);
+        if (archived.isEmpty()) {
             send(chatId, ownerListingAdminMessages.notFound(listingId), Keyboards.persistentNavKeyboard(lang));
             return;
         }
 
-        OwnerListing archived = ownerListingService.archive(listing.get());
-        send(chatId, ownerListingAdminMessages.archived(archived), Keyboards.persistentNavKeyboard(lang));
+        send(chatId, ownerListingAdminMessages.archived(archived.get()), Keyboards.persistentNavKeyboard(lang));
     }
 
     private void sendOwnerListingAdminView(long chatId, OwnerListing listing) throws TelegramApiException {
@@ -1702,21 +1705,18 @@ DigiReality owners: %d
             }
 
             Long listingId = parseLongOrNull(data.substring("OWNER:APPROVE:".length()));
-            Optional<OwnerListing> pending = listingId == null
-                    ? Optional.empty()
-                    : ownerListingService.findPending(listingId);
-
-            if (pending.isEmpty()) {
+            Optional<OwnerListing> approved = ownerListingModerationService.approvePending(listingId);
+            if (approved.isEmpty()) {
                 send(chatId, "Заявку не знайдено або вона вже оброблена.", Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
-            OwnerListing approved = ownerListingService.approve(pending.get());
+            OwnerListing approvedListing = approved.get();
             send(chatId,
-                    "✅ Оголошення опубліковане.\nID: " + approved.getId()
+                    "✅ Оголошення опубліковане.\nID: " + approvedListing.getId()
                             + "\n\nВоно тепер бере участь у фільтрах як джерело «Власник».",
                     Keyboards.persistentNavKeyboard(lang));
-            notifyOwnerListingAuthor(approved, true);
+            notifyOwnerListingAuthor(approvedListing, true);
             return;
         }
 
@@ -1727,20 +1727,17 @@ DigiReality owners: %d
             }
 
             Long listingId = parseLongOrNull(data.substring("OWNER:REJECT:".length()));
-            Optional<OwnerListing> pending = listingId == null
-                    ? Optional.empty()
-                    : ownerListingService.findPending(listingId);
-
-            if (pending.isEmpty()) {
+            Optional<OwnerListing> archived = ownerListingModerationService.rejectPending(listingId);
+            if (archived.isEmpty()) {
                 send(chatId, "Заявку не знайдено або вона вже оброблена.", Keyboards.persistentNavKeyboard(lang));
                 return;
             }
 
-            OwnerListing archived = ownerListingService.archive(pending.get());
+            OwnerListing archivedListing = archived.get();
             send(chatId,
-                    "❌ Оголошення відхилене / відправлене в архів.\nID: " + archived.getId(),
+                    "❌ Оголошення відхилене / відправлене в архів.\nID: " + archivedListing.getId(),
                     Keyboards.persistentNavKeyboard(lang));
-            notifyOwnerListingAuthor(archived, false);
+            notifyOwnerListingAuthor(archivedListing, false);
             return;
         }
 
