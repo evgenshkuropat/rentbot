@@ -42,4 +42,14 @@ class PremiumMetricsServiceTest {
         assertThat(service.since(cutoff, now, expiry)).isEqualTo(
                 new PremiumMetricsService.PremiumMetrics(11, 8, 5, 7, 4, 3, 1, 9, 2, 6));
     }
+
+    @Test
+    void detectsWhetherContextualOfferWasAlreadyShown() {
+        PremiumMetricsService service = new PremiumMetricsService(events, users, searches);
+        when(events.existsByTelegramUserIdAndType(42L, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN))
+                .thenReturn(true);
+
+        assertThat(service.hasContextualOffer(42L)).isTrue();
+        assertThat(service.hasContextualOffer(null)).isFalse();
+    }
 }

@@ -7,6 +7,8 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 
 public interface PremiumEventRepo extends JpaRepository<PremiumEvent, Long> {
+    boolean existsByTelegramUserIdAndType(Long telegramUserId, PremiumEvent.Type type);
+
     @Query("select count(distinct event.telegramUserId) from PremiumEvent event where event.type = :type and event.createdAt >= :cutoff")
     long countDistinctUsersByTypeSince(@Param("type") PremiumEvent.Type type, @Param("cutoff") Instant cutoff);
 }

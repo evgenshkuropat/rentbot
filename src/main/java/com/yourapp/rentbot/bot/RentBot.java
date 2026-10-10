@@ -1633,7 +1633,7 @@ DigiReality owners: %d
 
             if (added) {
                 answerCallback(callbackId, msg(userId, "favorites.added"));
-                if (favoriteService.countForUser(userId) == 3 && !premiumService.isActive(f)) {
+                if (!premiumService.isActive(f) && !premiumMetricsService.hasContextualOffer(userId)) {
                     premiumMetricsService.record(userId, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN);
                     send(chatId, premiumViewService.contextualOffer(lang), Keyboards.premiumContextualOfferKeyboard(lang));
                 }

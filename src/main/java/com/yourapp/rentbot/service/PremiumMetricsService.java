@@ -28,6 +28,10 @@ public class PremiumMetricsService {
         events.save(event);
     }
 
+    public boolean hasContextualOffer(Long userId) {
+        return userId != null && events.existsByTelegramUserIdAndType(userId, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN);
+    }
+
     public PremiumMetrics since(Instant cutoff, Instant now, Instant expiringBefore) {
         return new PremiumMetrics(
                 count(cutoff, PremiumEvent.Type.OPENED),
