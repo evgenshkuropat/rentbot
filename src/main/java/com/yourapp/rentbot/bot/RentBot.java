@@ -2326,10 +2326,10 @@ DigiReality owners: %d
 
     private String inactiveReactivationText(UserFilter user, Language lang) {
         return switch (lang) {
-            case RU -> "Привет 👋\n\nВаш сохранённый поиск всё ещё ждёт вас. Включите уведомления одним нажатием или сначала измените параметры.\n\n" + flowService.pretty(user, lang);
-            case CZ -> "Ahoj 👋\n\nVaše uložené hledání na vás stále čeká. Upozornění můžete znovu zapnout jedním kliknutím nebo nejdříve upravit parametry.\n\n" + flowService.pretty(user, lang);
-            case EN -> "Hi 👋\n\nYour saved search is still here. Resume alerts with one tap or update the settings first.\n\n" + flowService.pretty(user, lang);
-            default -> "Привіт 👋\n\nВаш збережений пошук усе ще чекає на вас. Увімкніть сповіщення одним натисканням або спочатку змініть параметри.\n\n" + flowService.pretty(user, lang);
+            case RU -> "Привет 👋\n\nМы сохранили ваш поиск. Нажмите кнопку ниже — и снова будем присылать подходящие объявления. Ничего настраивать заново не нужно.\n\n" + flowService.pretty(user, lang);
+            case CZ -> "Ahoj 👋\n\nVaše hledání jsme uložili. Klepněte na tlačítko níže a znovu vám budeme posílat vhodné nabídky. Nemusíte nic nastavovat znovu.\n\n" + flowService.pretty(user, lang);
+            case EN -> "Hi 👋\n\nWe saved your search. Tap the button below and we will start sending matching listings again. You do not need to set anything up again.\n\n" + flowService.pretty(user, lang);
+            default -> "Привіт 👋\n\nМи зберегли ваш пошук. Натисніть кнопку нижче — і знову надсилатимемо відповідні оголошення. Нічого налаштовувати заново не потрібно.\n\n" + flowService.pretty(user, lang);
         };
     }
 
