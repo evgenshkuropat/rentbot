@@ -73,7 +73,7 @@ public class NotificationService {
         };
 
         String caption =
-                verifiedOwnerBadge(listing, premiumUser, lang) +
+                ownerBadge(listing, premiumUser, lang) +
                 "🏠 " + nvl(listing.title()) + "\n" +
                         "🏷 " + sourceLabel + ": " + displaySource(listing.source(), lang) + "\n" +
                         "💰 " + (listing.priceCzk() > 0 ? listing.priceCzk() + " Kč" : "—") + "\n" +
@@ -218,8 +218,7 @@ public class NotificationService {
             return "—";
         }
 
-        String normalized = source.trim().toLowerCase();
-        if (normalized.contains("owner") || normalized.contains("власник")) {
+        if (OwnerSignalDetector.isVerifiedOwnerSource(source)) {
             return switch (lang) {
                 case RU -> "Владелец (проверено)";
                 case CZ -> "Majitel (ověřeno)";
@@ -228,24 +227,32 @@ public class NotificationService {
             };
         }
 
-        return source;
+        return OwnerSignalDetector.visibleSource(source);
     }
 
-    private String verifiedOwnerBadge(ListingDto listing, boolean premiumUser, Language lang) {
-        if (!premiumUser || listing == null || listing.source() == null) {
+    private String ownerBadge(ListingDto listing, boolean premiumUser, Language lang) {
+        if (!premiumUser || listing == null) {
             return "";
         }
 
-        String source = listing.source().toLowerCase();
-        if (!source.contains("owner") && !source.contains("власник")) {
+        if (OwnerSignalDetector.isVerifiedOwnerListing(listing)) {
+            return switch (lang) {
+                case RU -> "🏡 Premium: проверено от владельца\n";
+                case CZ -> "🏡 Premium: ověřeno od majitele\n";
+                case EN -> "🏡 Premium: verified owner listing\n";
+                default -> "🏡 Premium: перевірено від власника\n";
+            };
+        }
+
+        if (!OwnerSignalDetector.isPossibleOwnerListing(listing)) {
             return "";
         }
 
         return switch (lang) {
-            case RU -> "🏡 Premium: проверено от владельца\n";
-            case CZ -> "🏡 Premium: ověřeno od majitele\n";
-            case EN -> "🏡 Premium: verified owner listing\n";
-            default -> "🏡 Premium: перевірено від власника\n";
+            case RU -> "🔎 Premium: возможно от владельца\n";
+            case CZ -> "🔎 Premium: možná přímo od majitele\n";
+            case EN -> "🔎 Premium: possibly from the owner\n";
+            default -> "🔎 Premium: можливо від власника\n";
         };
     }
 

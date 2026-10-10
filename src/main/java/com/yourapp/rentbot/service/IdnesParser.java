@@ -216,7 +216,7 @@ public class IdnesParser {
                     layout,
                     locality,
                     photoUrl,
-                    "iDNES",
+                    OwnerSignalDetector.sourceWithPossibleOwnerSignal("iDNES", title),
                     LocalDateTime.now()
             ));
         }

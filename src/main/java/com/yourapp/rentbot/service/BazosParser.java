@@ -196,7 +196,7 @@ public class BazosParser {
                         layout,
                         locality,
                         photoUrl,
-                        "Bazoš",
+                        OwnerSignalDetector.sourceWithPossibleOwnerSignal("Bazoš", fullText),
                         LocalDateTime.now()
                 ));
             }

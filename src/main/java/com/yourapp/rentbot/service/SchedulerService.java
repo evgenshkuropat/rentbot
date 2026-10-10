@@ -194,7 +194,7 @@ public class SchedulerService {
                 }
 
                 if (premiumUser) {
-                    listings = prioritizeVerifiedOwnerListings(listings);
+                    listings = prioritizeOwnerListings(listings);
                 }
 
                 usersWithMatches++;
@@ -383,18 +383,16 @@ public class SchedulerService {
         target.add(listing);
     }
 
-    private List<ListingDto> prioritizeVerifiedOwnerListings(List<ListingDto> listings) {
+    private List<ListingDto> prioritizeOwnerListings(List<ListingDto> listings) {
         return listings.stream()
-                .sorted(Comparator.comparing(this::isVerifiedOwnerListing).reversed())
+                .sorted(Comparator.comparingInt(this::ownerPriority).reversed())
                 .toList();
     }
 
-    private boolean isVerifiedOwnerListing(ListingDto listing) {
-        if (listing == null || listing.source() == null) {
-            return false;
+    private int ownerPriority(ListingDto listing) {
+        if (OwnerSignalDetector.isVerifiedOwnerListing(listing)) {
+            return 2;
         }
-
-        String source = listing.source().toLowerCase();
-        return source.contains("owner") || source.contains("власник");
+        return OwnerSignalDetector.isPossibleOwnerListing(listing) ? 1 : 0;
     }
 }

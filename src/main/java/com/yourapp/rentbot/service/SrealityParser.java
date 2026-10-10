@@ -183,7 +183,7 @@ public class SrealityParser {
                             layout,
                             locality,
                             photoUrl,
-                            "Sreality",
+                            OwnerSignalDetector.sourceWithPossibleOwnerSignal("Sreality", title),
                             LocalDateTime.now()
                     ));
                 }
@@ -322,7 +322,7 @@ public class SrealityParser {
                     layout,
                     locality,
                     photoUrl,
-                    "Sreality",
+                    OwnerSignalDetector.sourceWithPossibleOwnerSignal("Sreality", title + " " + cardText),
                     LocalDateTime.now()
             ));
         }

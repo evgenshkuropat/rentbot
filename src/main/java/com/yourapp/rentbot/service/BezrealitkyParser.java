@@ -130,7 +130,7 @@ public class BezrealitkyParser {
                     layout,
                     locality,
                     photo,
-                    "Bezrealitky",
+                    OwnerSignalDetector.sourceWithPossibleOwnerSignal("Bezrealitky", fullText),
                     LocalDateTime.now()
             ));
         }
