@@ -908,7 +908,12 @@ public class Keyboards {
 
     public static InlineKeyboardMarkup supportKeyboard(Language lang) {
         InlineKeyboardRow raiffeisen = new InlineKeyboardRow();
-        raiffeisen.add(button("💳 Raiffeisenbank", "SUPPORT:RAIFFEISEN"));
+        raiffeisen.add(button(switch (lang) {
+            case RU -> "💙 Поддержать от 50 Kč · Raiffeisen";
+            case CZ -> "💙 Podpořit od 50 Kč · Raiffeisen";
+            case EN -> "💙 Support from 50 Kč · Raiffeisen";
+            default -> "💙 Підтримати від 50 Kč · Raiffeisen";
+        }, "SUPPORT:RAIFFEISEN"));
 
         InlineKeyboardRow privatBank = new InlineKeyboardRow();
         privatBank.add(button("PrivatBank", "SUPPORT:PRIVATBANK"));

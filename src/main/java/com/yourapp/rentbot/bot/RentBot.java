@@ -2672,27 +2672,35 @@ DigiReality owners: %d
             case RU -> """
                     Спасибо, что пользуетесь ботом 💙
 
-                    Ежемесячная цель на сервер, парсеры и развитие: %d Kč.
+                    Если бот экономит вам время на поиске, помогите ему оставаться бесплатным.
 
-                    Даже 50, 100 или 200 Kč помогают боту работать дальше. Выберите удобный способ поддержки:""".formatted(supportMonthlyGoalCzk);
+                    Цель на сервер, парсеры и развитие: %d Kč в месяц. Даже 50 Kč имеют значение.
+
+                    Самый простой способ — Raiffeisen. Другие варианты ниже:""".formatted(supportMonthlyGoalCzk);
             case CZ -> """
                     Děkujeme, že používáte bota 💙
 
-                    Měsíční cíl na server, parsery a vývoj: %d Kč.
+                    Pokud vám bot šetří čas při hledání, pomozte mu zůstat zdarma.
 
-                    Už 50, 100 nebo 200 Kč pomůže botovi fungovat dál. Vyberte si způsob podpory:""".formatted(supportMonthlyGoalCzk);
+                    Cíl na server, parsery a vývoj: %d Kč měsíčně. I 50 Kč pomůže.
+
+                    Nejjednodušší možnost je Raiffeisen. Další možnosti jsou níže:""".formatted(supportMonthlyGoalCzk);
             case EN -> """
                     Thank you for using the bot 💙
 
-                    Monthly goal for the server, parsers, and development: %d Kč.
+                    If the bot saves you time in your search, help keep it free.
 
-                    Even 50, 100, or 200 Kč helps keep the bot running. Choose a convenient support option:""".formatted(supportMonthlyGoalCzk);
+                    The monthly goal for the server, parsers, and development is %d Kč. Even 50 Kč helps.
+
+                    The simplest option is Raiffeisen. Other options are below:""".formatted(supportMonthlyGoalCzk);
             default -> """
                     Дякую, що користуєтеся ботом 💙
 
-                    Щомісячна ціль на сервер, парсери та розвиток: %d Kč.
+                    Якщо бот заощаджує ваш час на пошуку, допоможіть йому залишатися безкоштовним.
 
-                    Навіть 50, 100 або 200 Kč допомагають боту працювати далі. Оберіть зручний спосіб підтримки:""".formatted(supportMonthlyGoalCzk);
+                    Ціль на сервер, парсери та розвиток: %d Kč на місяць. Навіть 50 Kč мають значення.
+
+                    Найпростіший спосіб — Raiffeisen. Інші варіанти нижче:""".formatted(supportMonthlyGoalCzk);
         };
     }
 
