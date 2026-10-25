@@ -1368,7 +1368,7 @@ DigiReality owners: %d
             String method = data.substring("PREMIUM:METHOD:".length());
             if (!premiumViewService.isPaymentMethod(method)) return;
             premiumMetricsService.record(userId, PremiumEvent.Type.PAYMENT_METHOD_SELECTED);
-            send(chatId, premiumViewService.paymentInstructions(lang, method, userId),
+            send(chatId, premiumViewService.paymentInstructions(lang, method),
                     Keyboards.premiumPaymentConfirmationKeyboard(premiumViewService.paymentMethodTitle(method), premiumViewService.paymentUrl(method), lang));
             return;
         }

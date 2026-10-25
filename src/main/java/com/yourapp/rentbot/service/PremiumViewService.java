@@ -42,27 +42,31 @@ public class PremiumViewService {
         };
     }
 
-    public String paymentInstructions(Language lang, String method, long userId) {
+    public String paymentInstructions(Language lang, String method) {
         String details = "RAIFFEISEN".equals(method) ? switch (lang) {
-            case RU -> "Реквизиты: 972026002/5500"; case CZ -> "Účet: 972026002/5500";
-            case EN -> "Account: 972026002/5500"; default -> "Рахунок: 972026002/5500";
+            case RU -> "Откройте банковское приложение и переведите 99 Kč на счёт:\n972026002/5500";
+            case CZ -> "Otevřete bankovní aplikaci a pošlete 99 Kč na účet:\n972026002/5500";
+            case EN -> "Open your banking app and transfer 99 Kč to:\n972026002/5500";
+            default -> "Відкрийте банківський застосунок і переказуйте 99 Kč на рахунок:\n972026002/5500";
         } : switch (lang) {
-            case RU -> "Нажмите кнопку ниже и укажите сумму 99 Kč."; case CZ -> "Otevřete platební odkaz níže a zadejte částku 99 Kč.";
-            case EN -> "Open the payment link below and enter 99 Kč."; default -> "Відкрийте посилання нижче та вкажіть суму 99 Kč.";
+            case RU -> "Нажмите «Оплатить» ниже и укажите сумму 99 Kč.";
+            case CZ -> "Klikněte níže na „Zaplatit“ a zadejte částku 99 Kč.";
+            case EN -> "Tap “Pay” below and enter 99 Kč.";
+            default -> "Натисніть «Оплатити» нижче та вкажіть суму 99 Kč.";
         };
         return switch (lang) {
-            case RU -> "💎 Premium на 30 дней — 99 Kč\n\n" + details + "\n\nВ комментарии к платежу укажите Telegram ID: " + userId + ". После оплаты нажмите кнопку ниже.";
-            case CZ -> "💎 Premium na 30 dní — 99 Kč\n\n" + details + "\n\nDo poznámky k platbě uveďte Telegram ID: " + userId + ". Po zaplacení klikněte na tlačítko níže.";
-            case EN -> "💎 Premium for 30 days — 99 Kč\n\n" + details + "\n\nAdd your Telegram ID to the payment note: " + userId + ". After paying, press the button below.";
-            default -> "💎 Premium на 30 днів — 99 Kč\n\n" + details + "\n\nУ коментарі до платежу вкажіть Telegram ID: " + userId + ". Після оплати натисніть кнопку нижче.";
+            case RU -> "💎 Premium на 30 дней — 99 Kč\n\n1️⃣ " + details + "\n\n2️⃣ Сразу после оплаты нажмите кнопку «Я оплатил».\n\nЯ проверю перевод и активирую Premium на 30 дней.";
+            case CZ -> "💎 Premium na 30 dní — 99 Kč\n\n1️⃣ " + details + "\n\n2️⃣ Hned po zaplacení klikněte na tlačítko „Zaplatil/a jsem“.\n\nPlatbu zkontroluji a aktivuji Premium na 30 dní.";
+            case EN -> "💎 Premium for 30 days — 99 Kč\n\n1️⃣ " + details + "\n\n2️⃣ Right after paying, press “I paid”.\n\nI will verify the payment and activate Premium for 30 days.";
+            default -> "💎 Premium на 30 днів — 99 Kč\n\n1️⃣ " + details + "\n\n2️⃣ Одразу після оплати натисніть кнопку «Я сплатив/ла».\n\nЯ перевірю переказ і активую Premium на 30 днів.";
         };
     }
 
     public String submitted(Language lang) { return switch (lang) {
-        case RU -> "✅ Заявка отправлена. После проверки оплаты Premium будет активирован на 30 дней.";
-        case CZ -> "✅ Žádost byla odeslána. Po ověření platby bude Premium aktivováno na 30 dní.";
-        case EN -> "✅ Your request was sent. Premium will be activated for 30 days after payment is verified.";
-        default -> "✅ Заявку надіслано. Після перевірки оплати Premium буде активовано на 30 днів.";
+        case RU -> "✅ Готово, заявка у меня. Я проверю оплату и активирую Premium на 30 дней.";
+        case CZ -> "✅ Hotovo, žádost už mám. Platbu zkontroluji a aktivuji Premium na 30 dní.";
+        case EN -> "✅ Done, I have your request. I will verify the payment and activate Premium for 30 days.";
+        default -> "✅ Готово, заявка вже в мене. Я перевірю оплату й активую Premium на 30 днів.";
     }; }
     public String rejected(Language lang) { return switch (lang) {
         case RU -> "Не удалось подтвердить оплату Premium. Проверьте перевод или напишите в поддержку — поможем разобраться.";

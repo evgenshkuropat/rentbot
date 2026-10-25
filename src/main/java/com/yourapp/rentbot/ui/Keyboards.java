@@ -405,19 +405,19 @@ public class Keyboards {
         if (url != null && !url.isBlank()) {
             rows.add(new InlineKeyboardRow(InlineKeyboardButton.builder()
                     .text(switch (lang) {
-                        case RU -> "Открыть " + method;
-                        case CZ -> "Otevřít " + method;
-                        case EN -> "Open " + method;
-                        default -> "Відкрити " + method;
+                        case RU -> "💳 Оплатить через " + method;
+                        case CZ -> "💳 Zaplatit přes " + method;
+                        case EN -> "💳 Pay with " + method;
+                        default -> "💳 Оплатити через " + method;
                     })
                     .url(url)
                     .build()));
         }
         rows.add(new InlineKeyboardRow(button(switch (lang) {
-            case RU -> "✅ Я оплатил 99 Kč";
-            case CZ -> "✅ Zaplatil/a jsem 99 Kč";
-            case EN -> "✅ I paid 99 Kč";
-            default -> "✅ Я сплатив/ла 99 Kč";
+            case RU -> "✅ Я оплатил — активировать Premium";
+            case CZ -> "✅ Zaplatil/a jsem — aktivovat Premium";
+            case EN -> "✅ I paid — activate Premium";
+            default -> "✅ Я сплатив/ла — активувати Premium";
         }, "PREMIUM:PAID:" + method.toUpperCase())));
         rows.add(new InlineKeyboardRow(button(switch (lang) {
             case RU -> "⬅️ Выбрать другой способ";
