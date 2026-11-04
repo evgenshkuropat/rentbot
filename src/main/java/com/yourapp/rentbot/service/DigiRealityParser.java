@@ -8,6 +8,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -76,12 +77,22 @@ public class DigiRealityParser {
 
     private final Object cacheLock = new Object();
     private final long cacheTtlMillis;
+    private final long rateLimitPauseMillis;
     private volatile CacheEntry cache = new CacheEntry(List.of(), 0L);
+    private volatile long rateLimitedUntilMillis;
 
+    @Autowired
     public DigiRealityParser(
             @Value("${rentbot.digireality.cache-ttl-ms:${RENTBOT_DIGIREALITY_CACHE_TTL_MS:600000}}")
-            long cacheTtlMillis) {
+            long cacheTtlMillis,
+            @Value("${rentbot.digireality.rate-limit-pause-ms:${RENTBOT_DIGIREALITY_RATE_LIMIT_PAUSE_MS:21600000}}")
+            long rateLimitPauseMillis) {
         this.cacheTtlMillis = Math.max(Duration.ofMinutes(1).toMillis(), cacheTtlMillis);
+        this.rateLimitPauseMillis = Math.max(Duration.ofMinutes(10).toMillis(), rateLimitPauseMillis);
+    }
+
+    DigiRealityParser(long cacheTtlMillis) {
+        this(cacheTtlMillis, Duration.ofHours(6).toMillis());
     }
 
     public List<ListingDto> fetchListings(Region region) throws IOException {
@@ -193,6 +204,9 @@ public class DigiRealityParser {
     private List<RssListing> loadListings() throws IOException {
         long now = System.currentTimeMillis();
         CacheEntry current = cache;
+        if (isRateLimited(now)) {
+            return current.listings();
+        }
         if (current.loadedAtMillis() > 0 && now - current.loadedAtMillis() < cacheTtlMillis) {
             return current.listings();
         }
@@ -200,6 +214,9 @@ public class DigiRealityParser {
         synchronized (cacheLock) {
             current = cache;
             now = System.currentTimeMillis();
+            if (isRateLimited(now)) {
+                return current.listings();
+            }
             if (current.loadedAtMillis() > 0 && now - current.loadedAtMillis() < cacheTtlMillis) {
                 return current.listings();
             }
@@ -213,6 +230,11 @@ public class DigiRealityParser {
                         .ignoreHttpErrors(true)
                         .execute();
 
+                if (response.statusCode() == 429) {
+                    rateLimitedUntilMillis = now + rateLimitPauseMillis;
+                    log.warn("DigiReality RSS HTTP 429; requests paused for {} minutes and stale cache will be used", rateLimitPauseMillis / 60_000);
+                    return current.listings();
+                }
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
                     throw new IOException("DigiReality RSS HTTP " + response.statusCode());
                 }
@@ -221,6 +243,7 @@ public class DigiRealityParser {
                 ParseResult parseResult = parseRssWithDiagnostics(xml);
                 List<RssListing> parsed = parseResult.listings();
                 cache = new CacheEntry(parsed, now);
+                rateLimitedUntilMillis = 0L;
                 ParseDiagnostics d = parseResult.diagnostics();
                 log.info(
                         "DigiReality RSS diagnostics total={} rentalApartments={} notRentalApartment={} bezrealitkyDuplicates={} "
@@ -248,6 +271,10 @@ public class DigiRealityParser {
                 throw e;
             }
         }
+    }
+
+    private boolean isRateLimited(long now) {
+        return now < rateLimitedUntilMillis;
     }
 
     private boolean isRentalApartment(String text) {
