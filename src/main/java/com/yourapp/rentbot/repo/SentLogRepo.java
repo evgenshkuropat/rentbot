@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 public interface SentLogRepo extends JpaRepository<SentLog, Long> {
     boolean existsByTelegramUserIdAndListingKey(Long telegramUserId, String listingKey);
@@ -15,5 +16,9 @@ public interface SentLogRepo extends JpaRepository<SentLog, Long> {
     long countBySentAtAfter(Instant cutoff);
 
     boolean existsByTelegramUserIdAndSentAtAfter(Long telegramUserId, Instant cutoff);
+
+    long countByTelegramUserId(Long telegramUserId);
+
+    List<SentLog> findTop8ByTelegramUserIdOrderBySentAtDesc(Long telegramUserId);
 
 }

@@ -723,6 +723,24 @@ DigiReality owners: %d
             return;
         }
 
+        if (text.toLowerCase().startsWith("/admin_sent")) {
+            if (chatId != adminId) {
+                send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            Long targetUserId = parseAdminIdArgument(text);
+            if (targetUserId == null) {
+                send(chatId,
+                        "Вкажи Telegram ID. Приклад: /admin_sent 123456789",
+                        Keyboards.persistentNavKeyboard(lang));
+                return;
+            }
+
+            send(chatId, sentListingsText(targetUserId), Keyboards.persistentNavKeyboard(lang));
+            return;
+        }
+
         if (text.toLowerCase().startsWith("/admin_premium_payments")) {
             if (chatId != adminId) {
                 send(chatId, msg(userId, "access.denied"), Keyboards.persistentNavKeyboard(lang));
@@ -2391,6 +2409,25 @@ DigiReality owners: %d
         }
 
         return parseLongOrNull(digits);
+    }
+
+    private String sentListingsText(Long telegramUserId) {
+        long total = sentLogRepo.countByTelegramUserId(telegramUserId);
+        var recent = sentLogRepo.findTop8ByTelegramUserIdOrderBySentAtDesc(telegramUserId);
+        if (recent.isEmpty()) {
+            return "📬 Надіслані оголошення\n\nДля користувача " + telegramUserId + " ще немає записів.";
+        }
+
+        StringBuilder result = new StringBuilder("📬 Останні надіслані оголошення\n\n")
+                .append("Telegram ID: ").append(telegramUserId)
+                .append("\nУсього в журналі: ").append(total)
+                .append("\nПоказано останні: ").append(recent.size());
+
+        for (var sent : recent) {
+            result.append("\n\n🕒 ").append(formatInstant(sent.getSentAt()))
+                    .append("\n").append(sent.getListingKey());
+        }
+        return result.toString();
     }
 
     private String premiumStatusText(Long telegramUserId) {
