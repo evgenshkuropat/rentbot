@@ -2176,6 +2176,10 @@ DigiReality owners: %d
                 result.sent++;
             } catch (TelegramApiException e) {
                 if (isUnreachableTelegramUser(e.getMessage())) {
+                    // Do not retry the same unreachable chat every evening. It is already inactive,
+                    // so record the attempt and let the next batch continue with other users.
+                    user.setInactiveReactivationSentAt(now);
+                    userFilterRepo.save(user);
                     result.deactivated++;
                 } else {
                     result.failed++;
