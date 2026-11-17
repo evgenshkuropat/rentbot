@@ -2,6 +2,7 @@ package com.yourapp.rentbot.repo;
 
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.flow.FlowStep;
+import com.yourapp.rentbot.i18n.Language;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -33,6 +34,8 @@ public interface UserFilterRepo extends JpaRepository<UserFilter, Long> {
     Optional<UserFilter> findFullById(@Param("id") Long id);
 
     long countByActiveTrue();
+
+    long countByLanguage(Language language);
 
     long countByOnboardedTrue();
 

@@ -425,6 +425,10 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             long users = userFilterRepo.count();
             long active = userFilterRepo.countByActiveTrue();
             long inactive = users - active;
+            long ukrainianUsers = userFilterRepo.countByLanguage(Language.UA);
+            long russianUsers = userFilterRepo.countByLanguage(Language.RU);
+            long czechUsers = userFilterRepo.countByLanguage(Language.CZ);
+            long englishUsers = userFilterRepo.countByLanguage(Language.EN);
 
             long onboarded = userFilterRepo.countByOnboardedTrue();
             long notOnboarded = userFilterRepo.countByOnboardedFalse();
@@ -510,6 +514,12 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
 🚀 Пройшли онбординг: %d (%d%%)
 😴 Не пройшли онбординг: %d
+
+🌐 Мова інтерфейсу:
+🇺🇦 Українська: %d
+🇷🇺 Русский: %d
+🇨🇿 Čeština: %d
+🇬🇧 English: %d
 
 🛏 Обрали тип квартири: %d
 💰 Обрали max price: %d
@@ -611,6 +621,10 @@ DigiReality owners: %d
                             onboarded,
                             onboardingConversion,
                             notOnboarded,
+                            ukrainianUsers,
+                            russianUsers,
+                            czechUsers,
+                            englishUsers,
                             layoutChosen,
                             priceChosen,
                             avgMaxPrice,
