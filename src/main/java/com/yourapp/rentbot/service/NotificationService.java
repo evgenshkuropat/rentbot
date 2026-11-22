@@ -132,6 +132,33 @@ public class NotificationService {
         return false;
     }
 
+    public boolean wasAlreadySent(Long userId, String listingLink) {
+        return userId == null || listingLink == null || listingLink.isBlank()
+                || sentLogRepo.existsByTelegramUserIdAndListingKey(userId, listingLink);
+    }
+
+    public boolean sendPremiumOffer(UserFilter user, String text, Language language) {
+        if (user == null || user.getTelegramUserId() == null || text == null || text.isBlank()) {
+            return false;
+        }
+
+        try {
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(user.getTelegramUserId())
+                    .text(text)
+                    .replyMarkup(Keyboards.premiumContextualOfferKeyboard(language))
+                    .build());
+            return true;
+        } catch (TelegramApiException e) {
+            if (isBlockedByUser(e.getMessage())) {
+                deactivateUser(user, user.getTelegramUserId());
+            } else {
+                log.warn("Premium offer send failed: user={}, error={}", user.getTelegramUserId(), e.getMessage());
+            }
+        }
+        return false;
+    }
+
     private void sendTextFallback(Long chatId,
                                   String caption,
                                   String token,

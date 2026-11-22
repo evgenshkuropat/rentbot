@@ -33,12 +33,21 @@ public class PremiumViewService {
         };
     }
 
-    public String contextualOffer(Language lang) {
+    public String contextualOfferAfterFavorites(Language lang) {
         return switch (lang) {
-            case RU -> "⭐ Вы сохранили подходящий вариант. Хотите искать сразу по двум настройкам — например, в другом районе или с другим бюджетом?\n\n💎 Premium даёт второй независимый поиск, приоритетную обработку и до 10 новых уведомлений за цикл.";
-            case CZ -> "⭐ Uložili jste vhodnou nabídku. Chcete hledat podle dvou nastavení najednou — například v jiné lokalitě nebo s jiným rozpočtem?\n\n💎 Premium nabízí druhé nezávislé hledání, prioritní zpracování a až 10 nových upozornění za cyklus.";
-            case EN -> "⭐ You saved a suitable listing. Want to search with two settings at once—for another area or budget?\n\n💎 Premium includes a second independent search, priority processing, and up to 10 new alerts per cycle.";
-            default -> "⭐ Ви зберегли відповідний варіант. Хочете шукати одразу за двома налаштуваннями — наприклад, в іншому районі або з іншим бюджетом?\n\n💎 Premium дає другий незалежний пошук, пріоритетну обробку та до 10 нових сповіщень за цикл.";
+            case RU -> "⭐ У вас уже несколько сохранённых вариантов. Хотите искать сразу по двум настройкам — например, в другом районе или с другим бюджетом?\n\n💎 Premium даёт второй независимый поиск, приоритетную обработку и до 10 новых уведомлений за цикл.";
+            case CZ -> "⭐ Už máte několik uložených nabídek. Chcete hledat podle dvou nastavení najednou — například v jiné lokalitě nebo s jiným rozpočtem?\n\n💎 Premium nabízí druhé nezávislé hledání, prioritní zpracování a až 10 nových upozornění za cyklus.";
+            case EN -> "⭐ You already have several saved listings. Want to search with two settings at once—for another area or budget?\n\n💎 Premium includes a second independent search, priority processing, and up to 10 new alerts per cycle.";
+            default -> "⭐ У вас уже є кілька збережених варіантів. Хочете шукати одразу за двома налаштуваннями — наприклад, в іншому районі або з іншим бюджетом?\n\n💎 Premium дає другий незалежний пошук, пріоритетну обробку та до 10 нових сповіщень за цикл.";
+        };
+    }
+
+    public String contextualOfferAfterFreeLimit(Language lang) {
+        return switch (lang) {
+            case RU -> "⭐ В этом цикле нашлось больше подходящих вариантов. В бесплатной версии отправляется до 5 новых объявлений за цикл.\n\n💎 Premium даёт до 10 уведомлений, приоритетную обработку и варианты с признаками владельца в первую очередь.";
+            case CZ -> "⭐ V tomto cyklu se našlo více vhodných nabídek. Ve verzi zdarma posílám až 5 nových inzerátů za jeden cyklus.\n\n💎 Premium nabízí až 10 upozornění, prioritní zpracování a nabídky se znaky přímého majitele jako první.";
+            case EN -> "⭐ This cycle found more suitable listings. The free version sends up to 5 new listings per cycle.\n\n💎 Premium includes up to 10 alerts, priority processing, and listings with owner signals first.";
+            default -> "⭐ У цьому циклі знайшлося більше відповідних варіантів. У безкоштовній версії надсилається до 5 нових оголошень за цикл.\n\n💎 Premium дає до 10 сповіщень, пріоритетну обробку та варіанти з ознаками власника насамперед.";
         };
     }
 

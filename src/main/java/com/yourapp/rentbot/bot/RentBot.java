@@ -29,6 +29,7 @@ import com.yourapp.rentbot.service.ParserService;
 import com.yourapp.rentbot.service.PremiumService;
 import com.yourapp.rentbot.service.PremiumPaymentService;
 import com.yourapp.rentbot.service.PremiumMetricsService;
+import com.yourapp.rentbot.service.PremiumOfferService;
 import com.yourapp.rentbot.service.PremiumViewService;
 import com.yourapp.rentbot.service.ReactivationMetricsService;
 import com.yourapp.rentbot.service.SearchStatusMetricsService;
@@ -95,6 +96,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     private final PremiumService premiumService;
     private final PremiumPaymentService premiumPaymentService;
     private final PremiumMetricsService premiumMetricsService;
+    private final PremiumOfferService premiumOfferService;
     private final PremiumViewService premiumViewService;
     private final ReactivationMetricsService reactivationMetricsService;
     private final SearchStatusMetricsService searchStatusMetricsService;
@@ -153,6 +155,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             PremiumService premiumService,
             PremiumPaymentService premiumPaymentService,
             PremiumMetricsService premiumMetricsService,
+            PremiumOfferService premiumOfferService,
             PremiumViewService premiumViewService,
             ReactivationMetricsService reactivationMetricsService,
             SearchStatusMetricsService searchStatusMetricsService,
@@ -188,6 +191,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         this.premiumService = premiumService;
         this.premiumPaymentService = premiumPaymentService;
         this.premiumMetricsService = premiumMetricsService;
+        this.premiumOfferService = premiumOfferService;
         this.premiumViewService = premiumViewService;
         this.reactivationMetricsService = reactivationMetricsService;
         this.searchStatusMetricsService = searchStatusMetricsService;
@@ -1665,9 +1669,8 @@ DigiReality owners: %d
 
             if (added) {
                 answerCallback(callbackId, msg(userId, "favorites.added"));
-                if (!premiumService.isActive(f) && !premiumMetricsService.hasContextualOffer(userId)) {
-                    premiumMetricsService.record(userId, PremiumEvent.Type.CONTEXTUAL_OFFER_SHOWN);
-                    send(chatId, premiumViewService.contextualOffer(lang), Keyboards.premiumContextualOfferKeyboard(lang));
+                if (favoriteService.countForUser(userId) >= 3) {
+                    premiumOfferService.showIfEligible(f, PremiumOfferService.Trigger.FAVORITES);
                 }
             } else {
                 answerCallback(callbackId, msg(userId, "favorites.already.exists"));

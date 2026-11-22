@@ -40,6 +40,7 @@ public class SchedulerService {
     private final ParserService parserService;
     private final NotificationService notificationService;
     private final PremiumService premiumService;
+    private final PremiumOfferService premiumOfferService;
     private final int maxNotificationsPerUserPerCycle;
     private final int maxPremiumNotificationsPerUserPerCycle;
 
@@ -47,12 +48,14 @@ public class SchedulerService {
                             ParserService parserService,
                             NotificationService notificationService,
                             PremiumService premiumService,
+                            PremiumOfferService premiumOfferService,
                             @Value("${rentbot.notifications.max-per-user-per-cycle:5}") int maxNotificationsPerUserPerCycle,
                             @Value("${rentbot.premium.max-notifications-per-user-per-cycle:10}") int maxPremiumNotificationsPerUserPerCycle) {
         this.userFilterRepo = userFilterRepo;
         this.parserService = parserService;
         this.notificationService = notificationService;
         this.premiumService = premiumService;
+        this.premiumOfferService = premiumOfferService;
         this.maxNotificationsPerUserPerCycle = Math.max(1, maxNotificationsPerUserPerCycle);
         this.maxPremiumNotificationsPerUserPerCycle = Math.max(this.maxNotificationsPerUserPerCycle,
                 maxPremiumNotificationsPerUserPerCycle);
@@ -219,6 +222,7 @@ public class SchedulerService {
 
                 int sentForUser = 0;
                 int premiumSentForUser = 0;
+                boolean hasNewListingsBeyondFreeLimit = false;
                 Set<String> premiumLinks = premiumMatches.stream()
                         .map(ListingDto::link)
                         .filter(link -> link != null && !link.isBlank())
@@ -233,7 +237,10 @@ public class SchedulerService {
                     }
 
                     if (sentForUser >= notificationLimit) {
-                        totalSkippedByLimit++;
+                        if (!notificationService.wasAlreadySent(userId, listing.link())) {
+                            totalSkippedByLimit++;
+                            hasNewListingsBeyondFreeLimit = true;
+                        }
                         continue;
                     }
 
@@ -253,6 +260,10 @@ public class SchedulerService {
 
                 if (premiumUser && !premiumMatches.isEmpty()) {
                     log.info("Scheduler: premium search user={} candidates={} sent={}", userId, premiumMatches.size(), premiumSentForUser);
+                }
+
+                if (!premiumUser && hasNewListingsBeyondFreeLimit) {
+                    premiumOfferService.showIfEligible(user, PremiumOfferService.Trigger.FREE_NOTIFICATION_LIMIT);
                 }
 
             } catch (Exception e) {
