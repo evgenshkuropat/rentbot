@@ -22,6 +22,7 @@ public record ParserRunStats(
         int finalIdnes,
         int finalBezrealitky,
         int finalBazos,
-        int finalDigireality
+        int finalDigireality,
+        int realfreeRaw
 ) {
 }

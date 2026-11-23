@@ -2525,7 +2525,8 @@ DigiReality owners: %d
                 + "\niDNES: " + parser.idnesRaw()
                 + "\nBezrealitky: " + parser.bezrealitkyRaw()
                 + "\nBazoš: " + parser.bazosRaw()
-                + "\nDigiReality owners: " + parser.digirealityRaw();
+                + "\nDigiReality owners: " + parser.digirealityRaw()
+                + "\nRealFree: " + parser.realfreeRaw();
     }
 
     private String premiumPaymentRequestText(PremiumPaymentRequest request) {

@@ -39,6 +39,8 @@ public class IdnesParser {
     private static final int SEARCH_TIMEOUT_MS = 30_000;
     private static final int DETAIL_TIMEOUT_MS = 15_000;
     private static final int MAX_ATTEMPTS = 3;
+    private static final int MAX_DETAIL_REQUESTS_PER_SEARCH = 8;
+    private static final long STALE_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
     private static final long MIN_REQUEST_INTERVAL_MS = 750;
     private static final long SEARCH_CACHE_TTL_MS = Duration.ofMinutes(10).toMillis();
     private static final long DETAIL_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
@@ -60,7 +62,7 @@ public class IdnesParser {
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
     private static final Pattern PRICE_PATTERN =
-            Pattern.compile("(\\d[\\d\\s.]{2,})\\s*K\\s*(?:č|c|\\p{L}+)?", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("(?<![\\d.,])(\\d{1,3}(?:[ .]\\d{3})+|\\d+)\\s*(?:Kč|Kc|CZK)(?!\\p{L})", Pattern.CASE_INSENSITIVE);
 
     private static final String[] KNOWN_PLACES = {
             "Praha", "Brno", "Ostrava", "Plzeň", "Plzen", "Pardubice", "Olomouc",
@@ -97,7 +99,16 @@ public class IdnesParser {
                 return cached.listings();
             }
 
-            List<ListingDto> listings = fetchListingsUncached(region, url);
+            List<ListingDto> listings;
+            try {
+                listings = fetchListingsUncached(region, url);
+            } catch (IOException e) {
+                if (cached != null && System.currentTimeMillis() - cached.cachedAt() < STALE_CACHE_TTL_MS) {
+                    log.warn("iDNES refresh failed; using recent stale cache url={} error={}", url, e.getMessage());
+                    return cached.listings();
+                }
+                throw e;
+            }
             List<ListingDto> snapshot = List.copyOf(listings);
             searchCache.put(url, new CachedListings(snapshot, System.currentTimeMillis()));
             return snapshot;
@@ -105,14 +116,19 @@ public class IdnesParser {
     }
 
     private List<ListingDto> fetchListingsUncached(Region region, String url) throws IOException {
-        var response = executeWithRetry(url, SEARCH_TIMEOUT_MS);
+        return parsePage(loadDocument(url, SEARCH_TIMEOUT_MS), region);
+    }
 
-        Document doc = Jsoup.parse(
-                response.bodyStream(),
-                "UTF-8",
-                url
-        );
+    Document loadDocument(String url, int timeoutMs) throws IOException {
+        var response = executeWithRetry(url, timeoutMs);
+        try (var stream = response.bodyStream()) {
+            return Jsoup.parse(stream, "UTF-8", response.url().toString());
+        }
+    }
 
+    List<ListingDto> parsePage(Document doc, Region region) throws IOException {
+        String url = doc.location();
+        java.util.Set<String> seen = new java.util.HashSet<>();
         List<ListingDto> result = new ArrayList<>();
 
         Elements links = doc.select("a[href*='/detail/'], a[href*='/s/detail/'], a[href*='/s/pronajem/']");
@@ -123,6 +139,7 @@ public class IdnesParser {
         int skippedBlankTitle = 0;
         int skippedNotApartment = 0;
         int detailFetches = 0;
+        boolean detailRequestsPaused = false;
         int detailCacheHits = 0;
         int detailPriceFilled = 0;
         int detailLocalityFilled = 0;
@@ -134,7 +151,16 @@ public class IdnesParser {
                 continue;
             }
 
-            String absoluteLink = href.startsWith("http") ? href : BASE_URL + href;
+            String absoluteLink = linkEl.absUrl("href").replaceFirst("[?#].*$", "");
+            java.net.URI listingUri;
+            try {
+                listingUri = java.net.URI.create(absoluteLink);
+            } catch (IllegalArgumentException e) {
+                continue;
+            }
+            if (!"reality.idnes.cz".equalsIgnoreCase(listingUri.getHost())
+                    || !java.util.Set.of("https", "http").contains(listingUri.getScheme())
+                    || !seen.add(absoluteLink)) continue;
 
             Element card = findCardContainer(linkEl);
             if (card == null) {
@@ -154,9 +180,6 @@ public class IdnesParser {
 
             if (locality.isBlank()) {
                 locality = extractLocality(title);
-            }
-            if (locality.isBlank() && region != null && region.getTitle() != null) {
-                locality = region.getTitle();
             }
 
             String layout = extractLayout(title);
@@ -179,14 +202,22 @@ public class IdnesParser {
                     || lowerWholeText.contains("spolubydlení")
                     || lowerWholeText.contains("spolubydleni");
 
-            if (!lowerTitle.contains("byt") && !isRoom) {
+            if (!lowerTitle.contains("byt") && !lowerTitle.contains("garson") && !isRoom) {
                 skippedNotApartment++;
                 continue;
             }
 
-            if (priceCzk <= 0 || locality.isBlank()) {
-                boolean detailWasCached = isFresh(detailCache.get(absoluteLink));
-                DetailFields detail = fetchDetailFields(absoluteLink);
+            boolean detailWasCached = isFresh(detailCache.get(absoluteLink));
+            if (!detailRequestsPaused && (priceCzk <= 0 || locality.isBlank() || layout == null)
+                    && (detailWasCached || detailFetches < MAX_DETAIL_REQUESTS_PER_SEARCH)) {
+                DetailFields detail;
+                try {
+                    detail = fetchDetailFields(absoluteLink);
+                } catch (RateLimitedException e) {
+                    log.warn("iDNES detail requests paused; keeping {} parsed listings", result.size());
+                    detailRequestsPaused = true;
+                    continue;
+                }
                 if (detailWasCached) {
                     detailCacheHits++;
                 } else {
@@ -209,6 +240,8 @@ public class IdnesParser {
                 }
             }
 
+            if (priceCzk <= 0 || locality.isBlank() || layout == null) continue;
+
             result.add(new ListingDto(
                     title,
                     priceCzk,
@@ -216,7 +249,7 @@ public class IdnesParser {
                     layout,
                     locality,
                     photoUrl,
-                    OwnerSignalDetector.sourceWithPossibleOwnerSignal("iDNES", title),
+                    OwnerSignalDetector.sourceWithPossibleOwnerSignal("iDNES", wholeText),
                     LocalDateTime.now()
             ));
         }
@@ -227,7 +260,7 @@ public class IdnesParser {
                 "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={} detailFetches={} detailCacheHits={} detailPriceFilled={} detailLocalityFilled={}",
                 region != null ? region.getTitle() : "default",
                 url,
-                response.statusCode(),
+                "parsed",
                 candidateLinks,
                 result.size(),
                 deduped.size(),
@@ -250,20 +283,10 @@ public class IdnesParser {
             return BASE_URL + "/s/pronajem/byty/";
         }
 
-        String code = region.getCode();
+        String code = region.getCode().trim().toUpperCase(Locale.ROOT);
 
         if ("PRAHA".equals(code)) {
-            if (regionGroup == null || regionGroup.getCode() == null || "PRAHA_ALL".equals(regionGroup.getCode())) {
-                return BASE_URL + "/s/pronajem/byty/praha/";
-            }
-
-            return switch (regionGroup.getCode()) {
-                case "PRAHA_1_3" -> BASE_URL + "/s/pronajem/byty/praha-1/";
-                case "PRAHA_4_6" -> BASE_URL + "/s/pronajem/byty/praha-4/";
-                case "PRAHA_7_10" -> BASE_URL + "/s/pronajem/byty/praha-7/";
-                case "PRAHA_11_15" -> BASE_URL + "/s/pronajem/byty/praha-10/";
-                default -> BASE_URL + "/s/pronajem/byty/praha/";
-            };
+            return BASE_URL + "/s/pronajem/byty/praha/";
         }
 
         String citySlug = regionCodeToIdnesSlug(code);
@@ -312,7 +335,7 @@ public class IdnesParser {
                 }
 
                 String text = current.text();
-                if (text != null && text.length() < 2500 && PRICE_PATTERN.matcher(text.replace('\u00A0', ' ')).find()) {
+                if (text != null && text.length() < 2500 && PRICE_PATTERN.matcher(text.replace('\u00A0', ' ').replace('\u202F', ' ')).find()) {
                     return current;
                 }
             }
@@ -356,7 +379,7 @@ public class IdnesParser {
     }
 
     private int extractPrice(String text) {
-        Matcher m = PRICE_PATTERN.matcher(text.replace('\u00A0', ' '));
+        Matcher m = PRICE_PATTERN.matcher(text.replace('\u00A0', ' ').replace('\u202F', ' '));
         if (!m.find()) {
             return 0;
         }
@@ -380,8 +403,7 @@ public class IdnesParser {
         }
 
         try {
-            var response = executeWithRetry(url, DETAIL_TIMEOUT_MS);
-            Document doc = Jsoup.parse(response.bodyStream(), "UTF-8", url);
+            Document doc = loadDocument(url, DETAIL_TIMEOUT_MS);
 
             String text = doc.text();
             int priceCzk = extractPrice(text);
@@ -647,35 +669,13 @@ public class IdnesParser {
     }
 
     private boolean looksLikeLocality(String s) {
-        if (s == null || s.isBlank()) {
-            return false;
+        if (s == null || s.isBlank()) return false;
+        for (String place : KNOWN_PLACES) {
+            if (Pattern.compile("(?iu)(?<!\\p{L})" + Pattern.quote(place) + "(?!\\p{L})").matcher(s).find()) {
+                return true;
+            }
         }
-
-        String lower = s.toLowerCase(Locale.ROOT);
-
-        return lower.contains("praha")
-                || lower.contains("brno")
-                || lower.contains("ostrava")
-                || lower.contains("plze")
-                || lower.contains("liberec")
-                || lower.contains("olomouc")
-                || lower.contains("pardubice")
-                || lower.contains("kolín")
-                || lower.contains("kolin")
-                || lower.contains("kutná hora")
-                || lower.contains("kutna hora")
-                || lower.contains("ústí nad labem")
-                || lower.contains("usti nad labem")
-                || lower.contains("hradec králové")
-                || lower.contains("hradec kralove")
-                || lower.contains("jihlava")
-                || lower.contains("karlovy vary")
-                || lower.contains("české budějovice")
-                || lower.contains("ceske budejovice")
-                || lower.contains("zlín")
-                || lower.contains("zlin")
-                || lower.contains("mladá boleslav")
-                || lower.contains("mlada boleslav");
+        return false;
     }
 
     private String cleanupLocality(String s) {
@@ -725,6 +725,8 @@ public class IdnesParser {
             return "ROOM";
         }
 
+        if (lower.contains("garson")) return "1+kk";
+
         Matcher m = LAYOUT_PATTERN.matcher(text);
         if (!m.find()) {
             return null;
@@ -739,7 +741,8 @@ public class IdnesParser {
             return null;
         }
 
-        String src = img.hasAttr("src") ? img.attr("src") : img.attr("data-src");
+        String src = img.attr("data-src");
+        if (src.isBlank()) src = img.attr("src");
         if (src == null || src.isBlank()) {
             return null;
         }
@@ -802,7 +805,7 @@ public class IdnesParser {
     public static final class RateLimitedException extends IOException {
         private final boolean newCooldown;
 
-        private RateLimitedException(String message, boolean newCooldown) {
+        RateLimitedException(String message, boolean newCooldown) {
             super(message);
             this.newCooldown = newCooldown;
         }

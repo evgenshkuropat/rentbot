@@ -40,6 +40,8 @@ public class ParserService {
 
     private final SrealityParser srealityParser;
     private final IdnesParser idnesParser;
+    private final RealFreeParser realFreeParser;
+    private final boolean realFreeEnabled;
     private final BezrealitkyParser bezrealitkyParser;
     private final BazosParser bazosParser;
     private final DigiRealityParser digiRealityParser;
@@ -54,21 +56,26 @@ public class ParserService {
                     0, 0, 0, 0, 0,
                     0, 0,
                     0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0
+                    0, 0, 0, 0, 0, 0,
+                    0
             ));
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
+                         RealFreeParser realFreeParser,
                          BezrealitkyParser bezrealitkyParser,
                          BazosParser bazosParser,
                          DigiRealityParser digiRealityParser,
                          OwnerListingService ownerListingService,
                          UserFilterRepo userFilterRepo,
                          PremiumService premiumService,
-                         @Value("${rentbot.idnes.enabled:${IDNES_ENABLED:false}}") boolean idnesEnabled,
-                         @Value("${rentbot.digireality.enabled:${RENTBOT_DIGIREALITY_ENABLED:true}}") boolean digiRealityEnabled) {
+                         @Value("${rentbot.idnes.enabled:${IDNES_ENABLED:true}}") boolean idnesEnabled,
+                         @Value("${rentbot.digireality.enabled:${RENTBOT_DIGIREALITY_ENABLED:true}}") boolean digiRealityEnabled,
+                         @Value("${rentbot.realfree.enabled:true}") boolean realFreeEnabled) {
         this.srealityParser = srealityParser;
         this.idnesParser = idnesParser;
+        this.realFreeParser = realFreeParser;
+        this.realFreeEnabled = realFreeEnabled;
         this.bezrealitkyParser = bezrealitkyParser;
         this.bazosParser = bazosParser;
         this.digiRealityParser = digiRealityParser;
@@ -140,6 +147,7 @@ public class ParserService {
         int bezrealitkyRaw = 0;
         int bazosRaw = 0;
         int digirealityRaw = 0;
+        int realfreeRaw = 0;
 
         try {
 
@@ -234,6 +242,16 @@ public class ParserService {
             log.warn("Bazos parser failed region={} error={}", regionTitle(region), e.getMessage());
         }
 
+        if (realFreeEnabled) {
+            try {
+                List<ListingDto> realfree = realFreeParser.fetchListings(region);
+                realfreeRaw = realfree.size();
+                all.addAll(realfree);
+            } catch (Exception e) {
+                log.warn("RealFree parser failed region={} error={}", regionTitle(region), e.getMessage());
+            }
+        }
+
         all = dedupeByLink(all);
         int afterDedupeByLink = all.size();
 
@@ -260,7 +278,8 @@ public class ParserService {
                 previous.finalIdnes(),
                 previous.finalBezrealitky(),
                 previous.finalBazos(),
-                previous.finalDigireality()
+                previous.finalDigireality(),
+                realfreeRaw
         );
         lastRunStats.set(stats);
 
@@ -289,7 +308,8 @@ public class ParserService {
                     previous.afterDedupeByLink(),
                     previous.afterDedupeBySignature(),
                     0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0
+                    0, 0, 0, 0, 0, 0,
+                    previous.realfreeRaw()
             );
 
             if (updateLastRunStats) {
@@ -380,7 +400,8 @@ public class ParserService {
                 finalIdnes,
                 finalBezrealitky,
                 finalBazos,
-                finalDigireality
+                finalDigireality,
+                previous.realfreeRaw()
         );
 
         if (updateLastRunStats) {
@@ -516,6 +537,7 @@ public class ParserService {
     }
 
     private boolean isTrustedRegionalSource(String source) {
+        source = OwnerSignalDetector.visibleSource(source).toLowerCase(java.util.Locale.ROOT);
         return source.contains("sreality")
                 || source.contains("idnes")
                 || source.contains("bezrealitky")
@@ -1153,7 +1175,8 @@ public class ParserService {
                 finalIdnes,
                 finalBezrealitky,
                 finalBazos,
-                finalDigireality
+                finalDigireality,
+                previous.realfreeRaw()
         );
         lastRunStats.set(stats);
     }

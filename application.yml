@@ -17,6 +17,10 @@ telegram:
     username: ${TELEGRAM_BOT_USERNAME}
 
 rentbot:
+  idnes:
+    enabled: ${RENTBOT_IDNES_ENABLED:${IDNES_ENABLED:true}}
+  realfree:
+    enabled: ${RENTBOT_REALFREE_ENABLED:true}
   sent-log:
     retention-days: ${RENTBOT_SENT_LOG_RETENTION_DAYS:90}
   notifications:
