@@ -20,6 +20,7 @@ import com.yourapp.rentbot.repo.RegionRepo;
 import com.yourapp.rentbot.repo.SentLogRepo;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.FavoriteService;
+import com.yourapp.rentbot.service.AdminStatisticsMessages;
 import com.yourapp.rentbot.service.ListingCacheService;
 import com.yourapp.rentbot.service.NotificationService;
 import com.yourapp.rentbot.service.OwnerListingService;
@@ -490,19 +491,6 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
             ParserRunStats runStats = parserService.getLastRunStats();
             SchedulerRunStats schedulerStats = schedulerService.getLastRunStats();
 
-            int filteredBaseOther = runStats.filteredBaseTotal()
-                    - runStats.filteredBaseSreality()
-                    - runStats.filteredBaseIdnes()
-                    - runStats.filteredBaseBezrealitky()
-                    - runStats.filteredBaseBazos()
-                    - runStats.filteredBaseDigireality();
-            int finalOther = runStats.finalFiltered()
-                    - runStats.finalSreality()
-                    - runStats.finalIdnes()
-                    - runStats.finalBezrealitky()
-                    - runStats.finalBazos()
-                    - runStats.finalDigireality();
-
             long updated24h = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofHours(24)));
             long updated7d = userFilterRepo.countByUpdatedAtAfter(now.minus(java.time.Duration.ofDays(7)));
 
@@ -566,8 +554,8 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 Підтверджено: %d · Відхилено: %d
 Активний зараз: %d · Закінчується за 7 днів: %d · Другий пошук налаштовано: %d
 
-🕒 Оновлювались за 24 год: %d
-📆 Оновлювались за 7 днів: %d
+🕒 Збережено фільтри за 24 год: %d
+📆 Збережено фільтри за 7 днів: %d
 
 📈 Конверсія в активну підписку: %d%%
 
@@ -576,47 +564,7 @@ public class RentBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 📄 Користувачів у paging: %d
 🧷 favoriteLinkCache: %d
 
-📡 Останній парсинг / ручний пошук:
-Sreality raw: %d
-iDNES raw: %d
-Bezrealitky raw: %d
-Bazoš raw: %d
-DigiReality owners raw: %d
-
-🔁 Після дедуплікації:
-By link: %d
-By signature: %d
-
-🧪 Останній повний цикл до diversify:
-Всього: %d
-Sreality: %d
-iDNES: %d
-Bezrealitky: %d
-Bazoš: %d
-DigiReality owners: %d
-Власник — попадань у підбірки: %d
-
-🎯 Останній повний цикл у фінальній видачі:
-Всього: %d
-Sreality: %d
-iDNES: %d
-Bezrealitky: %d
-Bazoš: %d
-DigiReality owners: %d
-Власник — попадань у підбірки: %d
-
-📬 Останній повний цикл розсилки:
-Оброблено користувачів: %d
-Зі співпадіннями: %d
-Запусків парсерів: %d
-Кандидатів у фінальній видачі: %d
-Перевірено кандидатів: %d
-Нових успішно надіслано: %d
-Пропущено через ліміт: %d
-Після фільтрів: %d
-У фінальній видачі: %d
-Власницьких попадань у підбірки: %d
-Користувачів зі співпадіннями від власників: %d
+%s
 """
                     .formatted(
                             users,
@@ -682,41 +630,7 @@ DigiReality owners: %d
                             pagingUsers,
                             favoriteCacheSize,
 
-                            runStats.srealityRaw(),
-                            runStats.idnesRaw(),
-                            runStats.bezrealitkyRaw(),
-                            runStats.bazosRaw(),
-                            runStats.digirealityRaw(),
-                            runStats.afterDedupeByLink(),
-                            runStats.afterDedupeBySignature(),
-
-                            runStats.filteredBaseTotal(),
-                            runStats.filteredBaseSreality(),
-                            runStats.filteredBaseIdnes(),
-                            runStats.filteredBaseBezrealitky(),
-                            runStats.filteredBaseBazos(),
-                            runStats.filteredBaseDigireality(),
-                            filteredBaseOther,
-
-                            runStats.finalFiltered(),
-                            runStats.finalSreality(),
-                            runStats.finalIdnes(),
-                            runStats.finalBezrealitky(),
-                            runStats.finalBazos(),
-                            runStats.finalDigireality(),
-                            finalOther,
-
-                            schedulerStats.usersProcessed(),
-                            schedulerStats.usersWithMatches(),
-                            schedulerStats.parserRuns(),
-                            schedulerStats.totalCandidates(),
-                            schedulerStats.totalSendAttempts(),
-                            schedulerStats.totalSent(),
-                            schedulerStats.totalSkippedByLimit(),
-                            schedulerStats.aggregateFilteredBase(),
-                            schedulerStats.aggregateFinal(),
-                            schedulerStats.ownerMatches(),
-                            schedulerStats.usersWithOwnerMatches()
+                            AdminStatisticsMessages.parsingStats(runStats, schedulerStats)
                     );
 
             send(chatId, stats, Keyboards.persistentNavKeyboard(lang));

@@ -11,6 +11,8 @@ public record SchedulerRunStats(
         int aggregateFilteredBase,
         int aggregateFinal,
         int ownerMatches,
-        int usersWithOwnerMatches
+        int usersWithOwnerMatches,
+        ListingSourceCounts filteredBaseSources,
+        ListingSourceCounts finalSources
 ) {
 }

@@ -6,6 +6,7 @@ import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
 import com.yourapp.rentbot.service.dto.ParserRunStats;
+import com.yourapp.rentbot.service.dto.ListingSourceCounts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,14 +52,7 @@ public class ParserService {
     private final boolean idnesEnabled;
     private final boolean digiRealityEnabled;
 
-    private final AtomicReference<ParserRunStats> lastRunStats =
-            new AtomicReference<>(new ParserRunStats(
-                    0, 0, 0, 0, 0,
-                    0, 0,
-                    0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                    0
-            ));
+    private final AtomicReference<ParserRunStats> lastRunStats = new AtomicReference<>(ParserRunStats.empty());
 
     public ParserService(SrealityParser srealityParser,
                          IdnesParser idnesParser,
@@ -258,30 +252,9 @@ public class ParserService {
         all = dedupeBySignature(all);
         int afterDedupeBySignature = all.size();
 
-        ParserRunStats previous = lastRunStats.get();
-        ParserRunStats stats = new ParserRunStats(
-                srealityRaw,
-                idnesRaw,
-                bezrealitkyRaw,
-                bazosRaw,
-                digirealityRaw,
-                afterDedupeByLink,
-                afterDedupeBySignature,
-                previous.filteredBaseTotal(),
-                previous.filteredBaseSreality(),
-                previous.filteredBaseIdnes(),
-                previous.filteredBaseBezrealitky(),
-                previous.filteredBaseBazos(),
-                previous.filteredBaseDigireality(),
-                previous.finalFiltered(),
-                previous.finalSreality(),
-                previous.finalIdnes(),
-                previous.finalBezrealitky(),
-                previous.finalBazos(),
-                previous.finalDigireality(),
-                realfreeRaw
-        );
-        lastRunStats.set(stats);
+        lastRunStats.set(new ParserRunStats(srealityRaw, idnesRaw, bezrealitkyRaw, bazosRaw,
+                digirealityRaw, afterDedupeByLink, afterDedupeBySignature, realfreeRaw,
+                ListingSourceCounts.empty(), ListingSourceCounts.empty()));
 
         log.info("All listings region={} count={}", regionTitle(region), all.size());
 
@@ -289,34 +262,17 @@ public class ParserService {
     }
 
     public List<ListingDto> filterForUser(List<ListingDto> all, UserFilter filter) {
-        return filterForUserInternal(all, filter, false).listings();
+        return filterForUserInternal(all, filter).listings();
     }
 
     public FilterResult filterForScheduler(List<ListingDto> all, UserFilter filter) {
-        return filterForUserInternal(all, filter, false);
+        return filterForUserInternal(all, filter);
     }
 
-    private FilterResult filterForUserInternal(List<ListingDto> all, UserFilter filter, boolean updateLastRunStats) {
+    private FilterResult filterForUserInternal(List<ListingDto> all, UserFilter filter) {
         if (all == null || all.isEmpty() || filter == null) {
-            ParserRunStats previous = lastRunStats.get();
-            ParserRunStats stats = new ParserRunStats(
-                    previous.srealityRaw(),
-                    previous.idnesRaw(),
-                    previous.bezrealitkyRaw(),
-                    previous.bazosRaw(),
-                    previous.digirealityRaw(),
-                    previous.afterDedupeByLink(),
-                    previous.afterDedupeBySignature(),
-                    0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0,
-                    previous.realfreeRaw()
-            );
-
-            if (updateLastRunStats) {
-                lastRunStats.set(stats);
-            }
-
-            return new FilterResult(List.of(), stats);
+            return new FilterResult(List.of(), lastRunStats.get().withFilterCounts(
+                    ListingSourceCounts.empty(), ListingSourceCounts.empty()));
         }
 
         Region region = filter.getRegion();
@@ -339,76 +295,9 @@ public class ParserService {
                 .sorted(Comparator.comparingInt((ListingDto x) -> listingScore(x, filter)).reversed())
                 .toList();
 
-        int filteredBaseTotal = filteredBase.size();
-
-        int filteredBaseSreality = 0;
-        int filteredBaseIdnes = 0;
-        int filteredBaseBezrealitky = 0;
-        int filteredBaseBazos = 0;
-        int filteredBaseDigireality = 0;
-
-        for (ListingDto x : filteredBase) {
-            String source = x.source() == null ? "" : x.source().toLowerCase();
-
-            if (source.contains("sreality")) filteredBaseSreality++;
-            else if (source.contains("idnes")) filteredBaseIdnes++;
-            else if (source.contains("bezrealitky")) filteredBaseBezrealitky++;
-            else if (source.contains("bazo")) filteredBaseBazos++;
-            else if (source.contains("digireality")) filteredBaseDigireality++;
-        }
-
         List<ListingDto> filtered = diversifyBySource(filteredBase, 4, 20);
-
-        int finalFiltered = filtered.size();
-
-        int finalSreality = 0;
-        int finalIdnes = 0;
-        int finalBezrealitky = 0;
-        int finalBazos = 0;
-        int finalDigireality = 0;
-
-        for (ListingDto x : filtered) {
-            String source = x.source() == null ? "" : x.source().toLowerCase();
-
-            if (source.contains("sreality")) finalSreality++;
-            else if (source.contains("idnes")) finalIdnes++;
-            else if (source.contains("bezrealitky")) finalBezrealitky++;
-            else if (source.contains("bazo")) finalBazos++;
-            else if (source.contains("digireality")) finalDigireality++;
-        }
-
-        ParserRunStats previous = lastRunStats.get();
-
-        ParserRunStats stats = new ParserRunStats(
-                previous.srealityRaw(),
-                previous.idnesRaw(),
-                previous.bezrealitkyRaw(),
-                previous.bazosRaw(),
-                previous.digirealityRaw(),
-                previous.afterDedupeByLink(),
-                previous.afterDedupeBySignature(),
-
-                filteredBaseTotal,
-                filteredBaseSreality,
-                filteredBaseIdnes,
-                filteredBaseBezrealitky,
-                filteredBaseBazos,
-                filteredBaseDigireality,
-
-                finalFiltered,
-                finalSreality,
-                finalIdnes,
-                finalBezrealitky,
-                finalBazos,
-                finalDigireality,
-                previous.realfreeRaw()
-        );
-
-        if (updateLastRunStats) {
-            lastRunStats.set(stats);
-        }
-
-        return new FilterResult(filtered, stats);
+        return new FilterResult(filtered, lastRunStats.get().withFilterCounts(
+                ListingSourceCounts.from(filteredBase), ListingSourceCounts.from(filtered)));
     }
 
     public record FilterResult(List<ListingDto> listings, ParserRunStats stats) {
@@ -1140,44 +1029,4 @@ public class ParserService {
         return lastRunStats.get();
     }
 
-    public void updateLastRunFilterStats(int filteredBaseTotal,
-                                         int filteredBaseSreality,
-                                         int filteredBaseIdnes,
-                                         int filteredBaseBezrealitky,
-                                         int filteredBaseBazos,
-                                         int filteredBaseDigireality,
-                                         int finalFiltered,
-                                         int finalSreality,
-                                         int finalIdnes,
-                                         int finalBezrealitky,
-                                         int finalBazos,
-                                         int finalDigireality) {
-        ParserRunStats previous = lastRunStats.get();
-
-        ParserRunStats stats = new ParserRunStats(
-                previous.srealityRaw(),
-                previous.idnesRaw(),
-                previous.bezrealitkyRaw(),
-                previous.bazosRaw(),
-                previous.digirealityRaw(),
-                previous.afterDedupeByLink(),
-                previous.afterDedupeBySignature(),
-
-                filteredBaseTotal,
-                filteredBaseSreality,
-                filteredBaseIdnes,
-                filteredBaseBezrealitky,
-                filteredBaseBazos,
-                filteredBaseDigireality,
-
-                finalFiltered,
-                finalSreality,
-                finalIdnes,
-                finalBezrealitky,
-                finalBazos,
-                finalDigireality,
-                previous.realfreeRaw()
-        );
-        lastRunStats.set(stats);
-    }
 }

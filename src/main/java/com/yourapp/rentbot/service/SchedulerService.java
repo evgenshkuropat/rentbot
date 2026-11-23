@@ -5,7 +5,7 @@ import com.yourapp.rentbot.domain.PremiumSearch;
 import com.yourapp.rentbot.domain.UserFilter;
 import com.yourapp.rentbot.repo.UserFilterRepo;
 import com.yourapp.rentbot.service.dto.ListingDto;
-import com.yourapp.rentbot.service.dto.ParserRunStats;
+import com.yourapp.rentbot.service.dto.ListingSourceCounts;
 import com.yourapp.rentbot.service.dto.SchedulerRunStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ public class SchedulerService {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicReference<SchedulerRunStats> lastRunStats =
-            new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+            new AtomicReference<>(new SchedulerRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ListingSourceCounts.empty(), ListingSourceCounts.empty()));
     private final AtomicReference<Instant> lastCompletedAt = new AtomicReference<>();
     private final AtomicReference<Instant> startedAt = new AtomicReference<>();
 
@@ -97,7 +97,7 @@ public class SchedulerService {
 
         if (users.isEmpty()) {
             log.info("Scheduler: no active users");
-            updateLastRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            updateLastRunStats(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ListingSourceCounts.empty(), ListingSourceCounts.empty());
             return;
         }
 
@@ -113,18 +113,8 @@ public class SchedulerService {
         int totalSent = 0;
         int totalSkippedByLimit = 0;
         int parserRuns = 0;
-        int aggregateFilteredBaseTotal = 0;
-        int aggregateFilteredBaseSreality = 0;
-        int aggregateFilteredBaseIdnes = 0;
-        int aggregateFilteredBaseBezrealitky = 0;
-        int aggregateFilteredBaseBazos = 0;
-        int aggregateFilteredBaseDigireality = 0;
-        int aggregateFinalFiltered = 0;
-        int aggregateFinalSreality = 0;
-        int aggregateFinalIdnes = 0;
-        int aggregateFinalBezrealitky = 0;
-        int aggregateFinalBazos = 0;
-        int aggregateFinalDigireality = 0;
+        ListingSourceCounts aggregateBase = ListingSourceCounts.empty();
+        ListingSourceCounts aggregateFinal = ListingSourceCounts.empty();
         int ownerMatches = 0;
         int usersWithOwnerMatches = 0;
 
@@ -149,13 +139,7 @@ public class SchedulerService {
 
                     ParserService.FilterResult filterResult = parserService.filterForScheduler(allListings, user);
                     listings.addAll(filterResult.listings());
-                    ParserRunStats userFilterStats = filterResult.stats();
-                    aggregateFilteredBaseTotal += userFilterStats.filteredBaseTotal();
-                    aggregateFilteredBaseSreality += userFilterStats.filteredBaseSreality();
-                    aggregateFilteredBaseIdnes += userFilterStats.filteredBaseIdnes();
-                    aggregateFilteredBaseBezrealitky += userFilterStats.filteredBaseBezrealitky();
-                    aggregateFilteredBaseBazos += userFilterStats.filteredBaseBazos();
-                    aggregateFilteredBaseDigireality += userFilterStats.filteredBaseDigireality();
+                    aggregateBase = aggregateBase.plus(filterResult.stats().filteredBaseSources());
                 } else if (premiumUser) {
                     log.info("Scheduler: premium-only user={} main search inactive", userId);
                 }
@@ -176,13 +160,7 @@ public class SchedulerService {
                             }
                             ParserService.FilterResult premiumFilterResult = parserService.filterForScheduler(premiumListings, premiumFilter);
                             premiumMatches = premiumFilterResult.listings();
-                            ParserRunStats premiumFilterStats = premiumFilterResult.stats();
-                            aggregateFilteredBaseTotal += premiumFilterStats.filteredBaseTotal();
-                            aggregateFilteredBaseSreality += premiumFilterStats.filteredBaseSreality();
-                            aggregateFilteredBaseIdnes += premiumFilterStats.filteredBaseIdnes();
-                            aggregateFilteredBaseBezrealitky += premiumFilterStats.filteredBaseBezrealitky();
-                            aggregateFilteredBaseBazos += premiumFilterStats.filteredBaseBazos();
-                            aggregateFilteredBaseDigireality += premiumFilterStats.filteredBaseDigireality();
+                            aggregateBase = aggregateBase.plus(premiumFilterResult.stats().filteredBaseSources());
                             listings = interleaveUnique(premiumMatches, listings);
                             log.info("Scheduler: premium search user={} candidates={}", userId, premiumMatches.size());
                         } catch (Exception e) {
@@ -202,19 +180,9 @@ public class SchedulerService {
 
                 usersWithMatches++;
                 totalCandidates += listings.size();
-                aggregateFinalFiltered += listings.size();
-                for (ListingDto listing : listings) {
-                    String source = listing.source() == null ? "" : listing.source().toLowerCase();
-                    if (source.contains("sreality")) aggregateFinalSreality++;
-                    else if (source.contains("idnes")) aggregateFinalIdnes++;
-                    else if (source.contains("bezrealitky")) aggregateFinalBezrealitky++;
-                    else if (source.contains("bazo")) aggregateFinalBazos++;
-                    else if (source.contains("digireality")) aggregateFinalDigireality++;
-                }
-
-                int ownerMatchesForUser = (int) listings.stream()
-                        .filter(this::isOwnerListing)
-                        .count();
+                ListingSourceCounts userSources = ListingSourceCounts.from(listings);
+                aggregateFinal = aggregateFinal.plus(userSources);
+                int ownerMatchesForUser = userSources.verifiedOwner();
                 ownerMatches += ownerMatchesForUser;
                 if (ownerMatchesForUser > 0) {
                     usersWithOwnerMatches++;
@@ -271,21 +239,6 @@ public class SchedulerService {
             }
         }
 
-        parserService.updateLastRunFilterStats(
-                aggregateFilteredBaseTotal,
-                aggregateFilteredBaseSreality,
-                aggregateFilteredBaseIdnes,
-                aggregateFilteredBaseBezrealitky,
-                aggregateFilteredBaseBazos,
-                aggregateFilteredBaseDigireality,
-                aggregateFinalFiltered,
-                aggregateFinalSreality,
-                aggregateFinalIdnes,
-                aggregateFinalBezrealitky,
-                aggregateFinalBazos,
-                aggregateFinalDigireality
-        );
-
         log.info(
                 "Scheduler finished: usersProcessed={}, usersWithMatches={}, parserRuns={}, totalCandidates={}, totalSendAttempts={}, totalSent={}, totalSkippedByLimit={}, freeNotificationLimit={}, premiumNotificationLimit={}, aggregateFilteredBase={}, aggregateFinal={}",
                 usersProcessed,
@@ -297,8 +250,8 @@ public class SchedulerService {
                 totalSkippedByLimit,
                 maxNotificationsPerUserPerCycle,
                 maxPremiumNotificationsPerUserPerCycle,
-                aggregateFilteredBaseTotal,
-                aggregateFinalFiltered
+                aggregateBase.total(),
+                aggregateFinal.total()
         );
 
         updateLastRunStats(
@@ -309,10 +262,12 @@ public class SchedulerService {
                 totalSendAttempts,
                 totalSent,
                 totalSkippedByLimit,
-                aggregateFilteredBaseTotal,
-                aggregateFinalFiltered,
+                aggregateBase.total(),
+                aggregateFinal.total(),
                 ownerMatches,
-                usersWithOwnerMatches
+                usersWithOwnerMatches,
+                aggregateBase,
+                aggregateFinal
         );
     }
 
@@ -338,7 +293,9 @@ public class SchedulerService {
                                     int aggregateFilteredBase,
                                     int aggregateFinal,
                                     int ownerMatches,
-                                    int usersWithOwnerMatches) {
+                                    int usersWithOwnerMatches,
+                                    ListingSourceCounts baseSources,
+                                    ListingSourceCounts finalSources) {
         lastRunStats.set(new SchedulerRunStats(
                 usersProcessed,
                 usersWithMatches,
@@ -350,18 +307,11 @@ public class SchedulerService {
                 aggregateFilteredBase,
                 aggregateFinal,
                 ownerMatches,
-                usersWithOwnerMatches
+                usersWithOwnerMatches,
+                baseSources,
+                finalSources
         ));
         lastCompletedAt.set(Instant.now());
-    }
-
-    private boolean isOwnerListing(ListingDto listing) {
-        if (listing == null || listing.source() == null) {
-            return false;
-        }
-
-        String source = listing.source().toLowerCase();
-        return source.contains("owner") || source.contains("власник");
     }
 
     private String cacheKey(UserFilter user) {
