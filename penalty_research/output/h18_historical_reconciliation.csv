@@ -1,9 +1,0 @@
-﻿strict,price,side,n,wins
-False,first,GOAL,23,19
-False,first,SAVE,21,20
-False,closing,GOAL,24,19
-False,closing,SAVE,23,21
-True,first,GOAL,23,19
-True,first,SAVE,21,20
-True,closing,GOAL,24,19
-True,closing,SAVE,23,21

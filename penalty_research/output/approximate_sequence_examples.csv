@@ -1,7 +1,0 @@
-﻿mode,length,day_a,day_b,start_a,start_b,note
-sector_outcome,7,2026-10-27,2026-11-01,3363311/4,3386908/4,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
-sector_outcome,7,2026-10-27,2026-11-01,3363311/5,3386908/5,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
-sector_outcome,7,2026-10-27,2026-11-01,3363487/4,3383210/3,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
-sector_outcome,7,2026-10-28,2026-11-03,3366398/4,3390934/2,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
-sector_outcome,7,2026-10-29,2026-11-02,3371171/5,3387568/3,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
-sector_both_odds_tol_0.05_outcome,4,2026-11-01,2026-11-02,3386919/1,3387557/1,"at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable"
