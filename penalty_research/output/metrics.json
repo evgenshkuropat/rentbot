@@ -1,0 +1,89 @@
+{
+  "audit": {
+    "raw_result_rows": 3734,
+    "result_duplicate_key_rows": 0,
+    "conflicting_result_keys": 0,
+    "conflicting_ws_keys": 0,
+    "results_vs_market_disagreements": 0,
+    "independent_settlement_overlap": 780,
+    "invalid_odds_rows": 0,
+    "duplicate_odds_events": 0,
+    "odds_events_after_result": 4,
+    "conflicting_ui_keys": 0,
+    "ui_result_disagreements": 0,
+    "unique_valid_results": 3734,
+    "no_pre_result_odds": 20,
+    "strict_rows": 3713,
+    "all_keys": 3875,
+    "known_results_only": 3734,
+    "quality_export_counts": "{('11', 'NO_ODDS'): 2, ('11', 'PAIRED'): 806, ('11', 'UNKNOWN_RESULT'): 12, ('12', 'NO_ODDS'): 2, ('12', 'PAIRED'): 629, ('12', 'UNKNOWN_RESULT'): 10, ('13', 'NO_ODDS'): 12, ('13', 'ODDS_AFTER_RESULT'): 4, ('13', 'PAIRED'): 2279, ('13', 'UNKNOWN_RESULT'): 119}",
+    "joined_result_disagreements": 0,
+    "results_without_any_odds": 16,
+    "odds_without_results": 141,
+    "targets_selected_nonempty": 0,
+    "targets_actual_nonempty": 0,
+    "targets_keeper_nonempty": 0,
+    "voting_rows": 32455,
+    "voting_nonempty_hlasy": 20228,
+    "voting_nonempty_options": 0,
+    "voting_nonempty_selected": 0,
+    "schedule_diagnostic_rows": 68886,
+    "schedule_extracted_positive": 9902,
+    "keeper_links": 487,
+    "keeper_timeonly": 472,
+    "schedule_cards_reused_multiple_matches": 96,
+    "max_internal_matches_per_keeper_card": 6
+  },
+  "health": {
+    "samples": 2497,
+    "disconnected_samples": 10,
+    "ui_over60": 5,
+    "ws_over180": 409,
+    "ui_max": 226.0,
+    "ws_max": 1665.0,
+    "note": "periodic observations, not time-weighted uptime; missing intervals not healthy intervals",
+    "gaps_over120": 7,
+    "max_recording_gap_sec": 214166.9182055
+  },
+  "predictive": {
+    "n": 2144,
+    "market_brier": 0.19166013278038196,
+    "sector_model_brier": 0.19129256857962637,
+    "delta_ci": [
+      -0.002136407171009305,
+      0.0013830970545197722
+    ],
+    "note": "retrospective temporal validation; post-result UI sector is not proven available pre-shot; diagnostic, not deployable predictor"
+  },
+  "repeats": {
+    "complete_matches": 715,
+    "cross_day_pairs": 213689,
+    "exact_pairs": 0,
+    "near_pairs": 0,
+    "B": 499,
+    "exact_null_mean": 0.0,
+    "near_null_mean": 0.0,
+    "exact_p": 1.0,
+    "near_p": 1.0
+  },
+  "seed": 20261104,
+  "cutoff": "V11+V12 historical; V13 local day >=2026-10-29 validation; earlier V13 boundary excluded from confirmation",
+  "versions": [
+    11,
+    12,
+    13
+  ],
+  "created_utc": "2026-11-04T20:47:52.559827+00:00",
+  "lead_percentiles": {
+    "0.0": 5.0642681,
+    "0.05": 22.098340519999997,
+    "0.5": 29.9431935,
+    "0.95": 35.49460294,
+    "1.0": 125.1133276
+  },
+  "combination_sparsity": {
+    "total": 2157,
+    "n_ge20": 0,
+    "n_eq1": 1395
+  }
+}

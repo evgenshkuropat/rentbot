@@ -1,0 +1,11 @@
+{
+  "penalty-collector-v14.jar": "8f63b85b575b598260759de8d83aebf02d6b34f6ac751414f5e33ad18df32dce",
+  "PROTOCOL_V14_RU.md": "b8ea10899e863fea55285701dde522f6191f797cf54aaaf707d20cdf0ac20301",
+  "README_RU.txt": "f165256e80ef9e7cd72789b1d630c4d8e742aae5972edfeadbd6582c7fd30577",
+  "START_V14.cmd": "4edb83b889e56242d9b49ea07ed15a2c1c7cdf334e87635a92b9b82c93c7d42a",
+  "lib/jackson-annotations-2.20.jar": "959a2ffb2d591436f51f183c6a521fc89347912f711bf0cae008cdf045d95319",
+  "lib/jackson-core-2.20.1.jar": "ffab4d957daa2796cf24cb66d0b78a7090f1bcbe17c3a4578f09affaaf137089",
+  "lib/jackson-databind-2.20.1.jar": "34bbeb4526fff4f8565b12106bf85a6afcbae858966d489b54214ac46b2e26e8",
+  "src/main/java/com/ucl/Audit14.java": "4ac402142221575464137c124267d9fd930d8b5a9fe4af8873f8bf7652498232",
+  "src/main/java/com/ucl/Main.java": "b133d9437c17f331c5fb81b5767e34fd0ed17980b4262439a19ee1649c935d95"
+}

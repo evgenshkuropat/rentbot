@@ -1,0 +1,16 @@
+﻿mode,k,pairs,metric,permutation_p,block5_p,B
+outcome,3,664922,,,,
+outcome,4,320051,,,,
+outcome,5,154458,,,,
+outcome,6,74773,,,,
+outcome,8,17424,,,,
+outcome,10,4136,,,,
+outcome,12,1001,,,,
+outcome,16,55,,,,
+outcome,19,3,longest,0.94,0.954,499.0
+sector_outcome,3,1230,,,,
+sector_outcome,4,82,,,,
+sector_outcome,5,5,,,,
+sector_outcome,6,1,,,,
+sector_outcome,6,1,longest,0.15,0.21,499.0
+full,2,25,longest,1.0,1.0,499.0

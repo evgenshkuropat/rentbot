@@ -1,0 +1,10 @@
+{
+  "source_csv_files": 39,
+  "raw_sources_hash_unchanged": true,
+  "unique_clean_rounds": 3734,
+  "primary_rows": 3713,
+  "historical_control_count": 1435,
+  "formulas_checked": 3713,
+  "raw_result_reconciliation": true,
+  "hypothesis_controls": true
+}

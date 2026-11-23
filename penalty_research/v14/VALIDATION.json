@@ -1,0 +1,12 @@
+{
+  "offlineJavaTests": "PASS",
+  "offlineDomObserverTests": "PASS",
+  "deployedFilesVerified": 9,
+  "originalV13SourceUnchanged": true,
+  "processId": 13604,
+  "liveConnectionObserved": true,
+  "liveEvidenceHashChain": "PASS (first 99 complete records)",
+  "videoCaptureImplemented": false,
+  "videoElementObserved": false,
+  "statisticalValidationStarted": false
+}

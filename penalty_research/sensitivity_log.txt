@@ -1,0 +1,23 @@
+ strict   price side  n  wins
+  False   first GOAL 23    19
+  False   first SAVE 21    20
+  False closing GOAL 24    19
+  False closing SAVE 23    21
+   True   first GOAL 23    19
+   True   first SAVE 21    20
+   True closing GOAL 24    19
+   True closing SAVE 23    21
+hypothesis         method cluster   n  clusters  observed  expected      gap       se        p
+       H06 p_proportional matchId 490       272  0.885714  0.828576 0.057138 0.014357 0.000089
+       H06 p_proportional     day 490         5  0.885714  0.828576 0.057138 0.020105 0.046774
+       H06 p_additive_fav matchId 490       272  0.885714  0.858274 0.027440 0.014344 0.056809
+       H06 p_additive_fav     day 490         5  0.885714  0.858274 0.027440 0.019994 0.241861
+       H06        p_power matchId 490       272  0.885714  0.880408 0.005306 0.014331 0.711467
+       H06        p_power     day 490         5  0.885714  0.880408 0.005306 0.019796 0.801913
+                             mode  length      day_a      day_b   start_a   start_b                                                                                             note
+                   sector_outcome       7 2026-10-27 2026-11-01 3363311/4 3386908/4 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
+                   sector_outcome       7 2026-10-27 2026-11-01 3363311/5 3386908/5 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
+                   sector_outcome       7 2026-10-27 2026-11-01 3363487/4 3383210/3 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
+                   sector_outcome       7 2026-10-28 2026-11-03 3366398/4 3390934/2 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
+                   sector_outcome       7 2026-10-29 2026-11-02 3371171/5 3387568/3 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
+sector_both_odds_tol_0.05_outcome       4 2026-11-01 2026-11-02 3386919/1 3387557/1 at most one mismatched shot; exploratory, no p-value; fixed odds tolerance 0.05 where applicable
