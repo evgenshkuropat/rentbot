@@ -33,13 +33,28 @@ public class RealFreeParser {
     private long blockedUntil;
 
     public synchronized List<ListingDto> fetchListings(Region region) {
-        if (region == null || region.getCode() == null || region.getCode().isBlank()) return List.of();
+        if (region == null || region.getCode() == null || region.getCode().isBlank()) {
+            log.info("RealFree skipped reason=missing_region");
+            return List.of();
+        }
         String city = fold(region.getCode().replace('_', ' ')).trim();
-        if (!city.matches("[a-z]+(?:[ -][a-z]+)*")) return List.of();
+        if (!city.matches("[a-z]+(?:[ -][a-z]+)*")) {
+            log.warn("RealFree skipped reason=invalid_region region={}", ParserDiagnostics.text(region.getCode()));
+            return List.of();
+        }
         long now = System.currentTimeMillis();
         CacheEntry previous = cache.get(city);
-        if (previous != null && now - previous.loadedAt() < CACHE_TTL_MS) return previous.listings();
-        if (now < blockedUntil) return recentCache(previous, now);
+        if (previous != null && now - previous.loadedAt() < CACHE_TTL_MS) {
+            log.info("RealFree cache region={} mode=fresh ageSeconds={} count={}", city,
+                    (now - previous.loadedAt()) / 1000, previous.listings().size());
+            return previous.listings();
+        }
+        if (now < blockedUntil) {
+            var fallback = recentCache(previous, now);
+            log.info("RealFree skipped region={} reason=cooldown remainingSeconds={} cachedCount={}", city,
+                    (blockedUntil - now + 999) / 1000, fallback.size());
+            return fallback;
+        }
         String catalog = BASE + "/pronajem-bytu-" + city.replace(' ', '-');
         String url = catalog;
         List<ListingDto> result = new ArrayList<>();
@@ -47,9 +62,10 @@ public class RealFreeParser {
         boolean failed = false;
         for (int page = 1; url != null && page <= MAX_PAGES; page++) {
             try {
+                log.info("RealFree page started region={} page={} url={}", city, page, url);
                 Document doc = loadDocument(url);
                 if (!sameCatalog(catalog, doc.location())) {
-                    log.warn("RealFree: unexpected redirect from {} to {}", url, doc.location());
+                    log.warn("RealFree skipped reason=unexpected_redirect url={} finalUrl={}", ParserDiagnostics.url(url), ParserDiagnostics.url(doc.location()));
                     // An unsupported city must not pause requests for other cities.
                     break;
                 }
@@ -59,16 +75,25 @@ public class RealFreeParser {
             } catch (IOException e) {
                 if (e instanceof org.jsoup.HttpStatusException status
                         && (status.getStatusCode() == 404 || status.getStatusCode() == 410)) {
+                    log.warn("RealFree page stopped region={} page={} status={} reason=catalog_not_found url={} partialCount={}",
+                            city, page, status.getStatusCode(), ParserDiagnostics.url(url), result.size());
                     break;
                 }
-                log.warn("RealFree: failed to load {}: {}", url, e.getMessage());
+                log.warn("RealFree request failed region={} page={} url={} errorType={} partialCount={}",
+                        city, page, ParserDiagnostics.url(url), e.getClass().getSimpleName(), result.size());
                 failed = true;
                 break;
             }
         }
         if (failed) {
             blockedUntil = System.currentTimeMillis() + COOLDOWN_MS;
-            if (result.isEmpty()) return recentCache(previous, now);
+            if (result.isEmpty()) {
+                var fallback = recentCache(previous, now);
+                log.warn("RealFree fallback region={} reason=request_failed cooldownSeconds={} cachedCount={}",
+                        city, COOLDOWN_MS / 1000, fallback.size());
+                return fallback;
+            }
+            log.warn("RealFree partial region={} count={} cooldownSeconds={}", city, result.size(), COOLDOWN_MS / 1000);
             List<ListingDto> partial = List.copyOf(result);
             cache.put(city, new CacheEntry(partial, now - CACHE_TTL_MS));
             return partial;
@@ -80,7 +105,22 @@ public class RealFreeParser {
     }
 
     Document loadDocument(String url) throws IOException {
-        return Jsoup.connect(url).userAgent("RentBot/1.0").timeout(15_000).get();
+        long started = System.nanoTime();
+        var response = executeRequest(url);
+        int status = response.statusCode();
+        log.info("RealFree HTTP url={} finalUrl={} status={} reason={} contentType={} durationMs={}",
+                ParserDiagnostics.url(url), ParserDiagnostics.url(response.url().toString()), status,
+                ParserDiagnostics.httpReason(status), ParserDiagnostics.text(response.contentType()),
+                (System.nanoTime() - started) / 1_000_000);
+        if (status >= 400) throw new org.jsoup.HttpStatusException("RealFree HTTP " + status, status,
+                ParserDiagnostics.url(response.url().toString()));
+        try (var stream = response.bodyStream()) {
+            return Jsoup.parse(stream, "UTF-8", response.url().toString());
+        }
+    }
+
+    org.jsoup.Connection.Response executeRequest(String url) throws IOException {
+        return Jsoup.connect(url).userAgent("RentBot/1.0").timeout(15_000).ignoreHttpErrors(true).execute();
     }
 
     private List<ListingDto> recentCache(CacheEntry entry, long now) {
@@ -96,27 +136,56 @@ public class RealFreeParser {
 
     List<ListingDto> parsePage(Document doc, String city, Set<String> seen) {
         List<ListingDto> result = new ArrayList<>();
-        for (Element card : doc.select("a.rf-card[href]")) {
+        var cards = doc.select("a.rf-card[href]");
+        int rejectedCity = 0, rejectedLink = 0, rejectedTitle = 0, rejectedLayout = 0, rejectedPrice = 0, duplicates = 0;
+        String firstRejectedCity = "", firstRejectedPrice = "", firstRejectedLayout = "";
+        for (Element card : cards) {
             String locality = text(card, "p:has(i.fa-map-marker-alt)");
-            if (!matchesCity(locality, city)) continue;
+            if (!matchesCity(locality, city)) {
+                rejectedCity++;
+                if (firstRejectedCity.isEmpty()) firstRejectedCity = "locality=" + ParserDiagnostics.text(locality);
+                continue;
+            }
             String title = text(card, "h2, h3");
             String link = card.absUrl("href").replaceFirst("[?#].*$", "");
             URI uri;
-            try { uri = URI.create(link); } catch (IllegalArgumentException e) { continue; }
+            try { uri = URI.create(link); } catch (IllegalArgumentException e) { rejectedLink++; continue; }
             if (!"realfree.cz".equalsIgnoreCase(uri.getHost()) || !uri.getPath().startsWith("/inzerat/")
-                    || !Set.of("http", "https").contains(uri.getScheme()) || title.isBlank()) continue;
+                    || !Set.of("http", "https").contains(uri.getScheme())) { rejectedLink++; continue; }
+            if (title.isBlank()) { rejectedTitle++; continue; }
             String label = fold(title);
             Matcher layout = LAYOUT.matcher(label);
             String disposition = ROOM.matcher(label).find() ? "ROOM"
                     : layout.find() ? layout.group(1) + "+" + layout.group(2)
                     : label.contains("garson") ? "1+kk" : null;
-            int price = price(text(card, "div.font-bold"));
-            if (disposition == null || price <= 0 || !seen.add(link)) continue;
+            if (disposition == null) {
+                rejectedLayout++;
+                if (firstRejectedLayout.isEmpty()) firstRejectedLayout = ParserDiagnostics.text(title);
+                continue;
+            }
+            String priceText = text(card, "div.font-bold");
+            int price = price(priceText);
+            if (price <= 0) {
+                rejectedPrice++;
+                if (firstRejectedPrice.isEmpty()) firstRejectedPrice = "priceText=" + ParserDiagnostics.text(priceText);
+                continue;
+            }
+            if (!seen.add(link)) { duplicates++; continue; }
             Element img = card.selectFirst("img");
             String photo = img == null ? "" : img.absUrl("data-src");
             if (photo.isBlank() && img != null) photo = img.absUrl("src");
             result.add(new ListingDto(title, price, link, disposition, locality, photo,
                     OwnerSignalDetector.sourceWithPossibleOwnerSignal("RealFree", card.text()), LocalDateTime.now()));
+        }
+        log.info("RealFree page summary region={} url={} cards={} accepted={} rejectedCity={} rejectedLink={} rejectedTitle={} rejectedLayout={} rejectedPrice={} duplicates={}",
+                city, ParserDiagnostics.url(doc.location()), cards.size(), result.size(), rejectedCity, rejectedLink,
+                rejectedTitle, rejectedLayout, rejectedPrice, duplicates);
+        if (cards.isEmpty()) {
+            log.warn("RealFree empty page region={} reason=no_matching_cards url={} title={} listingLinks={}", city,
+                    ParserDiagnostics.url(doc.location()), ParserDiagnostics.text(doc.title()), doc.select("a[href*=/inzerat/]").size());
+        } else if (result.isEmpty()) {
+            log.warn("RealFree all cards rejected region={} citySample={} priceSample={} layoutSample={}",
+                    city, firstRejectedCity, firstRejectedPrice, firstRejectedLayout);
         }
         return result;
     }

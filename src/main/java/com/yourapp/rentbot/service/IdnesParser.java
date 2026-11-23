@@ -89,6 +89,8 @@ public class IdnesParser {
 
         CachedListings cached = searchCache.get(url);
         if (isFresh(cached)) {
+            log.info("iDNES cache url={} mode=fresh ageSeconds={} count={}", ParserDiagnostics.url(url),
+                    (System.currentTimeMillis() - cached.cachedAt()) / 1000, cached.listings().size());
             return cached.listings();
         }
 
@@ -96,6 +98,7 @@ public class IdnesParser {
         synchronized (searchLock) {
             cached = searchCache.get(url);
             if (isFresh(cached)) {
+                log.info("iDNES cache url={} mode=fresh_after_wait count={}", ParserDiagnostics.url(url), cached.listings().size());
                 return cached.listings();
             }
 
@@ -104,9 +107,13 @@ public class IdnesParser {
                 listings = fetchListingsUncached(region, url);
             } catch (IOException e) {
                 if (cached != null && System.currentTimeMillis() - cached.cachedAt() < STALE_CACHE_TTL_MS) {
-                    log.warn("iDNES refresh failed; using recent stale cache url={} error={}", url, e.getMessage());
+                    log.warn("iDNES fallback url={} mode=stale ageSeconds={} count={} errorType={}", ParserDiagnostics.url(url),
+                            (System.currentTimeMillis() - cached.cachedAt()) / 1000, cached.listings().size(), e.getClass().getSimpleName());
                     return cached.listings();
                 }
+                log.warn("iDNES search failed region={} url={} errorType={} cachedCount=0",
+                        region == null ? "default" : ParserDiagnostics.text(region.getCode()),
+                        ParserDiagnostics.url(url), e.getClass().getSimpleName());
                 throw e;
             }
             List<ListingDto> snapshot = List.copyOf(listings);
@@ -133,6 +140,9 @@ public class IdnesParser {
 
         Elements links = doc.select("a[href*='/detail/'], a[href*='/s/detail/'], a[href*='/s/pronajem/']");
         int candidateLinks = links.size();
+        int skippedInvalidLink = 0, duplicates = 0, skippedPrice = 0, skippedLocality = 0, skippedLayout = 0;
+        int detailBudgetSkipped = 0, detailCooldownSkipped = 0;
+        String incompleteSample = "";
         int skippedBlankHref = 0;
         int skippedNoCard = 0;
         int skippedBlankText = 0;
@@ -156,11 +166,15 @@ public class IdnesParser {
             try {
                 listingUri = java.net.URI.create(absoluteLink);
             } catch (IllegalArgumentException e) {
+                skippedInvalidLink++;
                 continue;
             }
             if (!"reality.idnes.cz".equalsIgnoreCase(listingUri.getHost())
-                    || !java.util.Set.of("https", "http").contains(listingUri.getScheme())
-                    || !seen.add(absoluteLink)) continue;
+                    || !java.util.Set.of("https", "http").contains(listingUri.getScheme())) {
+                skippedInvalidLink++;
+                continue;
+            }
+            if (!seen.add(absoluteLink)) { duplicates++; continue; }
 
             Element card = findCardContainer(linkEl);
             if (card == null) {
@@ -208,6 +222,9 @@ public class IdnesParser {
             }
 
             boolean detailWasCached = isFresh(detailCache.get(absoluteLink));
+            boolean incomplete = priceCzk <= 0 || locality.isBlank() || layout == null;
+            if (incomplete && detailRequestsPaused) detailCooldownSkipped++;
+            else if (incomplete && !detailWasCached && detailFetches >= MAX_DETAIL_REQUESTS_PER_SEARCH) detailBudgetSkipped++;
             if (!detailRequestsPaused && (priceCzk <= 0 || locality.isBlank() || layout == null)
                     && (detailWasCached || detailFetches < MAX_DETAIL_REQUESTS_PER_SEARCH)) {
                 DetailFields detail;
@@ -216,6 +233,10 @@ public class IdnesParser {
                 } catch (RateLimitedException e) {
                     log.warn("iDNES detail requests paused; keeping {} parsed listings", result.size());
                     detailRequestsPaused = true;
+                    detailCooldownSkipped++;
+                    if (priceCzk <= 0) skippedPrice++;
+                    else if (locality.isBlank()) skippedLocality++;
+                    else if (layout == null) skippedLayout++;
                     continue;
                 }
                 if (detailWasCached) {
@@ -240,7 +261,14 @@ public class IdnesParser {
                 }
             }
 
-            if (priceCzk <= 0 || locality.isBlank() || layout == null) continue;
+            if (priceCzk <= 0 || locality.isBlank() || layout == null) {
+                if (incompleteSample.isEmpty()) incompleteSample = "title=" + ParserDiagnostics.text(title)
+                        + "; price=" + priceCzk + "; locality=" + ParserDiagnostics.text(locality) + "; layout=" + layout;
+                if (priceCzk <= 0) skippedPrice++;
+                else if (locality.isBlank()) skippedLocality++;
+                else skippedLayout++;
+                continue;
+            }
 
             result.add(new ListingDto(
                     title,
@@ -259,7 +287,7 @@ public class IdnesParser {
         log.info(
                 "iDNES summary region={} url={} status={} candidateLinks={} accepted={} deduped={} skippedBlankHref={} skippedNoCard={} skippedBlankText={} skippedBlankTitle={} skippedNotApartment={} detailFetches={} detailCacheHits={} detailPriceFilled={} detailLocalityFilled={}",
                 region != null ? region.getTitle() : "default",
-                url,
+                ParserDiagnostics.url(url),
                 "parsed",
                 candidateLinks,
                 result.size(),
@@ -274,6 +302,15 @@ public class IdnesParser {
                 detailPriceFilled,
                 detailLocalityFilled
         );
+
+        log.info("iDNES filter summary url={} skippedInvalidLink={} duplicates={} skippedPrice={} skippedLocality={} skippedLayout={} detailBudgetSkipped={} detailCooldownSkipped={}",
+                ParserDiagnostics.url(url), skippedInvalidLink, duplicates, skippedPrice, skippedLocality, skippedLayout,
+                detailBudgetSkipped, detailCooldownSkipped);
+        if (candidateLinks == 0) {
+            log.warn("iDNES empty page reason=no_matching_links url={} title={}", ParserDiagnostics.url(url), ParserDiagnostics.text(doc.title()));
+        } else if (deduped.isEmpty()) {
+            log.warn("iDNES all candidates rejected url={} sample={}", ParserDiagnostics.url(url), incompleteSample);
+        }
 
         return deduped;
     }
@@ -417,7 +454,7 @@ public class IdnesParser {
         } catch (RateLimitedException e) {
             throw e;
         } catch (Exception e) {
-            log.debug("iDNES detail fallback failed url={} error={}", url, e.getMessage());
+            log.warn("iDNES detail failed url={} errorType={}", ParserDiagnostics.url(url), e.getClass().getSimpleName());
             return DetailFields.EMPTY;
         }
     }
@@ -437,6 +474,8 @@ public class IdnesParser {
                 long retryDelayMs = e instanceof RetryableHttpException
                         ? 5_000L * attempt
                         : 1_000L * attempt;
+                log.warn("iDNES retry url={} attempt={} maxAttempts={} delayMs={} errorType={}",
+                        ParserDiagnostics.url(url), attempt, MAX_ATTEMPTS, retryDelayMs, e.getClass().getSimpleName());
                 sleep(retryDelayMs);
             }
         }
@@ -458,22 +497,22 @@ public class IdnesParser {
                 sleep(waitMs);
             }
 
-            var response = Jsoup.connect(url)
-                    .userAgent(USER_AGENT)
-                    .referrer(BASE_URL + "/")
-                    .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.7")
-                    .timeout(timeoutMs)
-                    .followRedirects(true)
-                    .ignoreHttpErrors(true)
-                    .execute();
+            log.info("iDNES request started url={} timeoutMs={}", ParserDiagnostics.url(url), timeoutMs);
+            long started = System.nanoTime();
+            var response = executeRequest(url, timeoutMs);
 
             int status = response.statusCode();
+            log.info("iDNES HTTP url={} finalUrl={} status={} reason={} contentType={} durationMs={}",
+                    ParserDiagnostics.url(url), ParserDiagnostics.url(response.url().toString()), status,
+                    ParserDiagnostics.httpReason(status), ParserDiagnostics.text(response.contentType()),
+                    (System.nanoTime() - started) / 1_000_000);
             if (status == 429) {
                 int rateLimitCount = consecutiveRateLimits.incrementAndGet();
                 int cooldownIndex = Math.min(rateLimitCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1);
                 long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[cooldownIndex];
                 long blockedUntil = System.currentTimeMillis() + cooldownMs;
                 rateLimitedUntil.set(blockedUntil);
+                log.warn("iDNES cooldown activated reason=rate_limited status=429 durationSeconds={}", cooldownMs / 1000);
                 throw new RateLimitedException(
                         "iDNES HTTP 429; requests paused for " + formatDuration(cooldownMs),
                         true
@@ -491,6 +530,9 @@ public class IdnesParser {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while waiting for iDNES request", e);
+        } catch (IOException e) {
+            log.warn("iDNES request failed url={} errorType={}", ParserDiagnostics.url(url), e.getClass().getSimpleName());
+            throw e;
         } finally {
             if (acquired) {
                 lastRequestAt.set(System.currentTimeMillis());
@@ -499,10 +541,17 @@ public class IdnesParser {
         }
     }
 
+    org.jsoup.Connection.Response executeRequest(String url, int timeoutMs) throws IOException {
+        return Jsoup.connect(url).userAgent(USER_AGENT).referrer(BASE_URL + "/")
+                .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.7")
+                .timeout(timeoutMs).followRedirects(true).ignoreHttpErrors(true).execute();
+    }
+
     private void ensureNotRateLimited() throws RateLimitedException {
         long remainingMs = rateLimitedUntil.get() - System.currentTimeMillis();
         if (remainingMs > 0) {
             long remainingSeconds = Math.max(1, (remainingMs + 999) / 1_000);
+            log.info("iDNES skipped reason=cooldown remainingSeconds={}", remainingSeconds);
             throw new RateLimitedException(
                     "iDNES requests paused for another " + formatDuration(remainingSeconds * 1_000),
                     false
