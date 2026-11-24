@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
@@ -27,6 +29,8 @@ class NotificationServiceTest {
     private UserFilterRepo userFilterRepo;
     @Mock
     private ListingCacheService listingCacheService;
+    @Mock
+    private RealFreeParser realFreeParser;
 
     @Test
     void doesNotSendListingThatWasAlreadySentToUser() {
@@ -51,8 +55,49 @@ class NotificationServiceTest {
         verifyNoInteractions(telegramClient, sentLogRepo, listingCacheService, userFilterRepo);
     }
 
+    @Test
+    void doesNotDeliverExpiredRealFreeEvenWhenTitleAlreadyHasLayout() {
+        var listing = realFreeListing();
+        when(realFreeParser.availabilityFor(listing)).thenReturn(RealFreeParser.Availability.INACTIVE);
+        assertThat(service().sendIfNotSent(activeUser(103L), listing)).isFalse();
+        verifyNoInteractions(telegramClient, listingCacheService, userFilterRepo);
+        verify(sentLogRepo, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void unknownRealFreeStatusDoesNotMarkListingAsSent() {
+        var listing = realFreeListing();
+        when(realFreeParser.availabilityFor(listing)).thenReturn(RealFreeParser.Availability.UNKNOWN);
+        assertThat(service().sendIfNotSent(activeUser(104L), listing)).isFalse();
+        verifyNoInteractions(telegramClient, listingCacheService, userFilterRepo);
+        verify(sentLogRepo, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void deliversVerifiedActiveRealFreeAndRecordsSuccessfulSend() throws Exception {
+        var listing = realFreeListing();
+        when(realFreeParser.availabilityFor(listing)).thenReturn(RealFreeParser.Availability.ACTIVE);
+        when(listingCacheService.put(listing)).thenReturn("token");
+        assertThat(service().sendIfNotSent(activeUser(105L), listing)).isTrue();
+        verify(telegramClient).execute(any(org.telegram.telegrambots.meta.api.methods.send.SendMessage.class));
+        verify(sentLogRepo).save(any(com.yourapp.rentbot.domain.SentLog.class));
+    }
+
+    @Test
+    void skipsRealFreeNetworkCheckForAlreadySentListingAndForOtherSources() {
+        var listing = realFreeListing();
+        when(sentLogRepo.existsByTelegramUserIdAndListingKey(106L, listing.link())).thenReturn(true);
+        assertThat(service().sendIfNotSent(activeUser(106L), listing)).isFalse();
+        assertThat(service().isAvailableForDelivery(listing("https://example.test/other"))).isTrue();
+        verifyNoInteractions(realFreeParser, telegramClient);
+    }
+
+    private static ListingDto realFreeListing() {
+        return new ListingDto("Byt 2+kk", 15000, "https://realfree.cz/inzerat/flat", "2+kk", "Praha", "", "RealFree", null);
+    }
+
     private NotificationService service() {
-        return new NotificationService(telegramClient, sentLogRepo, userFilterRepo, listingCacheService);
+        return new NotificationService(telegramClient, sentLogRepo, userFilterRepo, listingCacheService, realFreeParser);
     }
 
     private static UserFilter activeUser(long id) {

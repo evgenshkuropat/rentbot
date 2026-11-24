@@ -56,6 +56,20 @@ class ParserDiagnosticsTest {
     }
 
     @Test
+    void normalEmptyCatalogAndForeignCitiesAreInfoAndCitySamplesAreBounded() {
+        RealFreeParser parser = new RealFreeParser();
+        try (var logs = new Logs(RealFreeParser.class)) {
+            parser.parsePage(Jsoup.parse("<title>Pronájem Náchod</title>", "https://realfree.cz"), "nachod", new HashSet<>());
+            parser.parsePage(Jsoup.parse(card(1, "Hranice", "Byt 2+kk", "15000 Kč")
+                    + card(2, "Brno", "Byt 2+kk", "15000 Kč")
+                    + card(3, "Praha", "Byt 2+kk", "15000 Kč")
+                    + card(4, "Ostrava", "Byt 2+kk", "15000 Kč"), "https://realfree.cz"), "olomouc", new HashSet<>());
+            assertThat(logs.text()).contains("locality=Hranice", "locality=Brno", "locality=Praha").doesNotContain("locality=Ostrava");
+            assertThat(logs.appender.list).allSatisfy(event -> assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.INFO));
+        }
+    }
+
+    @Test
     void logsIdnesCooldownAndDoesNotMakeAnotherHttpRequest() throws Exception {
         var response = response(429, "https://reality.idnes.cz/s/pronajem/byty/praha/");
         class Stub extends IdnesParser {

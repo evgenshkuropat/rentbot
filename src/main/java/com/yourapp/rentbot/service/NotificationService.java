@@ -25,15 +25,18 @@ public class NotificationService {
     private final SentLogRepo sentLogRepo;
     private final UserFilterRepo userFilterRepo;
     private final ListingCacheService listingCacheService;
+    private final RealFreeParser realFreeParser;
 
     public NotificationService(TelegramClient telegramClient,
                                SentLogRepo sentLogRepo,
                                UserFilterRepo userFilterRepo,
-                               ListingCacheService listingCacheService) {
+                               ListingCacheService listingCacheService,
+                               RealFreeParser realFreeParser) {
         this.telegramClient = telegramClient;
         this.sentLogRepo = sentLogRepo;
         this.userFilterRepo = userFilterRepo;
         this.listingCacheService = listingCacheService;
+        this.realFreeParser = realFreeParser;
     }
 
     public boolean sendIfNotSent(UserFilter user, ListingDto listing) {
@@ -55,6 +58,8 @@ public class NotificationService {
         if (sentLogRepo.existsByTelegramUserIdAndListingKey(chatId, key)) {
             return false;
         }
+
+        if (!isAvailableForDelivery(listing)) return false;
 
         Language lang = user.getLanguage() != null ? user.getLanguage() : Language.UA;
 
@@ -130,6 +135,11 @@ public class NotificationService {
         }
 
         return false;
+    }
+
+    public boolean isAvailableForDelivery(ListingDto listing) {
+        if (!RealFreeParser.isRealFree(listing)) return true;
+        return realFreeParser.availabilityFor(listing) == RealFreeParser.Availability.ACTIVE;
     }
 
     public boolean wasAlreadySent(Long userId, String listingLink) {

@@ -2823,8 +2823,19 @@ Plan: search apartments, houses, and other real estate in Czechia in one place. 
             index = listings.size() - 1;
         }
 
+        // Drop unavailable cached results without leaving the user on an empty page.
+        while (!notificationService.isAvailableForDelivery(listings.get(index))) {
+            listings = new java.util.ArrayList<>(listings);
+            listings.remove(index);
+            searchCache.put(userId, listings);
+            if (listings.isEmpty()) {
+                searchCurrentIndex.remove(userId);
+                send(chatId, msg(userId, "search.results.saved.empty"), Keyboards.mainMenuKeyboard(lang));
+                return;
+            }
+            index = Math.min(index, listings.size() - 1);
+        }
         searchCurrentIndex.put(userId, index);
-
         ListingDto listing = listings.get(index);
         sendListingCard(chatId, userId, listing, index, listings.size());
     }
