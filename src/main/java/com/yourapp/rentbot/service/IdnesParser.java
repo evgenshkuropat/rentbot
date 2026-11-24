@@ -60,6 +60,9 @@ public class IdnesParser {
     private final Map<String, CachedDetail> detailCache = new ConcurrentHashMap<>();
     private final Map<String, Object> searchLocks = new ConcurrentHashMap<>();
 
+    private static final Pattern RENTAL_DETAIL_PATH = Pattern.compile(
+            "^/(?:s/)?detail/pronajem/(?:byt|pokoj)/[^/]+/[^/]+/?$");
+
     private static final Pattern LAYOUT_PATTERN =
             Pattern.compile("(\\d+\\s*\\+\\s*(kk|\\d+))", Pattern.CASE_INSENSITIVE);
 
@@ -144,6 +147,7 @@ public class IdnesParser {
         int candidateLinks = links.size();
         int skippedInvalidLink = 0, duplicates = 0, skippedPrice = 0, skippedLocality = 0, skippedLayout = 0;
         int detailBudgetSkipped = 0, detailCooldownSkipped = 0;
+        int skippedNonListingLink = 0;
         String incompleteSample = "";
         int skippedBlankHref = 0;
         int skippedNoCard = 0;
@@ -174,6 +178,10 @@ public class IdnesParser {
             if (!"reality.idnes.cz".equalsIgnoreCase(listingUri.getHost())
                     || !java.util.Set.of("https", "http").contains(listingUri.getScheme())) {
                 skippedInvalidLink++;
+                continue;
+            }
+            if (!isRentalDetailUrl(absoluteLink)) {
+                skippedNonListingLink++;
                 continue;
             }
             if (!seen.add(absoluteLink)) { duplicates++; continue; }
@@ -305,9 +313,9 @@ public class IdnesParser {
                 detailLocalityFilled
         );
 
-        log.info("iDNES filter summary url={} skippedInvalidLink={} duplicates={} skippedPrice={} skippedLocality={} skippedLayout={} detailBudgetSkipped={} detailCooldownSkipped={}",
+        log.info("iDNES filter summary url={} skippedInvalidLink={} duplicates={} skippedPrice={} skippedLocality={} skippedLayout={} detailBudgetSkipped={} detailCooldownSkipped={} skippedNonListingLink={}",
                 ParserDiagnostics.url(url), skippedInvalidLink, duplicates, skippedPrice, skippedLocality, skippedLayout,
-                detailBudgetSkipped, detailCooldownSkipped);
+                detailBudgetSkipped, detailCooldownSkipped, skippedNonListingLink);
         if (candidateLinks == 0) {
             log.warn("iDNES empty page reason=no_matching_links url={} title={}", ParserDiagnostics.url(url), ParserDiagnostics.text(doc.title()));
         } else if (deduped.isEmpty()) {
@@ -431,8 +439,19 @@ public class IdnesParser {
         }
     }
 
+    static boolean isRentalDetailUrl(String url) {
+        try {
+            java.net.URI uri = java.net.URI.create(url);
+            return "reality.idnes.cz".equalsIgnoreCase(uri.getHost())
+                    && java.util.Set.of("https", "http").contains(uri.getScheme())
+                    && uri.getUserInfo() == null
+                    && RENTAL_DETAIL_PATH.matcher(uri.getPath()).matches();
+        } catch (Exception e) { return false; }
+    }
+
     private DetailFields fetchDetailFields(String url) throws IOException {
-        if (url == null || url.isBlank()) {
+        if (!isRentalDetailUrl(url)) {
+            log.info("iDNES detail skipped reason=not_rental_listing url={}", ParserDiagnostics.url(url));
             return DetailFields.EMPTY;
         }
 
@@ -443,6 +462,11 @@ public class IdnesParser {
 
         try {
             Document doc = loadDocument(url, DETAIL_TIMEOUT_MS);
+            if (!isRentalDetailUrl(doc.location())) {
+                log.warn("iDNES detail skipped reason=non_listing_redirect url={} finalUrl={}",
+                        ParserDiagnostics.url(url), ParserDiagnostics.url(doc.location()));
+                return DetailFields.EMPTY;
+            }
 
             String text = doc.text();
             int priceCzk = extractPrice(text);
