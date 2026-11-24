@@ -159,6 +159,7 @@ public class IdnesParser {
         int detailCacheHits = 0;
         int detailPriceFilled = 0;
         int detailLocalityFilled = 0;
+        int cardLocalityFilled = 0, structuredLocalityFilled = 0;
 
         for (Element linkEl : links) {
             String href = linkEl.attr("href");
@@ -200,11 +201,11 @@ public class IdnesParser {
 
             String title = extractTitle(card, wholeText);
             int priceCzk = extractPrice(wholeText);
-            String locality = extractLocality(wholeText);
-
-            if (locality.isBlank()) {
-                locality = extractLocality(title);
-            }
+            String locality = extractStructuredLocality(card);
+            if (!locality.isBlank()) structuredLocalityFilled++;
+            else locality = extractLocality(wholeText);
+            if (locality.isBlank()) locality = extractLocality(title);
+            if (!locality.isBlank()) cardLocalityFilled++;
 
             String layout = extractLayout(title);
             if (layout == null) {
@@ -313,9 +314,9 @@ public class IdnesParser {
                 detailLocalityFilled
         );
 
-        log.info("iDNES filter summary url={} skippedInvalidLink={} duplicates={} skippedPrice={} skippedLocality={} skippedLayout={} detailBudgetSkipped={} detailCooldownSkipped={} skippedNonListingLink={}",
+        log.info("iDNES filter summary url={} skippedInvalidLink={} duplicates={} skippedPrice={} skippedLocality={} skippedLayout={} detailBudgetSkipped={} detailCooldownSkipped={} skippedNonListingLink={} cardLocalityFilled={} structuredLocalityFilled={}",
                 ParserDiagnostics.url(url), skippedInvalidLink, duplicates, skippedPrice, skippedLocality, skippedLayout,
-                detailBudgetSkipped, detailCooldownSkipped, skippedNonListingLink);
+                detailBudgetSkipped, detailCooldownSkipped, skippedNonListingLink, cardLocalityFilled, structuredLocalityFilled);
         if (candidateLinks == 0) {
             log.warn("iDNES empty page reason=no_matching_links url={} title={}", ParserDiagnostics.url(url), ParserDiagnostics.text(doc.title()));
         } else if (deduped.isEmpty()) {
@@ -368,28 +369,40 @@ public class IdnesParser {
     }
 
     private Element findCardContainer(Element element) {
+        Element fallback = null;
         Element current = element;
-        Element firstCardLike = null;
-
-        for (int i = 0; i < 10 && current != null; i++) {
-            String cls = current.className() == null ? "" : current.className().toLowerCase(Locale.ROOT);
-            if ("article".equalsIgnoreCase(current.tagName())
-                    || cls.contains("card")
-                    || cls.contains("item")
-                    || cls.contains("offer")) {
-                if (firstCardLike == null) {
-                    firstCardLike = current;
-                }
-
-                String text = current.text();
-                if (text != null && text.length() < 2500 && PRICE_PATTERN.matcher(text.replace('\u00A0', ' ').replace('\u202F', ' ')).find()) {
-                    return current;
-                }
+        for (int i = 0; i < 10 && current != null; i++, current = current.parent()) {
+            String tag = current.normalName();
+            if (java.util.Set.of("body", "html", "nav", "footer").contains(tag)) break;
+            // Several links may point at the same listing (image and title).
+            long distinctListings = current.select("a[href]").stream()
+                    .map(a -> a.absUrl("href").replaceFirst("[?#].*$", ""))
+                    .filter(IdnesParser::isRentalDetailUrl).map(u -> u.replaceFirst("/$", ""))
+                    .distinct().limit(2).count();
+            if (distinctListings > 1) break;
+            String cls = current.className().toLowerCase(Locale.ROOT);
+            boolean cardLike = tag.equals("article") || tag.equals("li") || cls.contains("card")
+                    || cls.contains("item") || cls.contains("offer") || cls.contains("product") || cls.contains("listing");
+            if (cardLike && current.text().length() < 2500) {
+                fallback = current;
+                if (!extractStructuredLocality(current).isBlank()) return current;
             }
-            current = current.parent();
         }
+        return fallback;
+    }
 
-        return firstCardLike != null ? firstCardLike : element.parent();
+    private String extractStructuredLocality(Element card) {
+        for (Element address : card.select("[itemprop=address], [itemprop=addressLocality], "
+                + "[class*=locality], [class*=location], [class*=address]")) {
+            String value = normalizeText(address.hasAttr("content") ? address.attr("content") : address.text());
+            value = value.replaceFirst("(?iu)^(?:adresa|lokalita)\\s*:\\s*", "")
+                    .replaceFirst("^[^\\p{L}\\p{N}]+", "").trim();
+            if (value.isBlank() || value.length() > 200 || !value.matches(".*\\p{L}.*")) continue;
+            if (PRICE_PATTERN.matcher(value).find() || LAYOUT_PATTERN.matcher(value).find()
+                    || value.matches("(?iu).*\\b(?:m2|m²|zobrazit|mapa|mapě|kontakt)\\b.*")) continue;
+            return value;
+        }
+        return "";
     }
 
     private String extractTitle(Element card, String wholeText) {
@@ -426,7 +439,7 @@ public class IdnesParser {
     }
 
     private int extractPrice(String text) {
-        Matcher m = PRICE_PATTERN.matcher(text.replace('\u00A0', ' ').replace('\u202F', ' '));
+        Matcher m = PRICE_PATTERN.matcher(normalizeText(text));
         if (!m.find()) {
             return 0;
         }
@@ -649,7 +662,7 @@ public class IdnesParser {
             return "";
         }
 
-        String normalized = normalizeText(text);
+        String normalized = PRICE_PATTERN.matcher(normalizeText(text)).replaceAll(" ");
 
         String best = extractKnownPlaceFragment(normalized);
         if (!best.isBlank()) {
@@ -766,7 +779,6 @@ public class IdnesParser {
         }
 
         String cleaned = normalizeText(s)
-                .replaceAll("(?i)^nov[ýe]?\\s+", "")
                 .replaceAll("(?i)^pron[aá]jem bytu\\s+", "")
                 .replaceAll("(?i)^zlevn[eě]no\\s+", "")
                 .replaceAll("(?i)^rezervov[aá]no\\s+", "")
@@ -852,13 +864,10 @@ public class IdnesParser {
     }
 
     private String normalizeText(String s) {
-        if (s == null) {
-            return "";
-        }
-
-        return s.replace('\u00A0', ' ')
-                .replaceAll("\\s+", " ")
-                .trim();
+        if (s == null) return "";
+        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFC)
+                .replaceAll("\\p{Cf}", "")
+                .replaceAll("[\\p{Z}\\s]+", " ").trim();
     }
 
     private int indexOfIgnoreCase(String text, String part) {

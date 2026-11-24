@@ -156,6 +156,76 @@ class IdnesParserTest {
         assertThat(IdnesParser.isRentalDetailUrl("https://reality.idnes.cz/detail/")).isFalse();
     }
 
+    @Test
+    void readsStructuredLocalityForSmallTownsWithoutLoadingDetails() throws Exception {
+        IdnesParser parser = new IdnesParser() {
+            @Override Document loadDocument(String url, int timeout) { throw new AssertionError("Unnecessary detail request"); }
+        };
+        String html = "<article><a href='/detail/pronajem/byt/senov/1'><h2>Pronájem bytu 2+kk</h2></a>"
+                + "<p class='c-products__locality'>Šenov u Nového Jičína, Dukelská</p><div>13500 Kč</div></article>";
+        var rows = parser.parsePage(Jsoup.parse(html, URL), region());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().locality()).isEqualTo("Šenov u Nového Jičína, Dukelská");
+    }
+
+    @Test
+    void normalizesNarrowSpacesAndInvisibleCharactersInLocalityAndPrice() throws Exception {
+        IdnesParser parser = new IdnesParser() {
+            @Override Document loadDocument(String url, int timeout) { throw new AssertionError("Unnecessary detail request"); }
+        };
+        var rows = parser.parsePage(Jsoup.parse(card("/detail/pronajem/byt/novy-jicin/1", "Pronájem bytu 2+kk",
+                "Nový\u202fJi\u200dčín", "13\u200d\u00a0500\u200d\u00a0Kč"), URL), region());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().locality()).isEqualTo("Nový Jičín");
+        assertThat(rows.getFirst().priceCzk()).isEqualTo(13500);
+    }
+
+    @Test
+    void usesSchemaContentAttributeAndPreservesStreetAndDistrict() throws Exception {
+        IdnesParser parser = new IdnesParser() {
+            @Override Document loadDocument(String url, int timeout) { throw new AssertionError("Unnecessary detail request"); }
+        };
+        String html = "<article><a href='/detail/pronajem/byt/studenka/1'><h2>Pronájem bytu 2+kk</h2></a>"
+                + "<meta itemprop='addressLocality' content='Studénka, Butovice, Mírová'><div>13500 Kč</div></article>";
+        var rows = parser.parsePage(Jsoup.parse(html, URL), region());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().locality()).isEqualTo("Studénka, Butovice, Mírová");
+    }
+
+    @Test
+    void doesNotBorrowLocalityOrPriceFromAnotherListingWhenCardIsIncomplete() throws Exception {
+        class Stub extends IdnesParser {
+            int requests;
+            @Override Document loadDocument(String url, int timeout) throws IOException {
+                requests++;
+                throw new IOException("Detail unavailable");
+            }
+        }
+        Stub parser = new Stub();
+        String html = "<div class='products'>"
+                + card("/detail/pronajem/byt/unknown/1", "Pronájem bytu 2+kk", "", "Dohodou")
+                + "<article><a href='/detail/pronajem/byt/praha/2'><h2>Pronájem bytu 2+kk</h2></a>"
+                + "<p class='location'>Praha 5, Smíchov</p><div>18000 Kč</div></article></div>";
+        var rows = parser.parsePage(Jsoup.parse(html, URL), region());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().link()).endsWith("/2");
+        assertThat(rows.getFirst().locality()).isEqualTo("Praha 5, Smíchov");
+        assertThat(parser.requests).isEqualTo(1);
+    }
+
+    @Test
+    void findsAddressBesideNestedTitleAndPriceBlock() throws Exception {
+        IdnesParser parser = new IdnesParser() {
+            @Override Document loadDocument(String url, int timeout) { throw new AssertionError("Unnecessary detail request"); }
+        };
+        String html = "<article><div class='card-content'><a href='/detail/pronajem/byt/novy-jicin/1'>"
+                + "<h2>Pronájem bytu 2+kk</h2></a><div>13500 Kč</div></div>"
+                + "<p class='locality'>Žerotínova, Nový Jičín</p></article>";
+        var rows = parser.parsePage(Jsoup.parse(html, URL), region());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().locality()).isEqualTo("Žerotínova, Nový Jičín");
+    }
+
     private static Region region() {
         Region region = new Region(); region.setCode("PRAHA"); region.setTitle("Praha"); return region;
     }
