@@ -175,7 +175,7 @@ public class ParserService {
 
             } catch (IdnesParser.RateLimitedException e) {
                 if (e.isNewCooldown()) {
-                    log.warn("iDNES rate limit activated region={} error={}", regionTitle(region), e.getMessage());
+                    log.warn("iDNES request cooldown activated region={} error={}", regionTitle(region), e.getMessage());
                 } else {
                     log.debug("iDNES skipped region={} reason={}", regionTitle(region), e.getMessage());
                 }

@@ -83,6 +83,68 @@ class RealFreeParserTest {
         assertThat(parser.calls).isEqualTo(2);
     }
 
+    @Test
+    void parsesObservedSvitavyCardAndIgnoresNavigationCards() throws Exception {
+        try (var stream = getClass().getResourceAsStream("/fixtures/realfree-svitavy-card.html")) {
+            assertThat(stream).isNotNull();
+            var doc = Jsoup.parse(stream, "UTF-8", "https://realfree.cz/pronajem-bytu-svitavy");
+            var rows = new RealFreeParser().parsePage(doc, "svitavy", new HashSet<>());
+            assertThat(rows).hasSize(1);
+            assertThat(rows.getFirst().layout()).isEqualTo("2+kk");
+            assertThat(rows.getFirst().priceCzk()).isEqualTo(11000);
+            assertThat(rows.getFirst().locality()).isEqualTo("Svitavy");
+        }
+    }
+
+    @Test
+    void supportsCompactLayoutsWithoutInferringThemFromAreaOrPrice() {
+        assertThat(RealFreeParser.extractLayout("Byt 2kk, 50 m2")).isEqualTo("2+kk");
+        assertThat(RealFreeParser.extractLayout("Byt 3 KK")).isEqualTo("3+kk");
+        assertThat(RealFreeParser.extractLayout("Byt 2+1")).isEqualTo("2+1");
+        assertThat(RealFreeParser.extractLayout("Pronájem Ostrava 50 m2 za 14000 Kč")).isNull();
+    }
+
+    @Test
+    void usesDetailParametersForMissingLayoutAndRejectsExpiredDetail() {
+        class Stub extends RealFreeParser {
+            int details;
+            @Override Document loadDocument(String url) {
+                if (url.contains("/inzerat/")) {
+                    details++;
+                    return Jsoup.parse("<h1>Pronájem Ostrava</h1><div class='param-item'>"
+                            + "<div class='param-label'>Dispozice</div><div class='param-value'>2+1</div></div>"
+                            + (url.endsWith("expired") ? "<h3>Inzerát již není aktuální</h3>" : ""), url);
+                }
+                return Jsoup.parse(card("/inzerat/active", "Ostrava", "Pronájem Ostrava", "14000 Kč")
+                        + card("/inzerat/expired", "Ostrava", "Pronájem Ostrava", "14000 Kč"), url);
+            }
+        }
+        Stub parser = new Stub();
+        Region region = new Region(); region.setCode("OSTRAVA");
+        var rows = parser.fetchListings(region);
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().layout()).isEqualTo("2+1");
+        assertThat(rows.getFirst().link()).endsWith("/active");
+        assertThat(parser.details).isEqualTo(2);
+    }
+
+    @Test
+    void limitsDetailRequestsAndNeverAssignsRequestedCityToBlankLocality() {
+        class Stub extends RealFreeParser {
+            int details;
+            @Override Document loadDocument(String url) {
+                if (url.contains("/inzerat/")) { details++; return Jsoup.parse("<h1>Pronájem</h1>", url); }
+                StringBuilder html = new StringBuilder(card("/inzerat/blank", "", "Pronájem", "14000 Kč"));
+                for (int i = 0; i < 6; i++) html.append(card("/inzerat/" + i, "Ostrava", "Pronájem", "14000 Kč"));
+                return Jsoup.parse(html.toString(), url);
+            }
+        }
+        Stub parser = new Stub();
+        Region region = new Region(); region.setCode("OSTRAVA");
+        assertThat(parser.fetchListings(region)).isEmpty();
+        assertThat(parser.details).isEqualTo(3);
+    }
+
     private static String card(String href, String locality, String title, String price) {
         return "<a class='rf-card' href='" + href + "'><h2>" + title + "</h2>"
                 + "<p><i class='fa-map-marker-alt'></i>" + locality + "</p>"

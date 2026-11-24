@@ -39,6 +39,7 @@ public class IdnesParser {
     private static final int SEARCH_TIMEOUT_MS = 30_000;
     private static final int DETAIL_TIMEOUT_MS = 15_000;
     private static final int MAX_ATTEMPTS = 3;
+    private static final long ACCESS_DENIED_COOLDOWN_MS = Duration.ofHours(1).toMillis();
     private static final int MAX_DETAIL_REQUESTS_PER_SEARCH = 8;
     private static final long STALE_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
     private static final long MIN_REQUEST_INTERVAL_MS = 750;
@@ -53,6 +54,7 @@ public class IdnesParser {
     private final Semaphore requestPermit = new Semaphore(1, true);
     private final AtomicLong lastRequestAt = new AtomicLong(0);
     private final AtomicLong rateLimitedUntil = new AtomicLong(0);
+    private volatile String cooldownCause = "rate_limited";
     private final AtomicInteger consecutiveRateLimits = new AtomicInteger(0);
     private final Map<String, CachedListings> searchCache = new ConcurrentHashMap<>();
     private final Map<String, CachedDetail> detailCache = new ConcurrentHashMap<>();
@@ -506,7 +508,14 @@ public class IdnesParser {
                     ParserDiagnostics.url(url), ParserDiagnostics.url(response.url().toString()), status,
                     ParserDiagnostics.httpReason(status), ParserDiagnostics.text(response.contentType()),
                     (System.nanoTime() - started) / 1_000_000);
+            if (status == 403) {
+                cooldownCause = "access_denied";
+                rateLimitedUntil.set(System.currentTimeMillis() + ACCESS_DENIED_COOLDOWN_MS);
+                log.warn("iDNES cooldown activated reason=access_denied status=403 durationSeconds={}", ACCESS_DENIED_COOLDOWN_MS / 1000);
+                throw new RateLimitedException("iDNES HTTP 403; requests paused for " + formatDuration(ACCESS_DENIED_COOLDOWN_MS), true);
+            }
             if (status == 429) {
+                cooldownCause = "rate_limited";
                 int rateLimitCount = consecutiveRateLimits.incrementAndGet();
                 int cooldownIndex = Math.min(rateLimitCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1);
                 long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[cooldownIndex];
@@ -551,7 +560,7 @@ public class IdnesParser {
         long remainingMs = rateLimitedUntil.get() - System.currentTimeMillis();
         if (remainingMs > 0) {
             long remainingSeconds = Math.max(1, (remainingMs + 999) / 1_000);
-            log.info("iDNES skipped reason=cooldown remainingSeconds={}", remainingSeconds);
+            log.info("iDNES skipped reason=cooldown remainingSeconds={} cause={}", remainingSeconds, cooldownCause);
             throw new RateLimitedException(
                     "iDNES requests paused for another " + formatDuration(remainingSeconds * 1_000),
                     false

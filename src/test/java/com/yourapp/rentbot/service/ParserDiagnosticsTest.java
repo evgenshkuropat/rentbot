@@ -72,6 +72,24 @@ class ParserDiagnosticsTest {
     }
 
     @Test
+    void accessDeniedPausesAllIdnesRegionsWithoutRetrying() throws Exception {
+        var response = response(403, "https://reality.idnes.cz/s/pronajem/byty/praha/");
+        class Stub extends IdnesParser {
+            int requests;
+            @Override Connection.Response executeRequest(String url, int timeout) { requests++; return response; }
+        }
+        Stub parser = new Stub();
+        try (var logs = new Logs(IdnesParser.class)) {
+            assertThatThrownBy(() -> parser.fetchListings(region("PRAHA"), null))
+                    .isInstanceOf(IdnesParser.RateLimitedException.class).hasMessageContaining("HTTP 403");
+            assertThatThrownBy(() -> parser.fetchListings(region("BRNO"), null))
+                    .isInstanceOf(IdnesParser.RateLimitedException.class);
+            assertThat(parser.requests).isEqualTo(1);
+            assertThat(logs.text()).contains("reason=access_denied status=403 durationSeconds=3600", "cause=access_denied");
+        }
+    }
+
+    @Test
     void boundsSamplesAndRemovesUrlCredentialsAndQueryParameters() {
         assertThat(ParserDiagnostics.url("https://user:password@realfree.cz/path?token=secret#fragment"))
                 .isEqualTo("https://realfree.cz/path");
