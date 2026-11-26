@@ -65,7 +65,7 @@ public class ParserService {
                          OwnerListingService ownerListingService,
                          UserFilterRepo userFilterRepo,
                          PremiumService premiumService,
-                         @Value("${rentbot.idnes.enabled:${IDNES_ENABLED:true}}") boolean idnesEnabled,
+                         @Value("${rentbot.idnes.enabled:${RENTBOT_IDNES_ENABLED:${IDNES_ENABLED:false}}}") boolean idnesEnabled,
                          @Value("${rentbot.digireality.enabled:${RENTBOT_DIGIREALITY_ENABLED:true}}") boolean digiRealityEnabled,
                          @Value("${rentbot.realfree.enabled:true}") boolean realFreeEnabled) {
         this.srealityParser = srealityParser;
@@ -81,6 +81,10 @@ public class ParserService {
         this.idnesEnabled = idnesEnabled;
         this.digiRealityEnabled = digiRealityEnabled;
         log.info("iDNES parser enabled={}", idnesEnabled);
+        if (!idnesEnabled) {
+            log.info("iDNES disabled by configuration; default-off reason=permanent_outbound_ip_ban "
+                    + "provider=Railway confirmedAt=2026-11-26; restore only after site access is approved/restored");
+        }
         log.info("DigiReality owner parser enabled={}", digiRealityEnabled);
     }
 

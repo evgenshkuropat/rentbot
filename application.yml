@@ -18,7 +18,9 @@ telegram:
 
 rentbot:
   idnes:
-    enabled: ${RENTBOT_IDNES_ENABLED:${IDNES_ENABLED:true}}
+    # Disabled after iDNES confirmed a permanent ban of the Railway outbound IP (2026-11-26).
+    # Re-enable only after access has been restored/agreed with the site.
+    enabled: ${RENTBOT_IDNES_ENABLED:${IDNES_ENABLED:false}}
   realfree:
     enabled: ${RENTBOT_REALFREE_ENABLED:true}
   sent-log:
