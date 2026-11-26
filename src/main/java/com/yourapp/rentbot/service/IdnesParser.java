@@ -39,7 +39,6 @@ public class IdnesParser {
     private static final int SEARCH_TIMEOUT_MS = 30_000;
     private static final int DETAIL_TIMEOUT_MS = 15_000;
     private static final int MAX_ATTEMPTS = 3;
-    private static final long ACCESS_DENIED_COOLDOWN_MS = Duration.ofHours(1).toMillis();
     private static final int MAX_DETAIL_REQUESTS_PER_SEARCH = 8;
     private static final long STALE_CACHE_TTL_MS = Duration.ofHours(1).toMillis();
     private static final long MIN_REQUEST_INTERVAL_MS = 750;
@@ -55,6 +54,7 @@ public class IdnesParser {
     private final AtomicLong lastRequestAt = new AtomicLong(0);
     private final AtomicLong rateLimitedUntil = new AtomicLong(0);
     private volatile String cooldownCause = "rate_limited";
+    private final AtomicInteger consecutiveAccessDenials = new AtomicInteger(0);
     private final AtomicInteger consecutiveRateLimits = new AtomicInteger(0);
     private final Map<String, CachedListings> searchCache = new ConcurrentHashMap<>();
     private final Map<String, CachedDetail> detailCache = new ConcurrentHashMap<>();
@@ -547,9 +547,13 @@ public class IdnesParser {
                     (System.nanoTime() - started) / 1_000_000);
             if (status == 403) {
                 cooldownCause = "access_denied";
-                rateLimitedUntil.set(System.currentTimeMillis() + ACCESS_DENIED_COOLDOWN_MS);
-                log.warn("iDNES cooldown activated reason=access_denied status=403 durationSeconds={}", ACCESS_DENIED_COOLDOWN_MS / 1000);
-                throw new RateLimitedException("iDNES HTTP 403; requests paused for " + formatDuration(ACCESS_DENIED_COOLDOWN_MS), true);
+                int denialCount = consecutiveAccessDenials.incrementAndGet();
+                long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[Math.min(denialCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1)];
+                rateLimitedUntil.set(System.currentTimeMillis() + cooldownMs);
+                log.warn("iDNES cooldown activated reason=access_denied status=403 durationSeconds={} consecutiveDenials={}",
+                        cooldownMs / 1000, denialCount);
+                logAccessDeniedResponse(response);
+                throw new RateLimitedException("iDNES HTTP 403; requests paused for " + formatDuration(cooldownMs), true);
             }
             if (status == 429) {
                 cooldownCause = "rate_limited";
@@ -570,6 +574,7 @@ public class IdnesParser {
             if (status >= 400) {
                 throw new IOException("iDNES HTTP " + status + " for " + url);
             }
+            consecutiveAccessDenials.set(0);
             consecutiveRateLimits.set(0);
             rateLimitedUntil.set(0);
             return response;
@@ -585,6 +590,31 @@ public class IdnesParser {
                 requestPermit.release();
             }
         }
+    }
+
+    private void logAccessDeniedResponse(org.jsoup.Connection.Response response) {
+        // Read only a bounded prefix; never log cookies or arbitrary response headers.
+        try (var stream = response.bodyStream()) {
+            String prefix = new String(stream.readNBytes(16_384), java.nio.charset.StandardCharsets.UTF_8);
+            Document page = Jsoup.parse(prefix);
+            page.select("script, style, input, textarea").remove();
+            log.warn("iDNES access denied response title={} text={} server={} retryAfter={}",
+                    safeDiagnosticText(page.title()), safeDiagnosticText(page.body().text()),
+                    safeDiagnosticText(response.header("Server")), safeDiagnosticText(response.header("Retry-After")));
+        } catch (Exception e) {
+            log.info("iDNES access denied response diagnostics unavailable errorType={}", e.getClass().getSimpleName());
+        }
+    }
+
+    static String safeDiagnosticText(String value) {
+        if (value == null) return "";
+        String redacted = value.replaceAll("https?://[^\\s<>]+", "[url]")
+                .replaceAll("[\\w.+-]+@[\\w.-]+", "[email]")
+                .replaceAll("(?i)\\b(?:[0-9a-f]{0,4}:){2,}[0-9a-f:]*\\b", "[ip]")
+                .replaceAll("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b", "[ip]")
+                .replaceAll("(?i)\\b(token|session|authorization|cookie|ray.?id|request.?id)\\s*[:=]\\s*\\S+", "$1=[redacted]")
+                .replaceAll("[a-zA-Z0-9_+/=-]{24,}", "[redacted]");
+        return ParserDiagnostics.text(redacted);
     }
 
     org.jsoup.Connection.Response executeRequest(String url, int timeoutMs) throws IOException {
