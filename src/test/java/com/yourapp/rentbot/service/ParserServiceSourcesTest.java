@@ -61,6 +61,17 @@ class ParserServiceSourcesTest {
                 List.of(row("RealFree|possible-owner", "Brno", 15000)), filter)).isEmpty();
     }
 
+    @Test
+    void appliesSameCityScopeToEverySourceIncludingOwners() {
+        for (String source : List.of("Sreality", "iDNES", "Bezrealitky", "Bazos", "DigiReality", "RealFree", "Owner", "Sreality|possible-owner")) {
+            UserFilter filter = filter("HODONIN", "Hodonin");
+            ParserService parser = service(true, true);
+            assertThat(parser.filterForUser(List.of(row(source, "Zdanice", 15000)), filter)).as(source).isEmpty();
+            assertThat(parser.filterForUser(List.of(row(source, "Hodonin, Dlouha", 15000)), filter)).as(source).hasSize(1);
+            assertThat(parser.filterForUser(List.of(row(source, "Zdanice, okres Hodonin", 15000)), filter)).as(source).isEmpty();
+        }
+    }
+
     private ParserService service(boolean idnesEnabled, boolean realfreeEnabled) {
         return new ParserService(sreality, idnes, realfree, bezrealitky, bazos, digi, owners,
                 users, premium, idnesEnabled, true, realfreeEnabled);

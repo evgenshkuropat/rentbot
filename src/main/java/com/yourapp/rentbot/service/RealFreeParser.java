@@ -340,12 +340,7 @@ public class RealFreeParser {
     }
 
     private boolean matchesCity(String locality, String city) {
-        String place = fold(locality).replaceFirst("^hlavni mesto ", "")
-                .replaceAll("[–—]", "-").replaceAll("\\s+", " ").trim();
-        String expected = fold(city).replace('_', ' ').trim();
-        if ("praha".equals(expected) && place.matches("praha\\s*-?\\s*(vychod|zapad)\\b.*")) return false;
-        return place.equals(expected) || place.startsWith(expected + ",") || place.startsWith(expected + " -")
-                || place.startsWith(expected + "-") || place.matches(Pattern.quote(expected) + "\\s+\\d+\\b.*");
+        return CitySearchScope.matches(locality, city);
     }
 
     private static int price(String text) {

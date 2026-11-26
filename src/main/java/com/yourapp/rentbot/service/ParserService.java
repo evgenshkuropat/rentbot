@@ -415,43 +415,7 @@ public class ParserService {
     private boolean matchesRegion(ListingDto dto, String regionTitle, String regionCode) {
         if (dto == null) return false;
 
-        String locality = dto.locality();
-        String source = dto.source() == null ? "" : dto.source().toLowerCase();
-
-        if (isTrustedRegionalSource(source) && isNonPrahaRegion(regionCode) && locality != null && !locality.isBlank()) {
-            return true;
-        }
-
-        return matchesRegion(locality, regionTitle);
-    }
-
-    private boolean isTrustedRegionalSource(String source) {
-        source = OwnerSignalDetector.visibleSource(source).toLowerCase(java.util.Locale.ROOT);
-        return source.contains("sreality")
-                || source.contains("idnes")
-                || source.contains("bezrealitky")
-                || source.contains("власник")
-                || source.contains("owner");
-    }
-
-    private boolean isNonPrahaRegion(String regionCode) {
-        return regionCode != null
-                && !regionCode.isBlank()
-                && !"PRAHA".equalsIgnoreCase(regionCode);
-    }
-
-    private boolean matchesRegion(String locality, String regionTitle) {
-        if (regionTitle == null || regionTitle.isBlank()) return true;
-        if (locality == null || locality.isBlank()) return false;
-
-        String loc = normalizeLocality(locality);
-        String reg = normalizeLocality(regionTitle);
-
-        if (reg.equals("praha")) {
-            return isPrahaListing(locality);
-        }
-
-        return loc.contains(reg);
+        return CitySearchScope.matches(dto.locality(), regionTitle);
     }
 
     public void resetBazosRateLimitCycle() {
