@@ -72,6 +72,20 @@ class ParserServiceSourcesTest {
         }
     }
 
+    @Test
+    void repeatedRegionalCollectionsShareExternalResultsButRefreshOwnerListings() throws Exception {
+        UserFilter filter = filter("PRAHA", "Praha");
+        ParserService parser = service(true, true);
+        parser.fetchListingsForFilter(filter);
+        parser.fetchListingsForFilter(filter);
+        verify(sreality, times(1)).fetchListings(eq("PRAHA"), any());
+        verify(idnes, times(1)).fetchListings(filter.getRegion(), null);
+        verify(bezrealitky, times(1)).fetchListings(filter.getRegion());
+        verify(realfree, times(1)).fetchListings(filter.getRegion());
+        verify(bazos, times(1)).fetchListings(filter.getRegion());
+        verify(owners, times(2)).fetchApprovedListings(filter.getRegion());
+    }
+
     private ParserService service(boolean idnesEnabled, boolean realfreeEnabled) {
         return new ParserService(sreality, idnes, realfree, bezrealitky, bazos, digi, owners,
                 users, premium, idnesEnabled, true, realfreeEnabled);

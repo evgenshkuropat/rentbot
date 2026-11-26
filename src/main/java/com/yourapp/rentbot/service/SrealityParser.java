@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class SrealityParser {
+    private final SourceRequestGate requestGate = new SourceRequestGate("SrealityParser");
 
     private static final Logger log = LoggerFactory.getLogger(SrealityParser.class);
 
@@ -120,8 +121,10 @@ public class SrealityParser {
                         .GET()
                         .build();
 
+                requestGate.check();
                 HttpResponse<byte[]> resp = http.send(req, HttpResponse.BodyHandlers.ofByteArray());
 
+                requestGate.observe(resp.statusCode(), resp.headers().firstValue("Retry-After").orElse(null));
                 if (resp.statusCode() != 200) {
                     String body = resp.body() == null ? "" : new String(resp.body(), StandardCharsets.UTF_8);
 
@@ -244,14 +247,13 @@ public class SrealityParser {
             String pageUrl = buildHtmlSearchUrl(slug, page);
 
             try {
-                var response = Jsoup.connect(pageUrl)
+                var response = requestGate.execute(Jsoup.connect(pageUrl)
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
                         .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                         .header("Accept-Language", "cs-CZ,cs;q=0.9,en;q=0.8")
                         .referrer("https://www.sreality.cz/")
                         .timeout(20_000)
-                        .ignoreHttpErrors(true)
-                        .execute();
+                        .ignoreHttpErrors(true));
 
                 if (response.statusCode() != 200) {
                     log.warn("Sreality run={} html page={} non-200 status={} url={}",

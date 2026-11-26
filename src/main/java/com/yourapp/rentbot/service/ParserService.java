@@ -52,6 +52,8 @@ public class ParserService {
     private final boolean idnesEnabled;
     private final boolean digiRealityEnabled;
 
+    private final SourceListingCache sourceCache = new SourceListingCache();
+
     private final AtomicReference<ParserRunStats> lastRunStats = new AtomicReference<>(ParserRunStats.empty());
 
     public ParserService(SrealityParser srealityParser,
@@ -127,7 +129,7 @@ public class ParserService {
     public List<ListingDto> fetchListingsForFilter(UserFilter filter) throws IOException {
 
         Region region = filter != null ? filter.getRegion() : null;
-        RegionGroup group = filter != null ? filter.getRegionGroup() : null;
+        String regionKey = region != null && region.getCode() != null ? region.getCode() : "DEFAULT";
 
         Integer srealityDistrictId = null;
 
@@ -148,7 +150,7 @@ public class ParserService {
             if (srealityDistrictId != null) {
 
                 List<ListingDto> sreality =
-                        srealityParser.fetchListings(region.getCode(), srealityDistrictId);
+                        sourceCache.get("sreality:" + regionKey, () -> srealityParser.fetchListings(region.getCode(), SrealityParser.getDistrictId(region.getCode())));
                 srealityRaw = sreality.size();
 
                 log.info("Sreality listings region={} count={}", regionTitle(region), sreality.size());
@@ -166,7 +168,7 @@ public class ParserService {
 
         if (idnesEnabled) {
             try {
-                List<ListingDto> idnes = idnesParser.fetchListings(region, null);
+                List<ListingDto> idnes = sourceCache.get("idnes:" + regionKey, () -> idnesParser.fetchListings(region, null));
                 idnesRaw = idnes.size();
 
                 log.info("iDNES listings region={} count={}", regionTitle(region), idnes.size());
@@ -186,7 +188,7 @@ public class ParserService {
 
         try {
             List<ListingDto> bezrealitky =
-                    bezrealitkyParser.fetchListings(region);
+                    sourceCache.get("bezrealitky:" + regionKey, () -> bezrealitkyParser.fetchListings(region));
             bezrealitkyRaw = bezrealitky.size();
 
             log.info("Bezrealitky listings region={} count={}", regionTitle(region), bezrealitky.size());
@@ -207,7 +209,7 @@ public class ParserService {
 
         if (digiRealityEnabled) {
             try {
-                List<ListingDto> digiReality = digiRealityParser.fetchListings(region);
+                List<ListingDto> digiReality = sourceCache.get("digireality:" + regionKey, () -> digiRealityParser.fetchListings(region));
                 digirealityRaw = digiReality.size();
                 all.addAll(digiReality);
             } catch (Exception e) {
@@ -216,21 +218,13 @@ public class ParserService {
         }
 
         try {
-            if (bazosParser.isRateLimitedForCurrentCycle()) {
-                log.debug(
-                        "Bazos skipped region={} reason={} cooldownRemainingSeconds={}",
-                        regionTitle(region),
-                        bazosParser.currentSkipReason(),
-                        bazosParser.currentSkipRemainingSeconds()
-                );
-            } else {
-                List<ListingDto> bazos = bazosParser.fetchListings(region);
-                bazosRaw = bazos.size();
-
-                log.info("Bazos listings region={} count={}", regionTitle(region), bazos.size());
-
-                all.addAll(bazos);
-            }
+            List<ListingDto> bazos = sourceCache.get("bazos:" + regionKey, () -> {
+                if (bazosParser.isRateLimitedForCurrentCycle()) throw new IOException("Bazos requests paused");
+                return bazosParser.fetchListings(region);
+            });
+            bazosRaw = bazos.size();
+            all.addAll(bazos);
+            log.info("Bazos listings region={} count={}", regionTitle(region), bazos.size());
 
         } catch (Exception e) {
             log.warn("Bazos parser failed region={} error={}", regionTitle(region), e.getMessage());
@@ -238,7 +232,7 @@ public class ParserService {
 
         if (realFreeEnabled) {
             try {
-                List<ListingDto> realfree = realFreeParser.fetchListings(region);
+                List<ListingDto> realfree = sourceCache.get("realfree:" + regionKey, () -> realFreeParser.fetchListings(region));
                 realfreeRaw = realfree.size();
                 all.addAll(realfree);
             } catch (Exception e) {

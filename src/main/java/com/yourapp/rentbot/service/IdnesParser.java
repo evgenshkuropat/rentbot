@@ -548,7 +548,8 @@ public class IdnesParser {
             if (status == 403) {
                 cooldownCause = "access_denied";
                 int denialCount = consecutiveAccessDenials.incrementAndGet();
-                long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[Math.min(denialCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1)];
+                long cooldownMs = Math.max(RATE_LIMIT_COOLDOWNS_MS[Math.min(denialCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1)],
+                        SourceRequestGate.retryAfterMillis(response.header("Retry-After"), System.currentTimeMillis()));
                 rateLimitedUntil.set(System.currentTimeMillis() + cooldownMs);
                 log.warn("iDNES cooldown activated reason=access_denied status=403 durationSeconds={} consecutiveDenials={}",
                         cooldownMs / 1000, denialCount);
@@ -559,7 +560,8 @@ public class IdnesParser {
                 cooldownCause = "rate_limited";
                 int rateLimitCount = consecutiveRateLimits.incrementAndGet();
                 int cooldownIndex = Math.min(rateLimitCount - 1, RATE_LIMIT_COOLDOWNS_MS.length - 1);
-                long cooldownMs = RATE_LIMIT_COOLDOWNS_MS[cooldownIndex];
+                long cooldownMs = Math.max(RATE_LIMIT_COOLDOWNS_MS[cooldownIndex],
+                        SourceRequestGate.retryAfterMillis(response.header("Retry-After"), System.currentTimeMillis()));
                 long blockedUntil = System.currentTimeMillis() + cooldownMs;
                 rateLimitedUntil.set(blockedUntil);
                 log.warn("iDNES cooldown activated reason=rate_limited status=429 durationSeconds={}", cooldownMs / 1000);

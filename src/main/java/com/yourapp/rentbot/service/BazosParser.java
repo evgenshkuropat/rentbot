@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 
 @Service
 public class BazosParser {
+    private final SourceRequestGate requestGate = new SourceRequestGate("BazosParser");
 
     private static final Logger log = LoggerFactory.getLogger(BazosParser.class);
 
@@ -105,12 +106,11 @@ public class BazosParser {
 
             log.debug("Bazos URL = {}", url);
 
-            var response = Jsoup.connect(url)
+            var response = requestGate.execute(Jsoup.connect(url)
                     .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36")
                     .referrer("https://www.google.com/")
                     .timeout(15000)
-                    .ignoreHttpErrors(true)
-                    .execute();
+                    .ignoreHttpErrors(true), rateLimitCooldownMillis);
 
             if (response.statusCode() == 429) {
                 markRateLimited("rate_limited_cooldown", rateLimitCooldownMillis);

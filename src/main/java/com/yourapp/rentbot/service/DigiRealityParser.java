@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class DigiRealityParser {
+    private final SourceRequestGate requestGate = new SourceRequestGate("DigiRealityParser");
 
     private static final Logger log = LoggerFactory.getLogger(DigiRealityParser.class);
 
@@ -222,13 +223,12 @@ public class DigiRealityParser {
             }
 
             try {
-                var response = Jsoup.connect(RSS_URL)
+                var response = requestGate.execute(Jsoup.connect(RSS_URL)
                         .userAgent("Mozilla/5.0 (compatible; RentBot/1.0; +https://t.me/)")
                         .header("Accept", "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8")
                         .timeout(15_000)
                         .ignoreContentType(true)
-                        .ignoreHttpErrors(true)
-                        .execute();
+                        .ignoreHttpErrors(true), rateLimitPauseMillis);
 
                 if (response.statusCode() == 429) {
                     rateLimitedUntilMillis = now + rateLimitPauseMillis;

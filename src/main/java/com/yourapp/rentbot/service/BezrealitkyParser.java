@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 
 @Service
 public class BezrealitkyParser {
+    private final SourceRequestGate requestGate = new SourceRequestGate("BezrealitkyParser");
 
     private static final Logger log = LoggerFactory.getLogger(BezrealitkyParser.class);
 
@@ -55,12 +56,11 @@ public class BezrealitkyParser {
                 String pageUrl = page == 1 ? baseSearchUrl : baseSearchUrl + "?page=" + page;
 
                 try {
-                    byte[] bytes = Jsoup.connect(pageUrl)
+                    byte[] bytes = requestGate.execute(Jsoup.connect(pageUrl)
                             .userAgent("Mozilla/5.0")
                             .referrer("https://www.google.com/")
                             .timeout(TIMEOUT_MS)
-                            .ignoreHttpErrors(true)
-                            .execute()
+                            .ignoreHttpErrors(true))
                             .bodyAsBytes();
 
                     Document doc = Jsoup.parse(

@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class RealFreeParser {
+    private final SourceRequestGate requestGate = new SourceRequestGate("RealFreeParser");
     private static final Logger log = LoggerFactory.getLogger(RealFreeParser.class);
     private static final String BASE = "https://realfree.cz";
     private static final int MAX_PAGES = 3;
@@ -162,7 +163,7 @@ public class RealFreeParser {
     }
 
     org.jsoup.Connection.Response executeRequest(String url) throws IOException {
-        return Jsoup.connect(url).userAgent("RentBot/1.0").timeout(15_000).ignoreHttpErrors(true).execute();
+        return requestGate.execute(Jsoup.connect(url).userAgent("RentBot/1.0").timeout(15_000).ignoreHttpErrors(true));
     }
 
     private List<ListingDto> recentCache(CacheEntry entry, long now) {
